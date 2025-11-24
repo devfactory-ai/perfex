@@ -1,0 +1,369 @@
+/**
+ * Company Modal Component
+ * Create and edit companies
+ */
+
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { CreateCompanyInput, Company } from '@perfex/shared';
+import { z } from 'zod';
+
+// Form schema that matches the UI needs
+const companyFormSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(200),
+  type: z.enum(['customer', 'prospect', 'partner', 'vendor']),
+  website: z.string().optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  address: z.string().optional().or(z.literal('')),
+  city: z.string().optional().or(z.literal('')),
+  state: z.string().optional().or(z.literal('')),
+  postalCode: z.string().optional().or(z.literal('')),
+  country: z.string().optional().or(z.literal('')),
+  industry: z.string().optional().or(z.literal('')),
+  size: z.enum(['small', 'medium', 'large', 'enterprise']).optional().or(z.literal('')),
+  tagsInput: z.string().optional().or(z.literal('')), // Comma-separated tags in UI
+  notes: z.string().optional().or(z.literal('')),
+});
+
+type CompanyFormData = z.infer<typeof companyFormSchema>;
+
+interface CompanyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: CreateCompanyInput) => Promise<void>;
+  company?: Company;
+  isSubmitting?: boolean;
+}
+
+export function CompanyModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  company,
+  isSubmitting = false,
+}: CompanyModalProps) {
+  // Parse tags from JSON string to comma-separated
+  const parseTags = (tagsJson: string | null): string => {
+    if (!tagsJson) return '';
+    try {
+      const tags = JSON.parse(tagsJson);
+      return Array.isArray(tags) ? tags.join(', ') : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CompanyFormData>({
+    resolver: zodResolver(companyFormSchema),
+    defaultValues: {
+      name: company?.name || '',
+      website: company?.website || '',
+      phone: company?.phone || '',
+      email: company?.email || '',
+      type: company?.type || 'customer',
+      address: company?.address || '',
+      city: company?.city || '',
+      state: company?.state || '',
+      postalCode: company?.postalCode || '',
+      country: company?.country || '',
+      industry: company?.industry || '',
+      size: company?.size || '',
+      tagsInput: company ? parseTags(company.tags) : '',
+      notes: company?.notes || '',
+    },
+  });
+
+  // Reset form when company changes or modal closes
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        name: company?.name || '',
+        website: company?.website || '',
+        phone: company?.phone || '',
+        email: company?.email || '',
+        type: company?.type || 'customer',
+        address: company?.address || '',
+        city: company?.city || '',
+        state: company?.state || '',
+        postalCode: company?.postalCode || '',
+        country: company?.country || '',
+        industry: company?.industry || '',
+        size: company?.size || '',
+        tagsInput: company ? parseTags(company.tags) : '',
+        notes: company?.notes || '',
+      });
+    }
+  }, [isOpen, company, reset]);
+
+  const handleFormSubmit = async (data: CompanyFormData) => {
+    // Parse tags from comma-separated string to array
+    const tagsArray = data.tagsInput
+      ? data.tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      : undefined;
+
+    const cleanedData: CreateCompanyInput = {
+      name: data.name,
+      type: data.type,
+      website: data.website || null,
+      phone: data.phone || null,
+      email: data.email || null,
+      address: data.address || null,
+      city: data.city || null,
+      state: data.state || null,
+      postalCode: data.postalCode || null,
+      country: data.country || null,
+      industry: data.industry || null,
+      size: (data.size as 'small' | 'medium' | 'large' | 'enterprise') || null,
+      tags: tagsArray,
+      notes: data.notes || null,
+      assignedTo: null,
+    };
+
+    await onSubmit(cleanedData);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-card rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit(handleFormSubmit)}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-xl font-semibold">
+              {company ? 'Edit Company' : 'Create New Company'}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-6">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Basic Information</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">
+                    Company Name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    {...register('name')}
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="Acme Corporation"
+                  />
+                  {errors.name && (
+                    <p className="text-destructive text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Type <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    {...register('type')}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="customer">Customer</option>
+                    <option value="prospect">Prospect</option>
+                    <option value="partner">Partner</option>
+                    <option value="vendor">Vendor</option>
+                  </select>
+                  {errors.type && (
+                    <p className="text-destructive text-sm mt-1">{errors.type.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Website</label>
+                  <input
+                    {...register('website')}
+                    type="url"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="https://acme.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <input
+                    {...register('email')}
+                    type="email"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="info@acme.com"
+                  />
+                  {errors.email && (
+                    <p className="text-destructive text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <input
+                    {...register('phone')}
+                    type="tel"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Address</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Street Address</label>
+                  <input
+                    {...register('address')}
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="123 Main St"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">City</label>
+                    <input
+                      {...register('city')}
+                      type="text"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="New York"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">State/Province</label>
+                    <input
+                      {...register('state')}
+                      type="text"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="NY"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Postal Code</label>
+                    <input
+                      {...register('postalCode')}
+                      type="text"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="10001"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Country</label>
+                  <input
+                    {...register('country')}
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="United States"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Business Details */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Business Details</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Industry</label>
+                  <input
+                    {...register('industry')}
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="Technology"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Company Size</label>
+                  <select
+                    {...register('size')}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select size</option>
+                    <option value="small">Small (1-50)</option>
+                    <option value="medium">Medium (51-250)</option>
+                    <option value="large">Large (251-1000)</option>
+                    <option value="enterprise">Enterprise (1000+)</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Tags</label>
+                  <input
+                    {...register('tagsInput')}
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="vip, priority, tech"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Comma-separated tags for categorization
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Notes</label>
+              <textarea
+                {...register('notes')}
+                rows={3}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Additional notes about this company..."
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 justify-end p-6 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : company ? 'Update Company' : 'Create Company'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

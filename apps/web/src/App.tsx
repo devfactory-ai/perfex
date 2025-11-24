@@ -11,6 +11,7 @@ import { NewInvoicePage } from './pages/finance/NewInvoicePage';
 import { InvoiceDetailPage } from './pages/finance/InvoiceDetailPage';
 import { PaymentsPage } from './pages/finance/PaymentsPage';
 import { ReportsPage } from './pages/finance/ReportsPage';
+import { CompaniesPage } from './pages/crm/CompaniesPage';
 import { ContactsPage } from './pages/crm/ContactsPage';
 import { PipelinePage } from './pages/crm/PipelinePage';
 
@@ -55,6 +56,7 @@ function App() {
 
             {/* CRM routes */}
             <Route path="crm">
+              <Route path="companies" element={<CompaniesPage />} />
               <Route path="contacts" element={<ContactsPage />} />
               <Route path="pipeline" element={<PipelinePage />} />
             </Route>
