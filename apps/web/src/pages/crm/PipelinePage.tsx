@@ -4,12 +4,16 @@
  */
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Opportunity } from '@perfex/shared';
+import type { Opportunity, CreateOpportunityInput, Company, Contact, PipelineStage } from '@perfex/shared';
+import { OpportunityModal } from '@/components/OpportunityModal';
 
 export function PipelinePage() {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('open');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | undefined>();
 
   // Fetch opportunities
   const { data: opportunities, isLoading, error } = useQuery({
@@ -32,6 +36,110 @@ export function PipelinePage() {
     },
   });
 
+  // Fetch companies for modal dropdown
+  const { data: companies } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<Company[]>>('/companies');
+      return response.data.data;
+    },
+  });
+
+  // Fetch contacts for modal dropdown
+  const { data: contacts } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<Contact[]>>('/contacts');
+      return response.data.data;
+    },
+  });
+
+  // Fetch pipeline stages for modal dropdown
+  const { data: stages } = useQuery({
+    queryKey: ['pipeline', 'stages'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<PipelineStage[]>>('/pipeline');
+      return response.data.data;
+    },
+  });
+
+  // Create opportunity mutation
+  const createOpportunity = useMutation({
+    mutationFn: async (data: CreateOpportunityInput) => {
+      const response = await api.post<ApiResponse<Opportunity>>('/opportunities', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      setIsModalOpen(false);
+      setSelectedOpportunity(undefined);
+      alert('Opportunity created successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to create opportunity: ${getErrorMessage(error)}`);
+    },
+  });
+
+  // Update opportunity mutation
+  const updateOpportunity = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateOpportunityInput }) => {
+      const response = await api.put<ApiResponse<Opportunity>>(`/opportunities/${id}`, data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      setIsModalOpen(false);
+      setSelectedOpportunity(undefined);
+      alert('Opportunity updated successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to update opportunity: ${getErrorMessage(error)}`);
+    },
+  });
+
+  // Delete opportunity mutation
+  const deleteOpportunity = useMutation({
+    mutationFn: async (opportunityId: string) => {
+      await api.delete(`/opportunities/${opportunityId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      alert('Opportunity deleted successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to delete opportunity: ${getErrorMessage(error)}`);
+    },
+  });
+
+  const handleAddOpportunity = () => {
+    setSelectedOpportunity(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditOpportunity = (opportunity: Opportunity) => {
+    setSelectedOpportunity(opportunity);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOpportunity(undefined);
+  };
+
+  const handleModalSubmit = async (data: CreateOpportunityInput) => {
+    if (selectedOpportunity) {
+      await updateOpportunity.mutateAsync({ id: selectedOpportunity.id, data });
+    } else {
+      await createOpportunity.mutateAsync(data);
+    }
+  };
+
+  const handleDelete = (opportunityId: string, opportunityName: string) => {
+    if (confirm(`Are you sure you want to delete "${opportunityName}"? This action cannot be undone.`)) {
+      deleteOpportunity.mutate(opportunityId);
+    }
+  };
+
   const statusOptions = [
     { value: 'all', label: 'All' },
     { value: 'open', label: 'Open' },
@@ -49,7 +157,10 @@ export function PipelinePage() {
             Track your sales opportunities and deals
           </p>
         </div>
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={handleAddOpportunity}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           Create Opportunity
         </button>
       </div>
@@ -173,9 +284,18 @@ export function PipelinePage() {
                         {opportunity.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button className="text-primary hover:text-primary/80 font-medium">
-                        View
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                      <button
+                        onClick={() => handleEditOpportunity(opportunity)}
+                        className="text-primary hover:text-primary/80 font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(opportunity.id, opportunity.name)}
+                        className="text-destructive hover:text-destructive/80 font-medium"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -186,12 +306,27 @@ export function PipelinePage() {
         ) : (
           <div className="p-12 text-center">
             <p className="text-muted-foreground">No opportunities found. Create your first deal to get started.</p>
-            <button className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <button
+              onClick={handleAddOpportunity}
+              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
               Create Opportunity
             </button>
           </div>
         )}
       </div>
+
+      {/* Opportunity Modal */}
+      <OpportunityModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleModalSubmit}
+        opportunity={selectedOpportunity}
+        companies={companies || []}
+        contacts={contacts || []}
+        stages={stages || []}
+        isSubmitting={createOpportunity.isPending || updateOpportunity.isPending}
+      />
     </div>
   );
 }
