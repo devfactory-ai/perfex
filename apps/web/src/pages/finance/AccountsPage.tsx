@@ -6,11 +6,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Account } from '@perfex/shared';
+import type { Account, CreateAccountInput } from '@perfex/shared';
+import { AccountModal } from '@/components/AccountModal';
 
 export function AccountsPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | undefined>();
 
   // Fetch accounts
   const { data: accounts, isLoading, error } = useQuery({
@@ -36,6 +39,65 @@ export function AccountsPage() {
       alert(`Failed to import: ${getErrorMessage(error)}`);
     },
   });
+
+  // Create account mutation
+  const createAccount = useMutation({
+    mutationFn: async (data: CreateAccountInput) => {
+      const response = await api.post<ApiResponse<Account>>('/accounts', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      setIsModalOpen(false);
+      setSelectedAccount(undefined);
+      alert('Account created successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to create account: ${getErrorMessage(error)}`);
+    },
+  });
+
+  // Update account mutation
+  const updateAccount = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string } }) => {
+      const response = await api.put<ApiResponse<Account>>(`/accounts/${id}`, data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      setIsModalOpen(false);
+      setSelectedAccount(undefined);
+      alert('Account updated successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to update account: ${getErrorMessage(error)}`);
+    },
+  });
+
+  const handleModalSubmit = async (data: CreateAccountInput) => {
+    if (selectedAccount) {
+      // Update existing account (only name can be updated)
+      await updateAccount.mutateAsync({ id: selectedAccount.id, data: { name: data.name } });
+    } else {
+      // Create new account
+      await createAccount.mutateAsync(data);
+    }
+  };
+
+  const handleAddAccount = () => {
+    setSelectedAccount(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditAccount = (account: Account) => {
+    setSelectedAccount(account);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedAccount(undefined);
+  };
 
   const accountTypes = [
     { value: 'all', label: 'All Accounts' },
@@ -71,7 +133,10 @@ export function AccountsPage() {
           >
             Import SYSCOHADA
           </button>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <button
+            onClick={handleAddAccount}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
             Add Account
           </button>
         </div>
@@ -167,7 +232,10 @@ export function AccountsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button className="text-primary hover:text-primary/80 font-medium">
+                      <button
+                        onClick={() => handleEditAccount(account)}
+                        className="text-primary hover:text-primary/80 font-medium"
+                      >
                         Edit
                       </button>
                     </td>
@@ -197,6 +265,16 @@ export function AccountsPage() {
           })}
         </div>
       )}
+
+      {/* Account Modal */}
+      <AccountModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleModalSubmit}
+        account={selectedAccount}
+        accounts={accounts || []}
+        isSubmitting={createAccount.isPending || updateAccount.isPending}
+      />
     </div>
   );
 }
