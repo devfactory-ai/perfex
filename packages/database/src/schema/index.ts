@@ -15,6 +15,7 @@ export * from './manufacturing';
 export * from './assets';
 export * from './notifications';
 export * from './documents';
+export * from './workflows';
 
 // Export all tables for drizzle-kit
 export {
@@ -127,3 +128,19 @@ export {
   reports,
   scheduledReports,
 } from './documents';
+
+export {
+  workflows,
+  workflowSteps,
+  workflowInstances,
+  workflowStepExecutions,
+  approvals,
+  activityFeed,
+  comments,
+  webhooks,
+  webhookLogs,
+  apiKeys,
+  apiKeyUsage,
+  tags,
+  entityTags,
+} from './workflows';

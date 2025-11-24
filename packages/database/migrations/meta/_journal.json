@@ -85,6 +85,13 @@
       "when": 1764014173493,
       "tag": "0011_dark_trish_tilby",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1764015251685,
+      "tag": "0012_wide_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }
