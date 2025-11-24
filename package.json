@@ -1,0 +1,32 @@
+{
+  "name": "perfex-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Perfex ERP AI-Native - The first truly AI-native ERP",
+  "author": "Yassine Techini <yassine.techini@devfactory.ai>",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "deploy": "turbo run deploy",
+    "db:generate": "pnpm --filter @perfex/database generate",
+    "db:migrate:local": "wrangler d1 migrations apply perfex-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply perfex-db"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "prettier": "^3.4.2",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}
