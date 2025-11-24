@@ -6,12 +6,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { ContactWithCompany } from '@perfex/shared';
+import type { ContactWithCompany, Contact, Company, CreateContactInput } from '@perfex/shared';
+import { ContactModal } from '@/components/ContactModal';
 
 export function ContactsPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | undefined>();
 
   // Fetch contacts with company details
   const { data: contacts, isLoading, error } = useQuery({
@@ -23,6 +26,49 @@ export function ContactsPage() {
 
       const response = await api.get<ApiResponse<ContactWithCompany[]>>(url);
       return response.data.data;
+    },
+  });
+
+  // Fetch companies for dropdown
+  const { data: companies } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<Company[]>>('/companies');
+      return response.data.data;
+    },
+  });
+
+  // Create contact mutation
+  const createContact = useMutation({
+    mutationFn: async (data: CreateContactInput) => {
+      const response = await api.post<ApiResponse<Contact>>('/contacts', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setIsModalOpen(false);
+      setSelectedContact(undefined);
+      alert('Contact created successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to create contact: ${getErrorMessage(error)}`);
+    },
+  });
+
+  // Update contact mutation
+  const updateContact = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateContactInput }) => {
+      const response = await api.put<ApiResponse<Contact>>(`/contacts/${id}`, data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setIsModalOpen(false);
+      setSelectedContact(undefined);
+      alert('Contact updated successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to update contact: ${getErrorMessage(error)}`);
     },
   });
 
@@ -39,6 +85,29 @@ export function ContactsPage() {
       alert(`Failed to delete contact: ${getErrorMessage(error)}`);
     },
   });
+
+  const handleAddContact = () => {
+    setSelectedContact(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedContact(undefined);
+  };
+
+  const handleModalSubmit = async (data: CreateContactInput) => {
+    if (selectedContact) {
+      await updateContact.mutateAsync({ id: selectedContact.id, data });
+    } else {
+      await createContact.mutateAsync(data);
+    }
+  };
 
   const handleDelete = (contactId: string, contactName: string) => {
     if (confirm(`Are you sure you want to delete ${contactName}? This action cannot be undone.`)) {
@@ -62,7 +131,10 @@ export function ContactsPage() {
             Manage your customer and prospect contacts
           </p>
         </div>
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={handleAddContact}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           Add Contact
         </button>
       </div>
@@ -182,7 +254,10 @@ export function ContactsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
-                      <button className="text-primary hover:text-primary/80 font-medium">
+                      <button
+                        onClick={() => handleEditContact(contact)}
+                        className="text-primary hover:text-primary/80 font-medium"
+                      >
                         Edit
                       </button>
                       <button
@@ -200,7 +275,10 @@ export function ContactsPage() {
         ) : (
           <div className="p-12 text-center">
             <p className="text-muted-foreground">No contacts found. Add your first contact to get started.</p>
-            <button className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <button
+              onClick={handleAddContact}
+              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
               Add Contact
             </button>
           </div>
@@ -234,6 +312,16 @@ export function ContactsPage() {
           </div>
         </div>
       )}
+
+      {/* Contact Modal */}
+      <ContactModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleModalSubmit}
+        contact={selectedContact}
+        companies={companies || []}
+        isSubmitting={createContact.isPending || updateContact.isPending}
+      />
     </div>
   );
 }
