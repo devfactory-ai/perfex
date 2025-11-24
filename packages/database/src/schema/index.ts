@@ -14,6 +14,7 @@ export * from './sales';
 export * from './manufacturing';
 export * from './assets';
 export * from './notifications';
+export * from './documents';
 
 // Export all tables for drizzle-kit
 export {
@@ -114,3 +115,15 @@ export {
   auditLogs,
   systemSettings,
 } from './notifications';
+
+export {
+  documentCategories,
+  documents,
+  documentVersions,
+  documentAccessLog,
+  documentShares,
+  emailTemplates,
+  emailQueue,
+  reports,
+  scheduledReports,
+} from './documents';
