@@ -1,0 +1,113 @@
+# Perfex ERP - API Environment Variables (Development)
+# Copy this file to .dev.vars and fill in the values
+# DO NOT commit .dev.vars to version control!
+
+# JWT Secrets (generate with: openssl rand -base64 32)
+JWT_ACCESS_SECRET=your-super-secret-access-key-here-min-32-chars-change-this
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-here-min-32-chars-change-this
+
+# JWT Token Expiration
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+
+# Environment
+ENVIRONMENT=development
+
+# CORS Settings (comma-separated list)
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS_PER_MINUTE=100
+
+# Session Settings
+SESSION_COOKIE_NAME=perfex_session
+SESSION_MAX_AGE=604800
+
+# Optional: Email Service (SMTP)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USER=your-email@gmail.com
+# SMTP_PASSWORD=your-app-password
+# SMTP_FROM_NAME=Perfex ERP
+# SMTP_FROM_EMAIL=noreply@perfex.com
+
+# Optional: Storage (R2)
+# R2_BUCKET_NAME=perfex-documents
+# R2_ACCOUNT_ID=your-cloudflare-account-id
+# R2_ACCESS_KEY_ID=your-r2-access-key
+# R2_SECRET_ACCESS_KEY=your-r2-secret-key
+
+# Optional: Queue Service (for background jobs)
+# QUEUE_NAME=perfex-jobs
+# QUEUE_BATCH_SIZE=10
+
+# Optional: Error Reporting (Sentry)
+# SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+
+# Optional: Analytics
+# ANALYTICS_ENDPOINT=https://analytics.example.com
+# ANALYTICS_API_KEY=your-analytics-key
+
+# Optional: External APIs
+# STRIPE_SECRET_KEY=sk_test_xxx
+# STRIPE_WEBHOOK_SECRET=whsec_xxx
+# TWILIO_ACCOUNT_SID=ACxxx
+# TWILIO_AUTH_TOKEN=your-auth-token
+# TWILIO_PHONE_NUMBER=+1234567890
+
+# Optional: AI Services
+# OPENAI_API_KEY=sk-xxx
+# ANTHROPIC_API_KEY=sk-ant-xxx
+
+# Optional: Search Service
+# ALGOLIA_APP_ID=your-app-id
+# ALGOLIA_API_KEY=your-api-key
+# ALGOLIA_INDEX_NAME=perfex_search
+
+# Database Settings (managed by wrangler.toml)
+# These are automatically set by Cloudflare Workers
+# DB_NAME=perfex-db
+# KV_NAMESPACE_SESSIONS=your-kv-namespace-id
+# KV_NAMESPACE_CACHE=your-kv-namespace-id
+
+# Webhook Settings
+WEBHOOK_TIMEOUT_SECONDS=30
+WEBHOOK_MAX_RETRIES=3
+
+# Feature Flags
+ENABLE_WORKFLOW_AUTOMATION=true
+ENABLE_DOCUMENT_MANAGEMENT=true
+ENABLE_ADVANCED_REPORTING=true
+ENABLE_API_KEYS=true
+ENABLE_WEBHOOKS=true
+
+# Security Settings
+PASSWORD_MIN_LENGTH=8
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_LOWERCASE=true
+PASSWORD_REQUIRE_NUMBER=true
+PASSWORD_REQUIRE_SPECIAL=false
+MAX_LOGIN_ATTEMPTS=5
+LOCKOUT_DURATION_MINUTES=30
+
+# File Upload Settings
+MAX_FILE_SIZE_MB=50
+ALLOWED_FILE_TYPES=pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,gif
+
+# Pagination Defaults
+DEFAULT_PAGE_SIZE=20
+MAX_PAGE_SIZE=100
+
+# Audit Log Retention
+AUDIT_LOG_RETENTION_DAYS=90
+
+# Background Job Settings
+ENABLE_SCHEDULED_JOBS=true
+ENABLE_EMAIL_QUEUE_PROCESSING=true
+ENABLE_WEBHOOK_QUEUE_PROCESSING=true
+
+# Development Tools
+ENABLE_DEBUG_LOGGING=true
+ENABLE_QUERY_LOGGING=false
+ENABLE_PERFORMANCE_MONITORING=true
