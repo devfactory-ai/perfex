@@ -13,6 +13,7 @@ export * from './procurement';
 export * from './sales';
 export * from './manufacturing';
 export * from './assets';
+export * from './notifications';
 
 // Export all tables for drizzle-kit
 export {
@@ -107,3 +108,9 @@ export {
   assetMaintenance,
   assetTransfers,
 } from './assets';
+
+export {
+  notifications,
+  auditLogs,
+  systemSettings,
+} from './notifications';

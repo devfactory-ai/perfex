@@ -28,6 +28,7 @@ import procurementRoutes from './routes/procurement';
 import salesRoutes from './routes/sales';
 import manufacturingRoutes from './routes/manufacturing';
 import assetsRoutes from './routes/assets';
+import notificationsRoutes from './routes/notifications';
 import type { Env } from './types';
 
 /**
@@ -141,6 +142,9 @@ apiV1.route('/manufacturing', manufacturingRoutes);
 
 // Mount Assets routes
 apiV1.route('/assets', assetsRoutes);
+
+// Mount Notifications routes
+apiV1.route('/notifications', notificationsRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);
