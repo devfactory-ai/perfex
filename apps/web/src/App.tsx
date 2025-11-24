@@ -21,6 +21,8 @@ import { SuppliersPage } from './pages/procurement/SuppliersPage';
 import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
 import { WorkOrdersPage } from './pages/manufacturing/WorkOrdersPage';
 import { AssetsPage } from './pages/assets/AssetsPage';
+import { WorkflowsPage } from './pages/workflows/WorkflowsPage';
+import { ActivityFeedPage } from './pages/ActivityFeedPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +90,12 @@ function App() {
 
             {/* Assets routes */}
             <Route path="assets" element={<AssetsPage />} />
+
+            {/* Workflows routes */}
+            <Route path="workflows" element={<WorkflowsPage />} />
+
+            {/* Activity Feed */}
+            <Route path="activity" element={<ActivityFeedPage />} />
           </Route>
 
           {/* Catch all */}
