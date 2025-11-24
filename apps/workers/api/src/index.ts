@@ -8,6 +8,8 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import authRoutes from './routes/auth';
+import organizationsRoutes from './routes/organizations';
+import rolesRoutes from './routes/roles';
 
 /**
  * Environment bindings type
@@ -106,6 +108,12 @@ apiV1.get('/health', (c) => {
 
 // Mount auth routes
 apiV1.route('/auth', authRoutes);
+
+// Mount organization routes
+apiV1.route('/organizations', organizationsRoutes);
+
+// Mount role routes
+apiV1.route('/roles', rolesRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);
