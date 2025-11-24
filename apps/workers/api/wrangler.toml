@@ -1,0 +1,52 @@
+# Perfex API Worker Configuration
+name = "perfex-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-24"
+account_id = "6435a77d3ce17b7de468c6618e7b2b14"
+
+# Node.js compatibility
+node_compat = true
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "perfex-db"
+database_id = "ec93435e-3a0f-4d90-a036-966571a34e4a"
+migrations_dir = "../../../packages/database/migrations"
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "CACHE"
+id = "456bca5b154a482dac58ed4c23ed4b68"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "597b6e9781e1490eb2128c51b237d434"
+
+# Vectorize (for RAG)
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "perfex-vectors"
+
+# Queue (for background jobs)
+[[queues.producers]]
+binding = "JOBS"
+queue = "perfex-jobs"
+
+# R2 Storage (uncomment when R2 is enabled)
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "perfex-storage"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+LOG_LEVEL = "debug"
+
+# Staging environment
+[env.staging]
+vars = { ENVIRONMENT = "staging", LOG_LEVEL = "info" }
+
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production", LOG_LEVEL = "warn" }

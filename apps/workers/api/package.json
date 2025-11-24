@@ -1,0 +1,30 @@
+{
+  "name": "perfex-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Perfex API Worker (Hono.js on Cloudflare Workers)",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "type-check": "tsc --noEmit",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "hono": "^4.7.4",
+    "drizzle-orm": "^0.37.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "@perfex/database": "workspace:*",
+    "@perfex/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "wrangler": "^4.50.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
