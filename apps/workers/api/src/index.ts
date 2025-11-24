@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import authRoutes from './routes/auth';
 
 /**
  * Environment bindings type
@@ -102,6 +103,9 @@ apiV1.get('/health', (c) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Mount auth routes
+apiV1.route('/auth', authRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);

@@ -12,19 +12,21 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "hono": "^4.7.4",
-    "drizzle-orm": "^0.37.0",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
+    "@hono/zod-validator": "^0.7.5",
     "@perfex/database": "workspace:*",
-    "@perfex/shared": "workspace:*"
+    "@perfex/shared": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.37.0",
+    "hono": "^4.7.4",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
-    "wrangler": "^4.50.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wrangler": "^4.50.0"
   }
 }
