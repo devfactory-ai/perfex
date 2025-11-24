@@ -18,6 +18,9 @@ import { ProjectsPage } from './pages/projects/ProjectsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 import { EmployeesPage } from './pages/hr/EmployeesPage';
 import { SuppliersPage } from './pages/procurement/SuppliersPage';
+import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
+import { WorkOrdersPage } from './pages/manufacturing/WorkOrdersPage';
+import { AssetsPage } from './pages/assets/AssetsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +79,15 @@ function App() {
 
             {/* Procurement routes */}
             <Route path="procurement/suppliers" element={<SuppliersPage />} />
+
+            {/* Sales routes */}
+            <Route path="sales/orders" element={<SalesOrdersPage />} />
+
+            {/* Manufacturing routes */}
+            <Route path="manufacturing/work-orders" element={<WorkOrdersPage />} />
+
+            {/* Assets routes */}
+            <Route path="assets" element={<AssetsPage />} />
           </Route>
 
           {/* Catch all */}

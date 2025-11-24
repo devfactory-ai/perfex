@@ -11,6 +11,9 @@ export * from './types/projects';
 export * from './types/inventory';
 export * from './types/hr';
 export * from './types/procurement';
+export * from './types/sales';
+export * from './types/manufacturing';
+export * from './types/assets';
 
 // Validators
 export * from './validators/auth';
@@ -20,6 +23,9 @@ export * from './validators/projects';
 export * from './validators/inventory';
 export * from './validators/hr';
 export * from './validators/procurement';
+export * from './validators/sales';
+export * from './validators/manufacturing';
+export * from './validators/assets';
 
 // Note: Organization types and validators are intentionally not exported here
 // to avoid conflicts with auth exports. Import them directly from:

@@ -25,6 +25,9 @@ import projectsRoutes from './routes/projects';
 import inventoryRoutes from './routes/inventory';
 import hrRoutes from './routes/hr';
 import procurementRoutes from './routes/procurement';
+import salesRoutes from './routes/sales';
+import manufacturingRoutes from './routes/manufacturing';
+import assetsRoutes from './routes/assets';
 import type { Env } from './types';
 
 /**
@@ -129,6 +132,15 @@ apiV1.route('/hr', hrRoutes);
 
 // Mount Procurement routes
 apiV1.route('/procurement', procurementRoutes);
+
+// Mount Sales routes
+apiV1.route('/sales', salesRoutes);
+
+// Mount Manufacturing routes
+apiV1.route('/manufacturing', manufacturingRoutes);
+
+// Mount Assets routes
+apiV1.route('/assets', assetsRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);

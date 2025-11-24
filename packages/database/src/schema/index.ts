@@ -11,6 +11,8 @@ export * from './inventory';
 export * from './hr';
 export * from './procurement';
 export * from './sales';
+export * from './manufacturing';
+export * from './assets';
 
 // Export all tables for drizzle-kit
 export {
@@ -87,3 +89,21 @@ export {
   salesOrderLines,
   deliveryNotes,
 } from './sales';
+
+export {
+  billOfMaterials,
+  bomLines,
+  routings,
+  routingOperations,
+  workOrders,
+  workOrderOperations,
+  materialConsumption,
+} from './manufacturing';
+
+export {
+  assetCategories,
+  fixedAssets,
+  assetDepreciations,
+  assetMaintenance,
+  assetTransfers,
+} from './assets';
