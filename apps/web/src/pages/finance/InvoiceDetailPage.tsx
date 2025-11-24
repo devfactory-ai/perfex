@@ -3,16 +3,19 @@
  * View and manage a single invoice
  */
 
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { InvoiceWithLines } from '@perfex/shared';
+import type { InvoiceWithLines, Payment, CreatePaymentInput } from '@perfex/shared';
+import { PaymentModal } from '@/components/PaymentModal';
 import { format } from 'date-fns';
 
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   // Fetch invoice
   const { data: invoice, isLoading, error } = useQuery({
@@ -71,6 +74,24 @@ export function InvoiceDetailPage() {
     },
   });
 
+  // Record payment mutation
+  const recordPayment = useMutation({
+    mutationFn: async (data: CreatePaymentInput) => {
+      const response = await api.post<ApiResponse<Payment>>('/payments', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      setIsPaymentModalOpen(false);
+      alert('Payment recorded successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to record payment: ${getErrorMessage(error)}`);
+    },
+  });
+
   const handleSend = () => {
     if (confirm('Are you sure you want to send this invoice to the customer?')) {
       sendInvoice.mutate();
@@ -87,6 +108,18 @@ export function InvoiceDetailPage() {
     if (confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
       deleteInvoice.mutate();
     }
+  };
+
+  const handleRecordPayment = () => {
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleClosePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+  };
+
+  const handlePaymentModalSubmit = async (data: CreatePaymentInput) => {
+    await recordPayment.mutateAsync(data);
   };
 
   const getStatusColor = (status: string) => {
@@ -158,6 +191,14 @@ export function InvoiceDetailPage() {
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               Send Invoice
+            </button>
+          )}
+          {(invoice.status === 'sent' || invoice.status === 'partial') && invoice.amountDue > 0 && (
+            <button
+              onClick={handleRecordPayment}
+              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              Record Payment
             </button>
           )}
           {(invoice.status === 'draft' || invoice.status === 'sent') && (
@@ -321,6 +362,17 @@ export function InvoiceDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={handleClosePaymentModal}
+        onSubmit={handlePaymentModalSubmit}
+        invoiceId={invoice?.id}
+        invoiceNumber={invoice?.number}
+        invoiceAmount={invoice?.amountDue}
+        isSubmitting={recordPayment.isPending}
+      />
     </div>
   );
 }

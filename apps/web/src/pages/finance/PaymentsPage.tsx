@@ -3,12 +3,16 @@
  * List and manage payments
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Payment } from '@perfex/shared';
+import type { Payment, CreatePaymentInput } from '@perfex/shared';
+import { PaymentModal } from '@/components/PaymentModal';
 import { format } from 'date-fns';
 
 export function PaymentsPage() {
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // Fetch payments
   const { data: payments, isLoading, error } = useQuery({
     queryKey: ['payments'],
@@ -17,6 +21,35 @@ export function PaymentsPage() {
       return response.data.data;
     },
   });
+
+  // Create payment mutation
+  const createPayment = useMutation({
+    mutationFn: async (data: CreatePaymentInput) => {
+      const response = await api.post<ApiResponse<Payment>>('/payments', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setIsModalOpen(false);
+      alert('Payment recorded successfully!');
+    },
+    onError: (error) => {
+      alert(`Failed to record payment: ${getErrorMessage(error)}`);
+    },
+  });
+
+  const handleRecordPayment = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleModalSubmit = async (data: CreatePaymentInput) => {
+    await createPayment.mutateAsync(data);
+  };
 
   const paymentMethods = {
     cash: 'Cash',
@@ -50,7 +83,10 @@ export function PaymentsPage() {
             Track all payment transactions
           </p>
         </div>
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={handleRecordPayment}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           Record Payment
         </button>
       </div>
@@ -154,12 +190,23 @@ export function PaymentsPage() {
         ) : (
           <div className="p-12 text-center">
             <p className="text-muted-foreground">No payments recorded yet.</p>
-            <button className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <button
+              onClick={handleRecordPayment}
+              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
               Record Payment
             </button>
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleModalSubmit}
+        isSubmitting={createPayment.isPending}
+      />
     </div>
   );
 }
