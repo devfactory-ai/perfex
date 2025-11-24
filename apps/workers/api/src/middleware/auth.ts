@@ -106,3 +106,10 @@ export async function optionalAuthMiddleware(
 
   await next();
 }
+
+// Re-export permission middleware for convenience
+export { requirePermissions, requireAnyPermission, requireRole } from './permissions';
+export { requirePermissions as requirePermission } from './permissions'; // Alias
+
+// Export auth middleware with alternative name
+export const requireAuth = authMiddleware;

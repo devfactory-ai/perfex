@@ -7,46 +7,65 @@ account_id = "6435a77d3ce17b7de468c6618e7b2b14"
 # Node.js compatibility
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database
-[[d1_databases]]
+# ===============================================
+# DEV ENVIRONMENT (default/preview)
+# ===============================================
+[env.dev]
+name = "perfex-api-dev"
+vars = { ENVIRONMENT = "development", LOG_LEVEL = "debug" }
+
+[[env.dev.d1_databases]]
 binding = "DB"
-database_name = "perfex-db"
-database_id = "ec93435e-3a0f-4d90-a036-966571a34e4a"
+database_name = "perfex-db-dev"
+database_id = "990c74a6-b0b6-4904-8d52-5f1968e06768"
 migrations_dir = "../../../packages/database/migrations"
 
-# KV Namespaces
-[[kv_namespaces]]
-binding = "CACHE"
-id = "456bca5b154a482dac58ed4c23ed4b68"
-
-[[kv_namespaces]]
+[[env.dev.kv_namespaces]]
 binding = "SESSIONS"
-id = "597b6e9781e1490eb2128c51b237d434"
+preview_id = "2cf6285c5c1f4db2a32eb4c71e53cbff"
 
-# Vectorize (for RAG)
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "perfex-vectors"
+[[env.dev.kv_namespaces]]
+binding = "CACHE"
+preview_id = "0392b051b75b4a4ca3136707a71b21a4"
 
-# Queue (for background jobs)
-[[queues.producers]]
-binding = "JOBS"
-queue = "perfex-jobs"
-
-# R2 Storage (uncomment when R2 is enabled)
-# [[r2_buckets]]
-# binding = "STORAGE"
-# bucket_name = "perfex-storage"
-
-# Environment variables
-[vars]
-ENVIRONMENT = "development"
-LOG_LEVEL = "debug"
-
-# Staging environment
+# ===============================================
+# STAGING ENVIRONMENT
+# ===============================================
 [env.staging]
+name = "perfex-api-staging"
 vars = { ENVIRONMENT = "staging", LOG_LEVEL = "info" }
 
-# Production environment
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "perfex-db-staging"
+database_id = "23e79bcb-34c8-467c-a582-4f363fa1779c"
+migrations_dir = "../../../packages/database/migrations"
+
+[[env.staging.kv_namespaces]]
+binding = "SESSIONS"
+id = "7a0c3cb3fbf047ca9d7f8977c9b98004"
+
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = "db57371d4269410bb4459e519f5c33c3"
+
+# ===============================================
+# PRODUCTION ENVIRONMENT
+# ===============================================
 [env.production]
+name = "perfex-api"
 vars = { ENVIRONMENT = "production", LOG_LEVEL = "warn" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "perfex-db-prod"
+database_id = "b615d292-465b-4292-9914-2263fd7a66eb"
+migrations_dir = "../../../packages/database/migrations"
+
+[[env.production.kv_namespaces]]
+binding = "SESSIONS"
+id = "85379b8924b444188374361b23898c75"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "f7fff34646004bdd80b6ce1f17fdc7aa"
