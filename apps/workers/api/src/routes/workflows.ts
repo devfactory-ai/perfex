@@ -13,7 +13,7 @@ import {
   triggerWorkflowSchema,
   createApprovalSchema,
   respondToApprovalSchema,
-  createActivitySchema,
+  createActivityFeedSchema,
   createCommentSchema,
   updateCommentSchema,
   createWebhookSchema,
@@ -246,7 +246,7 @@ app.post('/activities', requirePermissions('workflows:create'), async (c) => {
   const organizationId = c.get('organizationId');
   const body = await c.req.json();
 
-  const validation = createActivitySchema.safeParse(body);
+  const validation = createActivityFeedSchema.safeParse(body);
   if (!validation.success) {
     return c.json(
       { success: false, error: { code: 'VALIDATION_ERROR', details: validation.error.errors } },

@@ -72,7 +72,7 @@ export const createApprovalSchema = z.object({
 export type CreateApprovalInput = z.infer<typeof createApprovalSchema>;
 
 // Activity Feed validators
-export const createActivitySchema = z.object({
+export const createActivityFeedSchema = z.object({
   userId: z.string().uuid().optional().nullable(),
   activityType: z.enum(['create', 'update', 'delete', 'comment', 'approve', 'reject', 'status_change']),
   entityType: z.string().min(1).max(100),
@@ -83,7 +83,7 @@ export const createActivitySchema = z.object({
   isPublic: z.boolean().default(true),
 });
 
-export type CreateActivityInput = z.infer<typeof createActivitySchema>;
+export type CreateActivityFeedInput = z.infer<typeof createActivityFeedSchema>;
 
 // Comment validators
 export const createCommentSchema = z.object({
