@@ -17,6 +17,7 @@ import { PipelinePage } from './pages/crm/PipelinePage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 import { EmployeesPage } from './pages/hr/EmployeesPage';
+import { SuppliersPage } from './pages/procurement/SuppliersPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,9 @@ function App() {
 
             {/* HR routes */}
             <Route path="hr/employees" element={<EmployeesPage />} />
+
+            {/* Procurement routes */}
+            <Route path="procurement/suppliers" element={<SuppliersPage />} />
           </Route>
 
           {/* Catch all */}
