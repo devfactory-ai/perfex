@@ -21,6 +21,7 @@ import companiesRoutes from './routes/companies';
 import contactsRoutes from './routes/contacts';
 import pipelineRoutes from './routes/pipeline';
 import opportunitiesRoutes from './routes/opportunities';
+import projectsRoutes from './routes/projects';
 import type { Env } from './types';
 
 /**
@@ -113,6 +114,9 @@ apiV1.route('/companies', companiesRoutes);
 apiV1.route('/contacts', contactsRoutes);
 apiV1.route('/pipeline', pipelineRoutes);
 apiV1.route('/opportunities', opportunitiesRoutes);
+
+// Mount Projects routes
+apiV1.route('/projects', projectsRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);
