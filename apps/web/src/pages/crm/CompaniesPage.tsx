@@ -5,19 +5,18 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Company, CreateCompanyInput } from '@perfex/shared';
-import { CompanyModal } from '@/components/CompanyModal';
+import type { Company } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function CompaniesPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('active');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<Company | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -39,40 +38,6 @@ export function CompaniesPage() {
     },
   });
 
-  // Create company mutation
-  const createCompany = useMutation({
-    mutationFn: async (data: CreateCompanyInput) => {
-      const response = await api.post<ApiResponse<Company>>('/companies', data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-      setIsModalOpen(false);
-      setSelectedCompany(undefined);
-      alert('Company created successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to create company: ${getErrorMessage(error)}`);
-    },
-  });
-
-  // Update company mutation
-  const updateCompany = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CreateCompanyInput }) => {
-      const response = await api.put<ApiResponse<Company>>(`/companies/${id}`, data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-      setIsModalOpen(false);
-      setSelectedCompany(undefined);
-      alert('Company updated successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to update company: ${getErrorMessage(error)}`);
-    },
-  });
-
   // Delete company mutation
   const deleteCompany = useMutation({
     mutationFn: async (companyId: string) => {
@@ -88,26 +53,11 @@ export function CompaniesPage() {
   });
 
   const handleAddCompany = () => {
-    setSelectedCompany(undefined);
-    setIsModalOpen(true);
+    navigate('/crm/companies/new');
   };
 
-  const handleEditCompany = (company: Company) => {
-    setSelectedCompany(company);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedCompany(undefined);
-  };
-
-  const handleModalSubmit = async (data: CreateCompanyInput) => {
-    if (selectedCompany) {
-      await updateCompany.mutateAsync({ id: selectedCompany.id, data });
-    } else {
-      await createCompany.mutateAsync(data);
-    }
+  const handleEditCompany = (companyId: string) => {
+    navigate(`/crm/companies/${companyId}/edit`);
   };
 
   const handleDelete = (companyId: string, companyName: string) => {
@@ -313,7 +263,7 @@ export function CompaniesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
                       <button
-                        onClick={() => handleEditCompany(company)}
+                        onClick={() => handleEditCompany(company.id)}
                         className="text-primary hover:text-primary/80 font-medium"
                       >
                         Edit
@@ -380,15 +330,6 @@ export function CompaniesPage() {
           </div>
         </div>
       )}
-
-      {/* Company Modal */}
-      <CompanyModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleModalSubmit}
-        company={selectedCompany}
-        isSubmitting={createCompany.isPending || updateCompany.isPending}
-      />
     </div>
   );
 }

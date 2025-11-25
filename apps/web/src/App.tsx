@@ -13,6 +13,7 @@ import { InvoiceDetailPage } from './pages/finance/InvoiceDetailPage';
 import { PaymentsPage } from './pages/finance/PaymentsPage';
 import { ReportsPage } from './pages/finance/ReportsPage';
 import { CompaniesPage } from './pages/crm/CompaniesPage';
+import { CompanyFormPage } from './pages/crm/CompanyFormPage';
 import { ContactsPage } from './pages/crm/ContactsPage';
 import { PipelinePage } from './pages/crm/PipelinePage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
@@ -58,6 +59,8 @@ function App() {
             <Route path="finance/payments" element={<PaymentsPage />} />
             <Route path="finance/reports" element={<ReportsPage />} />
             <Route path="crm/companies" element={<CompaniesPage />} />
+            <Route path="crm/companies/new" element={<CompanyFormPage />} />
+            <Route path="crm/companies/:id/edit" element={<CompanyFormPage />} />
             <Route path="crm/contacts" element={<ContactsPage />} />
             <Route path="crm/pipeline" element={<PipelinePage />} />
             <Route path="projects" element={<ProjectsPage />} />
