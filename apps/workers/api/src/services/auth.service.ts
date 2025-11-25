@@ -34,6 +34,7 @@ import {
   incrementRateLimit,
   RATE_LIMITS,
 } from '../utils/rate-limit';
+import { EmailService } from '../utils/email';
 
 /**
  * Convert User to SafeUser (remove password hash)
@@ -54,12 +55,17 @@ function generateSlug(name: string): string {
 }
 
 export class AuthService {
+  private emailService: EmailService;
+
   constructor(
     private db: D1Database,
     private cache: KVNamespace,
     private sessions: KVNamespace,
-    private jwtSecret: string
-  ) {}
+    private jwtSecret: string,
+    private environment: string = 'production'
+  ) {
+    this.emailService = new EmailService(environment);
+  }
 
   /**
    * Register a new user
@@ -149,6 +155,14 @@ export class AuthService {
       });
     }
 
+    // Send welcome email
+    try {
+      await this.emailService.sendWelcomeEmail(user.email, user.firstName || 'User');
+    } catch (error) {
+      // Don't fail registration if email fails
+      console.error('Failed to send welcome email:', error);
+    }
+
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, ipAddress);
 
@@ -212,6 +226,13 @@ export class AuthService {
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, user.id));
 
+    // Get user's first organization
+    const membership = await drizzleDb
+      .select()
+      .from(organizationMembers)
+      .where(eq(organizationMembers.userId, user.id))
+      .get();
+
     // Generate tokens
     const tokens = await this.generateTokens(
       user.id,
@@ -221,7 +242,11 @@ export class AuthService {
     );
 
     return {
-      user: toSafeUser({ ...user, lastLoginAt: new Date() }),
+      user: toSafeUser({
+        ...user,
+        lastLoginAt: new Date(),
+        organizationId: membership?.organizationId || null,
+      }),
       tokens,
     };
   }
@@ -387,9 +412,117 @@ export class AuthService {
     const tokenKey = `password-reset:${resetToken}`;
     await this.cache.put(tokenKey, user.id, { expirationTtl: 3600 });
 
-    // TODO: Send email with reset link
-    // For now, just log it
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    // Send password reset email
+    try {
+      await this.emailService.sendPasswordResetEmail(email, resetToken);
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+    }
+  }
+
+  /**
+   * Request passwordless login link
+   * AUTH-049
+   */
+  async requestPasswordlessLogin(email: string, ipAddress: string): Promise<void> {
+    // Rate limiting
+    const rateLimitKey = `passwordless:${ipAddress}`;
+    const canProceed = await checkRateLimit(
+      this.cache,
+      rateLimitKey,
+      RATE_LIMITS.PASSWORD_RESET
+    );
+
+    if (!canProceed) {
+      throw new Error('Too many passwordless login attempts. Please try again later.');
+    }
+
+    await incrementRateLimit(this.cache, rateLimitKey, RATE_LIMITS.PASSWORD_RESET);
+
+    const drizzleDb = drizzle(this.db);
+
+    const user = await drizzleDb
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .get();
+
+    // Don't reveal if user exists
+    if (!user) {
+      return;
+    }
+
+    // Check if user is active
+    if (!user.active) {
+      return;
+    }
+
+    // Generate login token
+    const loginToken = generateRandomToken(32);
+
+    // Store token in KV (expires in 15 minutes)
+    const tokenKey = `passwordless-login:${loginToken}`;
+    await this.cache.put(tokenKey, user.id, { expirationTtl: 900 }); // 15 minutes
+
+    // Send passwordless login email
+    try {
+      await this.emailService.sendPasswordlessLoginEmail(email, loginToken);
+    } catch (error) {
+      console.error('Failed to send passwordless login email:', error);
+      throw new Error('Failed to send login link');
+    }
+  }
+
+  /**
+   * Verify passwordless login token
+   * AUTH-050
+   */
+  async verifyPasswordlessLogin(
+    token: string,
+    ipAddress: string,
+    userAgent?: string
+  ): Promise<AuthResponse> {
+    // Get user ID from token
+    const tokenKey = `passwordless-login:${token}`;
+    const userId = await this.cache.get(tokenKey);
+
+    if (!userId) {
+      throw new Error('Invalid or expired login link');
+    }
+
+    // Get user
+    const drizzleDb = drizzle(this.db);
+    const user = await drizzleDb
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
+
+    if (!user || !user.active) {
+      throw new Error('User not found or inactive');
+    }
+
+    // Delete token (single use)
+    await this.cache.delete(tokenKey);
+
+    // Update last login
+    await drizzleDb
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, user.id));
+
+    // Generate tokens
+    const tokens = await this.generateTokens(
+      user.id,
+      user.email,
+      ipAddress,
+      userAgent
+    );
+
+    return {
+      user: toSafeUser({ ...user, lastLoginAt: new Date() }),
+      tokens,
+    };
   }
 
   /**

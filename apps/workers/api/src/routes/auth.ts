@@ -15,6 +15,8 @@ import {
   updateProfileSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  requestPasswordlessLoginSchema,
+  verifyPasswordlessLoginSchema,
 } from '@perfex/shared';
 
 const auth = new Hono<{ Bindings: Env }>();
@@ -24,21 +26,24 @@ const auth = new Hono<{ Bindings: Env }>();
  * Register a new user
  * AUTH-051
  */
-auth.post('/register', zValidator('json', registerSchema), async (c) => {
-  const data = c.req.valid('json');
+auth.post('/register', async (c) => {
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
 
   try {
+    const body = await c.req.json();
+    const data = registerSchema.parse(body);
+
     const authService = new AuthService(
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     const result = await authService.register(data, ipAddress);
 
-    return c.json(result, 201);
+    return c.json({ data: result }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed';
 
@@ -59,22 +64,25 @@ auth.post('/register', zValidator('json', registerSchema), async (c) => {
  * Login user
  * AUTH-052
  */
-auth.post('/login', zValidator('json', loginSchema), async (c) => {
-  const data = c.req.valid('json');
+auth.post('/login', async (c) => {
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
   const userAgent = c.req.header('user-agent');
 
   try {
+    const body = await c.req.json();
+    const data = loginSchema.parse(body);
+
     const authService = new AuthService(
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     const result = await authService.login(data, ipAddress, userAgent);
 
-    return c.json(result);
+    return c.json({ data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Login failed';
 
@@ -103,12 +111,13 @@ auth.post('/refresh', zValidator('json', refreshTokenSchema), async (c) => {
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     const result = await authService.refresh(refreshToken);
 
-    return c.json(result);
+    return c.json({ data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Token refresh failed';
 
@@ -137,7 +146,8 @@ auth.post('/logout', zValidator('json', refreshTokenSchema), async (c) => {
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     await authService.logout(refreshToken);
@@ -162,12 +172,13 @@ auth.get('/me', authMiddleware, async (c) => {
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     const user = await authService.getProfile(userId);
 
-    return c.json(user);
+    return c.json({ data: user });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get profile';
 
@@ -197,12 +208,13 @@ auth.put('/me', authMiddleware, zValidator('json', updateProfileSchema), async (
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     const user = await authService.updateProfile(userId, data);
 
-    return c.json(user);
+    return c.json({ data: user });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile';
 
@@ -232,7 +244,8 @@ auth.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     await authService.forgotPassword(email, ipAddress);
@@ -262,7 +275,8 @@ auth.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) 
       c.env.DB,
       c.env.CACHE,
       c.env.SESSIONS,
-      c.env.JWT_SECRET
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
     );
 
     await authService.resetPassword(token, newPassword);
@@ -279,6 +293,91 @@ auth.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) 
         },
       },
       400
+    );
+  }
+});
+
+/**
+ * POST /auth/passwordless/request
+ * Request a passwordless login link via email
+ * AUTH-059
+ */
+auth.post('/passwordless/request', async (c) => {
+  const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
+
+  try {
+    const body = await c.req.json();
+    const { email } = requestPasswordlessLoginSchema.parse(body);
+
+    const authService = new AuthService(
+      c.env.DB,
+      c.env.CACHE,
+      c.env.SESSIONS,
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
+    );
+
+    await authService.requestPasswordlessLogin(email, ipAddress);
+
+    return c.json({
+      message: 'If an account exists with this email, a login link has been sent.',
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to send login link';
+
+    return c.json(
+      {
+        error: {
+          code: 'PASSWORDLESS_REQUEST_FAILED',
+          message,
+        },
+      },
+      400
+    );
+  }
+});
+
+/**
+ * POST /auth/passwordless/verify
+ * Verify a passwordless login token and log in
+ * AUTH-060
+ */
+auth.post('/passwordless/verify', async (c) => {
+  const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
+  const userAgent = c.req.header('user-agent');
+
+  try {
+    const body = await c.req.json();
+    const { token } = verifyPasswordlessLoginSchema.parse(body);
+
+    const authService = new AuthService(
+      c.env.DB,
+      c.env.CACHE,
+      c.env.SESSIONS,
+      c.env.JWT_SECRET,
+      c.env.ENVIRONMENT || 'production'
+    );
+
+    const result = await authService.verifyPasswordlessLogin(
+      token,
+      ipAddress,
+      userAgent
+    );
+
+    return c.json({ data: result });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Invalid or expired login link';
+
+    return c.json(
+      {
+        error: {
+          code: 'PASSWORDLESS_VERIFY_FAILED',
+          message,
+        },
+      },
+      401
     );
   }
 });

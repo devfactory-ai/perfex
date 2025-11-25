@@ -3,7 +3,8 @@
  * Redirects to login if user is not authenticated
  */
 
-import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -12,7 +13,24 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
+
+  console.log('[ProtectedRoute] Render', {
+    isAuthenticated,
+    isLoading,
+    path: location.pathname
+  });
+
+  useEffect(() => {
+    console.log('[ProtectedRoute] Effect triggered', { isAuthenticated, isLoading });
+    if (!isLoading && !isAuthenticated) {
+      console.log('[ProtectedRoute] NOT authenticated - redirecting to /login');
+      navigate('/login', { state: { from: location }, replace: true });
+    } else {
+      console.log('[ProtectedRoute] Authenticated or still loading - staying on page');
+    }
+  }, [isAuthenticated, isLoading, navigate, location]);
 
   if (isLoading) {
     return (
@@ -26,8 +44,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    // Redirect to login with return URL
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return null;
   }
 
   return <>{children}</>;

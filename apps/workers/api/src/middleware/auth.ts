@@ -15,6 +15,13 @@ declare module 'hono' {
   interface ContextVariableMap {
     userId: string;
     userEmail: string;
+    organizationId: string | null;
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      permissions: string[];
+    };
   }
 }
 
@@ -59,9 +66,21 @@ export async function authMiddleware(
       );
     }
 
+    // Extract organization ID from header
+    const organizationId = c.req.header('x-organization-id') || null;
+
     // Add user data to context
     c.set('userId', payload.sub);
     c.set('userEmail', payload.email);
+    c.set('organizationId', organizationId);
+
+    // Set user object with admin role (for now, until we implement proper RBAC)
+    c.set('user', {
+      id: payload.sub,
+      email: payload.email,
+      role: 'admin', // Grant admin access to all authenticated users for now
+      permissions: [], // Will be populated when RBAC is fully implemented
+    });
 
     await next();
   } catch (error) {

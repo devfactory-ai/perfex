@@ -30,6 +30,7 @@ export interface SafeUser {
   avatarUrl: string | null;
   emailVerified: boolean;
   active: boolean;
+  organizationId: string | null;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date | null;
@@ -129,7 +130,7 @@ export interface RefreshTokenPayload {
 /**
  * Helper to convert User to SafeUser
  */
-export function toSafeUser(user: User): SafeUser {
+export function toSafeUser(user: User & { organizationId?: string | null }): SafeUser {
   const { passwordHash, ...safeUser } = user;
-  return safeUser;
+  return { ...safeUser, organizationId: safeUser.organizationId || null };
 }

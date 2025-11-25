@@ -54,10 +54,17 @@ app.use(
       if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
         return origin;
       }
+      // Allow Cloudflare Pages deployments
+      if (origin.includes('.pages.dev')) {
+        return origin;
+      }
       // In production, only allow specific domains
       const allowedOrigins = [
         'https://app.perfex.com',
         'https://perfex.com',
+        'https://dev.perfex-web-dev.pages.dev',
+        'https://staging.perfex-web-staging.pages.dev',
+        'https://perfex-web.pages.dev',
       ];
       return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
     },
@@ -68,8 +75,8 @@ app.use(
   })
 );
 
-// Pretty JSON in development
-app.use('*', prettyJSON());
+// Pretty JSON in development (disabled - causes issues with body parsing)
+// app.use('*', prettyJSON());
 
 /**
  * Health check endpoint
@@ -98,6 +105,16 @@ apiV1.get('/health', (c) => {
     sessions: c.env.SESSIONS ? 'available' : 'unavailable',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Test endpoint for debugging
+apiV1.post('/test', async (c) => {
+  try {
+    const body = await c.req.json();
+    return c.json({ success: true, received: body });
+  } catch (error) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 400);
+  }
 });
 
 // Mount auth routes
