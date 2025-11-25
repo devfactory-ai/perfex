@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardLayout } from './components/layouts/DashboardLayout';
@@ -33,75 +33,111 @@ const queryClient = new QueryClient({
   },
 });
 
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />,
+  },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <DashboardPage />,
+      },
+      {
+        path: 'finance/accounts',
+        element: <AccountsPage />,
+      },
+      {
+        path: 'finance/invoices',
+        element: <InvoicesPage />,
+      },
+      {
+        path: 'finance/invoices/new',
+        element: <NewInvoicePage />,
+      },
+      {
+        path: 'finance/invoices/:id',
+        element: <InvoiceDetailPage />,
+      },
+      {
+        path: 'finance/payments',
+        element: <PaymentsPage />,
+      },
+      {
+        path: 'finance/reports',
+        element: <ReportsPage />,
+      },
+      {
+        path: 'crm/companies',
+        element: <CompaniesPage />,
+      },
+      {
+        path: 'crm/contacts',
+        element: <ContactsPage />,
+      },
+      {
+        path: 'crm/pipeline',
+        element: <PipelinePage />,
+      },
+      {
+        path: 'projects',
+        element: <ProjectsPage />,
+      },
+      {
+        path: 'inventory',
+        element: <InventoryPage />,
+      },
+      {
+        path: 'hr/employees',
+        element: <EmployeesPage />,
+      },
+      {
+        path: 'procurement/suppliers',
+        element: <SuppliersPage />,
+      },
+      {
+        path: 'sales/orders',
+        element: <SalesOrdersPage />,
+      },
+      {
+        path: 'manufacturing/work-orders',
+        element: <WorkOrdersPage />,
+      },
+      {
+        path: 'assets',
+        element: <AssetsPage />,
+      },
+      {
+        path: 'workflows',
+        element: <WorkflowsPage />,
+      },
+      {
+        path: 'activity',
+        element: <ActivityFeedPage />,
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
+  },
+]);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-
-          {/* Protected routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-
-            {/* Finance routes */}
-            <Route path="finance">
-              <Route path="accounts" element={<AccountsPage />} />
-              <Route path="invoices" element={<InvoicesPage />} />
-              <Route path="invoices/new" element={<NewInvoicePage />} />
-              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="payments" element={<PaymentsPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-            </Route>
-
-            {/* CRM routes */}
-            <Route path="crm">
-              <Route path="companies" element={<CompaniesPage />} />
-              <Route path="contacts" element={<ContactsPage />} />
-              <Route path="pipeline" element={<PipelinePage />} />
-            </Route>
-
-            {/* Projects routes */}
-            <Route path="projects" element={<ProjectsPage />} />
-
-            {/* Inventory routes */}
-            <Route path="inventory" element={<InventoryPage />} />
-
-            {/* HR routes */}
-            <Route path="hr/employees" element={<EmployeesPage />} />
-
-            {/* Procurement routes */}
-            <Route path="procurement/suppliers" element={<SuppliersPage />} />
-
-            {/* Sales routes */}
-            <Route path="sales/orders" element={<SalesOrdersPage />} />
-
-            {/* Manufacturing routes */}
-            <Route path="manufacturing/work-orders" element={<WorkOrdersPage />} />
-
-            {/* Assets routes */}
-            <Route path="assets" element={<AssetsPage />} />
-
-            {/* Workflows routes */}
-            <Route path="workflows" element={<WorkflowsPage />} />
-
-            {/* Activity Feed */}
-            <Route path="activity" element={<ActivityFeedPage />} />
-          </Route>
-
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>
   );
 }
