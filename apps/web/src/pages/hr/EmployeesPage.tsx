@@ -3,20 +3,23 @@
  * Manage employees and HR information
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Employee, CreateEmployeeInput, Department } from '@perfex/shared';
-import { EmployeeModal } from '@/components/EmployeeModal';
+import type { Employee, Department } from '@perfex/shared';
+import { EmptyState } from '@/components/EmptyState';
+import { Pagination } from '@/components/Pagination';
 
 export function EmployeesPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Fetch employees
   const { data: employees, isLoading, error } = useQuery({
@@ -60,42 +63,6 @@ export function EmployeesPage() {
     },
   });
 
-  // Create employee mutation
-  const createEmployee = useMutation({
-    mutationFn: async (data: CreateEmployeeInput) => {
-      const response = await api.post<ApiResponse<Employee>>('/hr/employees', data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['hr-stats'] });
-      setIsModalOpen(false);
-      setSelectedEmployee(undefined);
-      alert('Employee created successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to create employee: ${getErrorMessage(error)}`);
-    },
-  });
-
-  // Update employee mutation
-  const updateEmployee = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CreateEmployeeInput }) => {
-      const response = await api.put<ApiResponse<Employee>>(`/hr/employees/${id}`, data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['hr-stats'] });
-      setIsModalOpen(false);
-      setSelectedEmployee(undefined);
-      alert('Employee updated successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to update employee: ${getErrorMessage(error)}`);
-    },
-  });
-
   // Delete employee mutation
   const deleteEmployee = useMutation({
     mutationFn: async (employeeId: string) => {
@@ -112,32 +79,51 @@ export function EmployeesPage() {
   });
 
   const handleAddEmployee = () => {
-    setSelectedEmployee(undefined);
-    setIsModalOpen(true);
+    navigate('/hr/employees/new');
   };
 
-  const handleEditEmployee = (employee: Employee) => {
-    setSelectedEmployee(employee);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedEmployee(undefined);
-  };
-
-  const handleModalSubmit = async (data: CreateEmployeeInput) => {
-    if (selectedEmployee) {
-      await updateEmployee.mutateAsync({ id: selectedEmployee.id, data });
-    } else {
-      await createEmployee.mutateAsync(data);
-    }
+  const handleEditEmployee = (employeeId: string) => {
+    navigate(`/hr/employees/${employeeId}/edit`);
   };
 
   const handleDelete = (employeeId: string, employeeName: string) => {
     if (confirm(`Are you sure you want to delete "${employeeName}"? This action cannot be undone.`)) {
       deleteEmployee.mutate(employeeId);
     }
+  };
+
+  // Calculate paginated data
+  const paginatedEmployees = useMemo(() => {
+    if (!employees) return { data: [], total: 0, totalPages: 0 };
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const data = employees.slice(startIndex, endIndex);
+    const total = employees.length;
+    const totalPages = Math.ceil(total / itemsPerPage);
+
+    return { data, total, totalPages };
+  }, [employees, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleDepartmentFilterChange = (value: string) => {
+    setDepartmentFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleEmploymentTypeFilterChange = (value: string) => {
+    setEmploymentTypeFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleActiveFilterChange = (value: string) => {
+    setActiveFilter(value);
+    setCurrentPage(1);
   };
 
   // Format date
@@ -219,14 +205,14 @@ export function EmployeesPage() {
             type="text"
             placeholder="Search employees by name, email, or employee number..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
         </div>
         <div className="flex gap-2">
           <select
             value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
+            onChange={(e) => handleDepartmentFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="all">All Departments</option>
@@ -238,7 +224,7 @@ export function EmployeesPage() {
           </select>
           <select
             value={employmentTypeFilter}
-            onChange={(e) => setEmploymentTypeFilter(e.target.value)}
+            onChange={(e) => handleEmploymentTypeFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="all">All Types</option>
@@ -249,7 +235,7 @@ export function EmployeesPage() {
           </select>
           <select
             value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
+            onChange={(e) => handleActiveFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="all">All Status</option>
@@ -262,97 +248,101 @@ export function EmployeesPage() {
       {/* Employees List */}
       <div className="rounded-lg border bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-sm text-muted-foreground">Loading employees...</p>
+            </div>
+          </div>
         ) : error ? (
-          <div className="p-8 text-center text-red-600">
-            Error loading employees: {getErrorMessage(error)}
+          <div className="p-12 text-center">
+            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
           </div>
-        ) : !employees || employees.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">No employees found.</p>
-            <button
-              onClick={handleAddEmployee}
-              className="mt-4 text-sm text-primary hover:underline"
-            >
-              Add your first employee
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Employee #</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Position</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Department</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Hire Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Salary</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {employees.map((employee) => {
-                  const department = departments?.find(d => d.id === employee.departmentId);
-                  return (
-                    <tr key={employee.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 text-sm font-mono">{employee.employeeNumber}</td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="font-medium">{employee.firstName} {employee.lastName}</div>
-                          <div className="text-sm text-muted-foreground">{employee.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{employee.position}</td>
-                      <td className="px-4 py-3 text-sm">{department?.name || '-'}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {getEmploymentTypeLabel(employee.employmentType)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{formatDate(employee.hireDate)}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {formatCurrency(employee.salary, employee.salaryCurrency, employee.salaryPeriod)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(employee.active)}`}>
-                          {employee.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+        ) : paginatedEmployees.data.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Employee #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Position</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Department</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Hire Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Salary</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedEmployees.data.map((employee) => {
+                    const department = departments?.find(d => d.id === employee.departmentId);
+                    return (
+                      <tr key={employee.id} className="hover:bg-muted/50">
+                        <td className="px-6 py-4 text-sm font-mono">{employee.employeeNumber}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-medium">{employee.firstName} {employee.lastName}</div>
+                            <div className="text-sm text-muted-foreground">{employee.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm">{employee.position}</td>
+                        <td className="px-6 py-4 text-sm">{department?.name || '-'}</td>
+                        <td className="px-6 py-4 text-sm">
+                          {getEmploymentTypeLabel(employee.employmentType)}
+                        </td>
+                        <td className="px-6 py-4 text-sm">{formatDate(employee.hireDate)}</td>
+                        <td className="px-6 py-4 text-sm">
+                          {formatCurrency(employee.salary, employee.salaryCurrency, employee.salaryPeriod)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(employee.active)}`}>
+                            {employee.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
                           <button
-                            onClick={() => handleEditEmployee(employee)}
-                            className="text-sm text-primary hover:underline"
+                            onClick={() => handleEditEmployee(employee.id)}
+                            className="text-primary hover:text-primary/80 font-medium"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(employee.id, `${employee.firstName} ${employee.lastName}`)}
-                            className="text-sm text-red-600 hover:underline"
+                            className="text-destructive hover:text-destructive/80 font-medium"
                           >
                             Delete
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={paginatedEmployees.totalPages}
+              totalItems={paginatedEmployees.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </>
+        ) : (
+          <EmptyState
+            title="No employees found"
+            description="Get started by adding your first employee. Manage employee information, track employment details, and maintain HR records efficiently."
+            icon="users"
+            action={{
+              label: "New Employee",
+              onClick: handleAddEmployee,
+            }}
+          />
         )}
       </div>
-
-      {/* Modal */}
-      <EmployeeModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleModalSubmit}
-        employee={selectedEmployee}
-        departments={departments}
-        isSubmitting={createEmployee.isPending || updateEmployee.isPending}
-      />
     </div>
   );
 }
