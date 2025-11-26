@@ -21,6 +21,7 @@ import { OpportunityFormPage } from './pages/crm/OpportunityFormPage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
 import { ProjectFormPage } from './pages/projects/ProjectFormPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
+import { InventoryItemFormPage } from './pages/inventory/InventoryItemFormPage';
 import { EmployeesPage } from './pages/hr/EmployeesPage';
 import { SuppliersPage } from './pages/procurement/SuppliersPage';
 import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
@@ -74,6 +75,8 @@ function App() {
             <Route path="projects/new" element={<ProjectFormPage />} />
             <Route path="projects/:id/edit" element={<ProjectFormPage />} />
             <Route path="inventory" element={<InventoryPage />} />
+            <Route path="inventory/new" element={<InventoryItemFormPage />} />
+            <Route path="inventory/:id/edit" element={<InventoryItemFormPage />} />
             <Route path="hr/employees" element={<EmployeesPage />} />
             <Route path="procurement/suppliers" element={<SuppliersPage />} />
             <Route path="sales/orders" element={<SalesOrdersPage />} />

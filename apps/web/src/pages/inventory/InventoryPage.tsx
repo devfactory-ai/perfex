@@ -3,19 +3,22 @@
  * Manage inventory items and stock levels
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { InventoryItem, CreateInventoryItemInput } from '@perfex/shared';
-import { InventoryItemModal } from '@/components/InventoryItemModal';
+import type { InventoryItem } from '@perfex/shared';
+import { EmptyState } from '@/components/EmptyState';
+import { Pagination } from '@/components/Pagination';
 
 export function InventoryPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | undefined>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Fetch inventory items
   const { data: items, isLoading, error } = useQuery({
@@ -54,42 +57,6 @@ export function InventoryPage() {
     new Set(items?.map(item => item.category).filter((c): c is string => Boolean(c)) || [])
   );
 
-  // Create item mutation
-  const createItem = useMutation({
-    mutationFn: async (data: CreateInventoryItemInput) => {
-      const response = await api.post<ApiResponse<InventoryItem>>('/inventory/items', data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stats'] });
-      setIsModalOpen(false);
-      setSelectedItem(undefined);
-      alert('Inventory item created successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to create item: ${getErrorMessage(error)}`);
-    },
-  });
-
-  // Update item mutation
-  const updateItem = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CreateInventoryItemInput }) => {
-      const response = await api.put<ApiResponse<InventoryItem>>(`/inventory/items/${id}`, data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stats'] });
-      setIsModalOpen(false);
-      setSelectedItem(undefined);
-      alert('Inventory item updated successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to update item: ${getErrorMessage(error)}`);
-    },
-  });
-
   // Delete item mutation
   const deleteItem = useMutation({
     mutationFn: async (itemId: string) => {
@@ -106,32 +73,46 @@ export function InventoryPage() {
   });
 
   const handleAddItem = () => {
-    setSelectedItem(undefined);
-    setIsModalOpen(true);
+    navigate('/inventory/new');
   };
 
-  const handleEditItem = (item: InventoryItem) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(undefined);
-  };
-
-  const handleModalSubmit = async (data: CreateInventoryItemInput) => {
-    if (selectedItem) {
-      await updateItem.mutateAsync({ id: selectedItem.id, data });
-    } else {
-      await createItem.mutateAsync(data);
-    }
+  const handleEditItem = (itemId: string) => {
+    navigate(`/inventory/${itemId}/edit`);
   };
 
   const handleDelete = (itemId: string, itemName: string) => {
     if (confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
       deleteItem.mutate(itemId);
     }
+  };
+
+  // Calculate paginated data
+  const paginatedItems = useMemo(() => {
+    if (!items) return { data: [], total: 0, totalPages: 0 };
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const data = items.slice(startIndex, endIndex);
+    const total = items.length;
+    const totalPages = Math.ceil(total / itemsPerPage);
+
+    return { data, total, totalPages };
+  }, [items, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryFilterChange = (value: string) => {
+    setCategoryFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleActiveFilterChange = (value: string) => {
+    setActiveFilter(value);
+    setCurrentPage(1);
   };
 
   // Parse tags from JSON
@@ -206,14 +187,14 @@ export function InventoryPage() {
             type="text"
             placeholder="Search items by SKU, name, or description..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
         </div>
         <div className="flex gap-2">
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => handleCategoryFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="all">All Categories</option>
@@ -225,7 +206,7 @@ export function InventoryPage() {
           </select>
           <select
             value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
+            onChange={(e) => handleActiveFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="all">All Status</option>
@@ -238,107 +219,112 @@ export function InventoryPage() {
       {/* Items List */}
       <div className="rounded-lg border bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-sm text-muted-foreground">Loading items...</p>
+            </div>
+          </div>
         ) : error ? (
-          <div className="p-8 text-center text-red-600">
-            Error loading items: {getErrorMessage(error)}
+          <div className="p-12 text-center">
+            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
           </div>
-        ) : !items || items.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">No inventory items found.</p>
-            <button
-              onClick={handleAddItem}
-              className="mt-4 text-sm text-primary hover:underline"
-            >
-              Create your first item
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">SKU</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Category</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Cost Price</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Selling Price</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Unit</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-3 text-sm font-mono">{item.sku}</td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        {item.description && (
-                          <div className="text-sm text-muted-foreground line-clamp-1">
-                            {item.description}
-                          </div>
-                        )}
-                        {parseTags(item.tags).length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {parseTags(item.tags).map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{item.category || '-'}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {formatCurrency(item.costPrice, item.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {formatCurrency(item.sellingPrice, item.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-sm">{item.unit}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(item.active)}`}>
-                        {item.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
+        ) : paginatedItems.data.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Selling Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedItems.data.map((item) => (
+                    <tr key={item.id} className="hover:bg-muted/50">
+                      <td className="px-6 py-4 text-sm font-mono">{item.sku}</td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          {item.description && (
+                            <div className="text-sm text-muted-foreground line-clamp-1">
+                              {item.description}
+                            </div>
+                          )}
+                          {parseTags(item.tags).length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {parseTags(item.tags).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm">{item.category || '-'}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {formatCurrency(item.costPrice, item.currency)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {formatCurrency(item.sellingPrice, item.currency)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">{item.unit}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.active)}`}>
+                          {item.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
                         <button
-                          onClick={() => handleEditItem(item)}
-                          className="text-sm text-primary hover:underline"
+                          onClick={() => handleEditItem(item.id)}
+                          className="text-primary hover:text-primary/80 font-medium"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(item.id, item.name)}
-                          className="text-sm text-red-600 hover:underline"
+                          className="text-destructive hover:text-destructive/80 font-medium"
                         >
                           Delete
                         </button>
-                      </div>
-                    </td>
+                      </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={paginatedItems.totalPages}
+            totalItems={paginatedItems.total}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+          </>
+        ) : (
+          <EmptyState
+            title="No inventory items found"
+            description="Get started by adding your first inventory item. Track stock levels, manage pricing, and organize your products efficiently."
+            icon="box"
+            action={{
+              label: "New Item",
+              onClick: handleAddItem,
+            }}
+          />
         )}
       </div>
-
-      {/* Modal */}
-      <InventoryItemModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleModalSubmit}
-        item={selectedItem}
-        isSubmitting={createItem.isPending || updateItem.isPending}
-      />
     </div>
   );
 }
