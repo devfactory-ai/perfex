@@ -27,6 +27,7 @@ import { InventoryItemFormPage } from './pages/inventory/InventoryItemFormPage';
 import { EmployeesPage } from './pages/hr/EmployeesPage';
 import { EmployeeFormPage } from './pages/hr/EmployeeFormPage';
 import { SuppliersPage } from './pages/procurement/SuppliersPage';
+import { SupplierFormPage } from './pages/procurement/SupplierFormPage';
 import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
 import { WorkOrdersPage } from './pages/manufacturing/WorkOrdersPage';
 import { AssetsPage } from './pages/assets/AssetsPage';
@@ -87,6 +88,8 @@ function App() {
             <Route path="hr/employees/new" element={<EmployeeFormPage />} />
             <Route path="hr/employees/:id/edit" element={<EmployeeFormPage />} />
             <Route path="procurement/suppliers" element={<SuppliersPage />} />
+            <Route path="procurement/suppliers/new" element={<SupplierFormPage />} />
+            <Route path="procurement/suppliers/:id/edit" element={<SupplierFormPage />} />
             <Route path="sales/orders" element={<SalesOrdersPage />} />
             <Route path="manufacturing/work-orders" element={<WorkOrdersPage />} />
             <Route path="assets" element={<AssetsPage />} />
