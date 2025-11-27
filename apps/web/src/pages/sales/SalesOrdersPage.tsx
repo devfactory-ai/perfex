@@ -2,15 +2,21 @@
  * Sales Orders Page
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
 import type { SalesOrder } from '@perfex/shared';
+import { EmptyState } from '@/components/EmptyState';
+import { Pagination } from '@/components/Pagination';
 
 export function SalesOrdersPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['sales-orders', searchTerm, statusFilter],
@@ -41,6 +47,27 @@ export function SalesOrdersPage() {
       alert('Sales order deleted successfully!');
     },
   });
+
+  const handleAddOrder = () => {
+    navigate('/sales/orders/new');
+  };
+
+  const handleEditOrder = (orderId: string) => {
+    navigate(`/sales/orders/${orderId}/edit`);
+  };
+
+  // Calculate paginated data
+  const paginatedOrders = useMemo(() => {
+    if (!orders) return { data: [], total: 0, totalPages: 0 };
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const data = orders.slice(startIndex, endIndex);
+    const total = orders.length;
+    const totalPages = Math.ceil(total / itemsPerPage);
+
+    return { data, total, totalPages };
+  }, [orders, currentPage, itemsPerPage]);
 
   const formatCurrency = (amount: number, currency: string = 'EUR') => {
     return new Intl.NumberFormat('en-US', {
@@ -76,6 +103,12 @@ export function SalesOrdersPage() {
           <h1 className="text-3xl font-bold">Sales Orders</h1>
           <p className="text-muted-foreground">Manage customer orders and shipments</p>
         </div>
+        <button
+          onClick={handleAddOrder}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Create Order
+        </button>
       </div>
 
       {stats && (
@@ -126,56 +159,84 @@ export function SalesOrdersPage() {
 
       <div className="rounded-lg border bg-card">
         {isLoading ? (
-          <div className="p-8 text-center">Loading...</div>
-        ) : !orders || orders.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">No sales orders found.</p>
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-sm text-muted-foreground">Loading sales orders...</p>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Order #</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Expected Delivery</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Subtotal</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-3 text-sm font-mono font-medium">{order.orderNumber}</td>
-                    <td className="px-4 py-3 text-sm">{formatDate(order.orderDate)}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {order.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate) : '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm">{formatCurrency(order.subtotal, order.currency)}</td>
-                    <td className="px-4 py-3 text-right text-sm">{formatCurrency(order.taxAmount, order.currency)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(order.total, order.currency)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => deleteOrder.mutate(order.id)}
-                        className="text-sm text-red-600 hover:underline"
-                        disabled={deleteOrder.isPending}
-                      >
-                        Delete
-                      </button>
-                    </td>
+        ) : paginatedOrders.data.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Order #</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Expected Delivery</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">Subtotal</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedOrders.data.map((order) => (
+                    <tr key={order.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 text-sm font-mono font-medium">{order.orderNumber}</td>
+                      <td className="px-4 py-3 text-sm">{formatDate(order.orderDate)}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {order.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate) : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm">{formatCurrency(order.subtotal, order.currency)}</td>
+                      <td className="px-4 py-3 text-right text-sm">{formatCurrency(order.taxAmount, order.currency)}</td>
+                      <td className="px-4 py-3 text-right font-medium">{formatCurrency(order.total, order.currency)}</td>
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <button
+                          onClick={() => handleEditOrder(order.id)}
+                          className="text-sm text-primary hover:text-primary/80 font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteOrder.mutate(order.id)}
+                          className="text-sm text-red-600 hover:underline"
+                          disabled={deleteOrder.isPending}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={paginatedOrders.totalPages}
+              totalItems={paginatedOrders.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </>
+        ) : (
+          <EmptyState
+            title="No sales orders found"
+            description="Get started by creating your first sales order for a customer."
+            icon="document"
+            action={{
+              label: "Create Order",
+              onClick: handleAddOrder,
+            }}
+          />
         )}
       </div>
     </div>
