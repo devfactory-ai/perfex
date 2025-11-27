@@ -12,6 +12,7 @@ import { InvoicesPage } from './pages/finance/InvoicesPage';
 import { NewInvoicePage } from './pages/finance/NewInvoicePage';
 import { InvoiceDetailPage } from './pages/finance/InvoiceDetailPage';
 import { PaymentsPage } from './pages/finance/PaymentsPage';
+import { PaymentFormPage } from './pages/finance/PaymentFormPage';
 import { ReportsPage } from './pages/finance/ReportsPage';
 import { CompaniesPage } from './pages/crm/CompaniesPage';
 import { CompanyFormPage } from './pages/crm/CompanyFormPage';
@@ -65,6 +66,7 @@ function App() {
             <Route path="finance/invoices/new" element={<NewInvoicePage />} />
             <Route path="finance/invoices/:id" element={<InvoiceDetailPage />} />
             <Route path="finance/payments" element={<PaymentsPage />} />
+            <Route path="finance/payments/new" element={<PaymentFormPage />} />
             <Route path="finance/reports" element={<ReportsPage />} />
             <Route path="crm/companies" element={<CompaniesPage />} />
             <Route path="crm/companies/new" element={<CompanyFormPage />} />

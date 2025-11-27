@@ -3,16 +3,20 @@
  * List and manage payments
  */
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
-import type { Payment, CreatePaymentInput } from '@perfex/shared';
-import { PaymentModal } from '@/components/PaymentModal';
+import type { Payment } from '@perfex/shared';
+import { EmptyState } from '@/components/EmptyState';
+import { Pagination } from '@/components/Pagination';
 import { format } from 'date-fns';
 
 export function PaymentsPage() {
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
   // Fetch payments
   const { data: payments, isLoading, error } = useQuery({
     queryKey: ['payments'],
@@ -22,34 +26,22 @@ export function PaymentsPage() {
     },
   });
 
-  // Create payment mutation
-  const createPayment = useMutation({
-    mutationFn: async (data: CreatePaymentInput) => {
-      const response = await api.post<ApiResponse<Payment>>('/payments', data);
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payments'] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      setIsModalOpen(false);
-      alert('Payment recorded successfully!');
-    },
-    onError: (error) => {
-      alert(`Failed to record payment: ${getErrorMessage(error)}`);
-    },
-  });
-
   const handleRecordPayment = () => {
-    setIsModalOpen(true);
+    navigate('/finance/payments/new');
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
+  // Calculate paginated data
+  const paginatedPayments = useMemo(() => {
+    if (!payments) return { data: [], total: 0, totalPages: 0 };
 
-  const handleModalSubmit = async (data: CreatePaymentInput) => {
-    await createPayment.mutateAsync(data);
-  };
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const data = payments.slice(startIndex, endIndex);
+    const total = payments.length;
+    const totalPages = Math.ceil(total / itemsPerPage);
+
+    return { data, total, totalPages };
+  }, [payments, currentPage, itemsPerPage]);
 
   const paymentMethods = {
     cash: 'Cash',
@@ -126,87 +118,90 @@ export function PaymentsPage() {
           <div className="p-12 text-center">
             <p className="text-destructive">Error: {getErrorMessage(error)}</p>
           </div>
-        ) : payments && payments.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Reference
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Method
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Currency
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Notes
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {payments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-muted/50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium">
-                      {payment.reference}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {format(new Date(payment.date), 'MMM dd, yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      €{payment.amount.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMethodBadge(payment.paymentMethod)}`}>
-                        {paymentMethods[payment.paymentMethod as keyof typeof paymentMethods]}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {payment.currency}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
-                      {payment.notes || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button className="text-primary hover:text-primary/80 font-medium">
-                        View
-                      </button>
-                    </td>
+        ) : paginatedPayments.data.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Reference
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Method
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Currency
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedPayments.data.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-muted/50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium">
+                        {payment.reference}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {format(new Date(payment.date), 'MMM dd, yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        €{payment.amount.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMethodBadge(payment.paymentMethod)}`}>
+                          {paymentMethods[payment.paymentMethod as keyof typeof paymentMethods]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {payment.currency}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
+                        {payment.notes || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <button className="text-primary hover:text-primary/80 font-medium">
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={paginatedPayments.totalPages}
+              totalItems={paginatedPayments.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </>
         ) : (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground">No payments recorded yet.</p>
-            <button
-              onClick={handleRecordPayment}
-              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Record Payment
-            </button>
-          </div>
+          <EmptyState
+            title="No payments recorded yet"
+            description="Get started by recording your first payment transaction."
+            icon="document"
+            action={{
+              label: "Record Payment",
+              onClick: handleRecordPayment,
+            }}
+          />
         )}
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleModalSubmit}
-        isSubmitting={createPayment.isPending}
-      />
     </div>
   );
 }
