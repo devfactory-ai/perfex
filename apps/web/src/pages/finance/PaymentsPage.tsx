@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 
 export function PaymentsPage() {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [methodFilter, setMethodFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -30,18 +32,27 @@ export function PaymentsPage() {
     navigate('/finance/payments/new');
   };
 
+  // Filter payments by search term and method
+  const filteredPayments = payments?.filter((payment) => {
+    const matchesSearch =
+      payment.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (payment.notes && payment.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesMethod = methodFilter === 'all' || payment.paymentMethod === methodFilter;
+    return matchesSearch && matchesMethod;
+  });
+
   // Calculate paginated data
   const paginatedPayments = useMemo(() => {
-    if (!payments) return { data: [], total: 0, totalPages: 0 };
+    if (!filteredPayments) return { data: [], total: 0, totalPages: 0 };
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const data = payments.slice(startIndex, endIndex);
-    const total = payments.length;
+    const data = filteredPayments.slice(startIndex, endIndex);
+    const total = filteredPayments.length;
     const totalPages = Math.ceil(total / itemsPerPage);
 
     return { data, total, totalPages };
-  }, [payments, currentPage, itemsPerPage]);
+  }, [filteredPayments, currentPage, itemsPerPage]);
 
   const paymentMethods = {
     cash: 'Cash',
@@ -62,8 +73,8 @@ export function PaymentsPage() {
     return colors[method] || colors.other;
   };
 
-  // Calculate total
-  const totalAmount = payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+  // Calculate total from filtered payments
+  const totalAmount = filteredPayments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -90,19 +101,51 @@ export function PaymentsPage() {
           <p className="text-2xl font-bold">€{totalAmount.toFixed(2)}</p>
         </div>
         <div className="rounded-lg border bg-card p-6">
+          <p className="text-sm text-muted-foreground">Count</p>
+          <p className="text-2xl font-bold">{filteredPayments?.length || 0}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-6">
           <p className="text-sm text-muted-foreground">This Month</p>
           <p className="text-2xl font-bold">€0.00</p>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">Pending</p>
-          <p className="text-2xl font-bold">0</p>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
           <p className="text-sm text-muted-foreground">Average</p>
           <p className="text-2xl font-bold">
-            €{payments && payments.length > 0 ? (totalAmount / payments.length).toFixed(2) : '0.00'}
+            €{filteredPayments && filteredPayments.length > 0 ? (totalAmount / filteredPayments.length).toFixed(2) : '0.00'}
           </p>
         </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex gap-4">
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search by reference or notes..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1); // Reset to page 1 on search
+          }}
+          className="flex-1 px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+
+        {/* Method Filter */}
+        <select
+          value={methodFilter}
+          onChange={(e) => {
+            setMethodFilter(e.target.value);
+            setCurrentPage(1); // Reset to page 1 on filter change
+          }}
+          className="px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-w-[200px]"
+        >
+          <option value="all">All Methods</option>
+          <option value="cash">Cash</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="check">Check</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="other">Other</option>
+        </select>
       </div>
 
       {/* Payments Table */}
