@@ -25,13 +25,18 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Vendor chunks
+          // Vendor chunks - React and React-dependent libraries must be bundled together
           if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('react-router')) {
+            // Bundle React core, React Query, and other React dependencies together
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/react-router') ||
+              id.includes('/scheduler/') ||
+              id.includes('@tanstack/react-query') ||
+              id.includes('use-sync-external-store')
+            ) {
               return 'vendor-react';
-            }
-            if (id.includes('@tanstack/react-query')) {
-              return 'vendor-query';
             }
             if (id.includes('lucide-react')) {
               return 'vendor-icons';
