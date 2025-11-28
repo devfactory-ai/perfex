@@ -113,6 +113,43 @@ export const PERMISSIONS = {
   'ai:extract:use': 'Use AI data extraction',
   'ai:insights:use': 'Use AI insights',
   'ai:usage:view': 'View AI usage statistics',
+
+  // Smart Audit System - Core
+  'audit:read': 'View audit tasks and findings',
+  'audit:create': 'Create audit tasks',
+  'audit:update': 'Update audit tasks',
+  'audit:delete': 'Delete audit tasks',
+  'audit:complete': 'Complete audit tasks with findings',
+
+  // Smart Audit System - EF1 Risk Assessment
+  'audit:risk:read': 'View risk assessments',
+  'audit:risk:create': 'Run risk assessments',
+  'audit:risk:generate': 'Generate audit tasks from assessments',
+
+  // Smart Audit System - EF2 Compliance Copilot
+  'audit:compliance:read': 'View compliance checks',
+  'audit:compliance:use': 'Use compliance copilot chat',
+  'audit:compliance:check': 'Run compliance checks',
+  'audit:compliance:kb:read': 'View knowledge base',
+  'audit:compliance:kb:manage': 'Manage knowledge base entries',
+
+  // Smart Audit System - EF3 Commonality Study
+  'audit:commonality:read': 'View commonality studies',
+  'audit:commonality:create': 'Create commonality analyses',
+  'audit:commonality:approve': 'Approve commonality studies',
+
+  // Smart Audit System - Proposals
+  'audit:proposals:read': 'View improvement proposals',
+  'audit:proposals:create': 'Create improvement proposals',
+  'audit:proposals:submit': 'Submit proposals for approval',
+  'audit:proposals:approve': 'Approve improvement proposals',
+  'audit:proposals:implement': 'Manage proposal implementation',
+
+  // Smart Audit System - Schedules & Config
+  'audit:schedules:read': 'View audit schedules',
+  'audit:schedules:manage': 'Manage audit schedules',
+  'audit:config:read': 'View audit configuration',
+  'audit:config:manage': 'Manage audit configuration',
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -148,6 +185,32 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'ai:extract:use',
     'ai:insights:use',
     'ai:usage:view',
+    // Smart Audit System - Admin has full audit permissions
+    'audit:read',
+    'audit:create',
+    'audit:update',
+    'audit:delete',
+    'audit:complete',
+    'audit:risk:read',
+    'audit:risk:create',
+    'audit:risk:generate',
+    'audit:compliance:read',
+    'audit:compliance:use',
+    'audit:compliance:check',
+    'audit:compliance:kb:read',
+    'audit:compliance:kb:manage',
+    'audit:commonality:read',
+    'audit:commonality:create',
+    'audit:commonality:approve',
+    'audit:proposals:read',
+    'audit:proposals:create',
+    'audit:proposals:submit',
+    'audit:proposals:approve',
+    'audit:proposals:implement',
+    'audit:schedules:read',
+    'audit:schedules:manage',
+    'audit:config:read',
+    'audit:config:manage',
   ],
   member: [
     'users:read',
@@ -161,5 +224,20 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'ai:chat:use',
     'ai:search:use',
     'ai:insights:use',
+    // Smart Audit System - Member has read and basic create permissions
+    'audit:read',
+    'audit:create',
+    'audit:update',
+    'audit:complete',
+    'audit:risk:read',
+    'audit:compliance:read',
+    'audit:compliance:use',
+    'audit:compliance:kb:read',
+    'audit:commonality:read',
+    'audit:proposals:read',
+    'audit:proposals:create',
+    'audit:proposals:submit',
+    'audit:schedules:read',
+    'audit:config:read',
   ],
 };

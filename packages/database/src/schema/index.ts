@@ -152,3 +152,19 @@ export {
   aiInsights,
   aiUsage,
 } from './ai';
+
+export * from './audit';
+
+export {
+  auditTasks,
+  auditFindings,
+  riskAssessments,
+  riskDataPoints,
+  complianceKnowledgeBase,
+  complianceChecks,
+  complianceConversations,
+  commonalityStudies,
+  improvementProposals,
+  auditSchedules,
+  auditConfiguration,
+} from './audit';

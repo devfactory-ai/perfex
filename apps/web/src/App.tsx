@@ -54,6 +54,13 @@ const ApiKeyFormPage = lazy(() => import('./pages/workflows/ApiKeyFormPage').the
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage').then(m => ({ default: m.ActivityFeedPage })));
 const AIPage = lazy(() => import('./pages/ai/AIPage').then(m => ({ default: m.AIPage })));
 
+// Smart Audit System pages
+const AuditDashboardPage = lazy(() => import('./pages/audit/AuditDashboardPage').then(m => ({ default: m.AuditDashboardPage })));
+const AuditTasksPage = lazy(() => import('./pages/audit/AuditTasksPage').then(m => ({ default: m.AuditTasksPage })));
+const RiskAssessmentPage = lazy(() => import('./pages/audit/RiskAssessmentPage').then(m => ({ default: m.RiskAssessmentPage })));
+const ComplianceCopilotPage = lazy(() => import('./pages/audit/ComplianceCopilotPage').then(m => ({ default: m.ComplianceCopilotPage })));
+const CommonalityStudyPage = lazy(() => import('./pages/audit/CommonalityStudyPage').then(m => ({ default: m.CommonalityStudyPage })));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -135,6 +142,11 @@ function App() {
             <Route path="workflows/api-keys/:id/edit" element={<Suspense fallback={<PageLoader />}><ApiKeyFormPage /></Suspense>} />
             <Route path="activity" element={<Suspense fallback={<PageLoader />}><ActivityFeedPage /></Suspense>} />
             <Route path="ai" element={<Suspense fallback={<PageLoader />}><AIPage /></Suspense>} />
+            <Route path="audit" element={<Suspense fallback={<PageLoader />}><AuditDashboardPage /></Suspense>} />
+            <Route path="audit/tasks" element={<Suspense fallback={<PageLoader />}><AuditTasksPage /></Suspense>} />
+            <Route path="audit/risk" element={<Suspense fallback={<PageLoader />}><RiskAssessmentPage /></Suspense>} />
+            <Route path="audit/compliance" element={<Suspense fallback={<PageLoader />}><ComplianceCopilotPage /></Suspense>} />
+            <Route path="audit/commonality" element={<Suspense fallback={<PageLoader />}><CommonalityStudyPage /></Suspense>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

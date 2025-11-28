@@ -59,6 +59,9 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('/pages/workflows/')) {
             return 'feature-workflows';
           }
+          if (id.includes('/pages/audit/')) {
+            return 'feature-audit';
+          }
         },
       },
     },

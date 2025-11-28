@@ -39,6 +39,64 @@ Help prevent stockouts while minimizing excess inventory.`,
   dataAnalyst: `You are a business intelligence analyst.
 Analyze business data, identify trends, and provide actionable insights.
 Use clear visualizations and explain complex patterns in simple terms.`,
+
+  // ============================================
+  // SMART AUDIT SYSTEM PROMPTS
+  // ============================================
+
+  // EF1: Risk Assessment Expert
+  riskAssessmentExpert: `You are an expert in manufacturing quality risk assessment.
+Your role is to analyze quality data and assess risks in manufacturing processes.
+You evaluate defect rates, process variations, supplier performance, and compliance metrics.
+Always provide:
+- Quantified risk scores (0-100)
+- Specific risk factors with weights
+- Actionable recommendations
+- Resource allocation suggestions
+Use ISO 9001 and industry best practices as your framework.`,
+
+  // EF2: Compliance Copilot
+  complianceCopilot: `You are a manufacturing compliance expert with deep knowledge of:
+- ISO 9001:2015 Quality Management Systems
+- ISO 14001 Environmental Management
+- OSHA Workplace Safety Standards
+- Industry-specific regulations
+- Internal quality procedures
+
+Your role is to:
+- Answer compliance questions with specific standard references
+- Identify gaps in compliance
+- Suggest corrective actions
+- Help prepare for audits
+Always cite specific clause numbers when referencing standards.`,
+
+  // EF3: Commonality Analysis Agent (ReAct)
+  commonalityAgent: `You are an analytical agent using the ReAct framework to study commonality patterns in manufacturing data.
+
+Your process follows:
+1. THOUGHT: Analyze what you know and what pattern to investigate next
+2. ACTION: Choose and execute an analysis action
+3. OBSERVATION: Interpret the results
+4. REPEAT: Continue until you have sufficient insights
+
+Available actions:
+- ANALYZE_DEFECTS: Look for defect patterns across products/processes
+- COMPARE_SUPPLIERS: Compare performance metrics between suppliers
+- CHECK_PROCESS: Analyze process variations and consistency
+- FIND_ROOT_CAUSE: Identify potential root causes for issues
+- COMPLETE: Finish analysis and summarize findings
+
+Always provide confidence levels for your findings.`,
+
+  // Audit Finding Analyzer
+  findingAnalyzer: `You are an audit finding analyst. When given an audit finding:
+1. Analyze the root cause
+2. Assess the severity and business impact
+3. Generate corrective action recommendations
+4. Identify related standards or procedures
+5. Suggest preventive measures
+
+Respond in structured JSON format.`,
 };
 
 export const PROMPT_TEMPLATES = {
@@ -131,6 +189,230 @@ Context: ${context}
 Data: ${JSON.stringify(data, null, 2)}
 
 Provide a clear, concise, professional description suitable for business documents.
+`,
+
+  // ============================================
+  // SMART AUDIT SYSTEM TEMPLATES
+  // ============================================
+
+  // EF1: Risk Assessment
+  riskAssessment: (assessmentType: string, dataPoints: any[], config?: any) => `
+Perform a ${assessmentType} risk assessment based on the following quality data:
+
+Data Points (latest ${dataPoints.length}):
+${JSON.stringify(dataPoints.slice(0, 20), null, 2)}
+
+${config ? `Configuration:\n${JSON.stringify(config, null, 2)}` : ''}
+
+Analyze the data and provide a comprehensive risk assessment in this JSON format:
+{
+  "overallScore": number (0-100, higher = more risk),
+  "qualityScore": number (0-100),
+  "processScore": number (0-100),
+  "supplierScore": number (0-100),
+  "complianceScore": number (0-100),
+  "factors": [
+    {
+      "factor": "factor name",
+      "score": number (0-100),
+      "weight": number (0-1, sum to 1),
+      "description": "explanation"
+    }
+  ],
+  "analysis": "detailed analysis text",
+  "recommendations": ["action 1", "action 2", ...],
+  "suggestedResources": [
+    {
+      "type": "auditor|equipment|training",
+      "quantity": number,
+      "priority": "high|medium|low",
+      "rationale": "why needed"
+    }
+  ]
+}
+`,
+
+  // Generate Audit Tasks from Assessment
+  generateAuditTasks: (assessment: any, config: { maxTasks: number; minRiskScore: number }) => `
+Based on this risk assessment, generate up to ${config.maxTasks} audit tasks for areas with risk >= ${config.minRiskScore}:
+
+Risk Assessment:
+- Overall Score: ${assessment.overallRiskScore}
+- Quality Score: ${assessment.qualityRiskScore || 'N/A'}
+- Process Score: ${assessment.processRiskScore || 'N/A'}
+- Supplier Score: ${assessment.supplierRiskScore || 'N/A'}
+- Risk Factors: ${JSON.stringify(assessment.riskFactors || [], null, 2)}
+- Recommendations: ${JSON.stringify(assessment.recommendations || [], null, 2)}
+
+Generate prioritized audit tasks in this JSON array format:
+[
+  {
+    "title": "concise task title",
+    "description": "detailed description of what to audit",
+    "auditType": "quality|process|supplier|safety|compliance",
+    "priority": "critical|high|medium|low",
+    "riskScore": number (0-100),
+    "riskFactors": ["factor1", "factor2"],
+    "aiConfidence": number (0-100),
+    "aiReasoning": "why this task is important"
+  }
+]
+`,
+
+  // EF2: Compliance Check
+  complianceCheck: (entityType: string, entityData: any, standards: string[], knowledgeBase: any[]) => `
+Perform a compliance check for this ${entityType} against the specified standards.
+
+Entity Data:
+${JSON.stringify(entityData, null, 2)}
+
+Standards to Check: ${standards.join(', ')}
+
+Relevant Knowledge Base Context:
+${knowledgeBase.map(k => `[${k.title}]: ${k.summary || k.content?.substring(0, 300)}`).join('\n')}
+
+Provide your compliance analysis in this JSON format:
+{
+  "overallStatus": "compliant|non_compliant|partially_compliant",
+  "score": number (0-100),
+  "results": [
+    {
+      "standard": "ISO 9001 Clause X.X",
+      "requirement": "requirement description",
+      "status": "compliant|non_compliant|not_applicable",
+      "evidence": "what was observed",
+      "gap": "gap description if non-compliant, null if compliant",
+      "recommendation": "action to take if needed, null if compliant"
+    }
+  ],
+  "analysis": "overall analysis text",
+  "recommendations": ["priority action 1", "action 2"],
+  "requiresAction": boolean,
+  "actionItems": [
+    {
+      "description": "specific action needed",
+      "priority": "high|medium|low",
+      "dueDate": "suggested date or null",
+      "assignedTo": null,
+      "status": "pending"
+    }
+  ]
+}
+`,
+
+  // EF3: Commonality Study - ReAct Step
+  commonalityThought: (context: any, step: number) => `
+You are analyzing manufacturing data for commonality patterns using the ReAct framework.
+
+Current Step: ${step}
+Study Type: ${context.studyType}
+Filters: ${JSON.stringify(context.filters || {}, null, 2)}
+Findings so far: ${JSON.stringify(context.findings || [], null, 2)}
+Patterns identified: ${JSON.stringify(context.patterns || [], null, 2)}
+
+Generate your next THOUGHT - what pattern or issue should you investigate next?
+Be specific about what data you want to analyze and why.
+`,
+
+  commonalityAction: (thought: string, context: any) => `
+Based on this thought:
+"${thought}"
+
+And available context:
+${JSON.stringify(context, null, 2)}
+
+Determine the next action. Choose from:
+1. ANALYZE_DEFECTS - Look for defect patterns across products/processes
+2. COMPARE_SUPPLIERS - Compare performance metrics between suppliers
+3. CHECK_PROCESS - Analyze process variations and consistency
+4. FIND_ROOT_CAUSE - Identify potential root causes for issues
+5. COMPLETE - Finish analysis if sufficient data gathered
+
+Respond in JSON:
+{
+  "type": "ACTION_NAME",
+  "description": "what specifically to do",
+  "params": { "relevant": "parameters" }
+}
+`,
+
+  commonalityFinalAnalysis: (context: any) => `
+Generate the final commonality study analysis based on all gathered data:
+
+Study Context:
+${JSON.stringify(context, null, 2)}
+
+Provide a comprehensive analysis in this JSON format:
+{
+  "patterns": [
+    {
+      "patternId": "unique_id",
+      "patternType": "defect|process_variation|supplier_issue|root_cause",
+      "description": "pattern description",
+      "frequency": number,
+      "severity": "critical|major|minor",
+      "affectedEntities": ["entity1", "entity2"],
+      "rootCause": "identified root cause or null",
+      "confidence": number (0-100)
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "unique_id",
+      "title": "recommendation title",
+      "description": "detailed recommendation",
+      "priority": "high|medium|low",
+      "expectedImpact": "expected outcome",
+      "estimatedEffort": "low|medium|high",
+      "status": "pending"
+    }
+  ],
+  "supplierInsights": [
+    {
+      "supplierId": "id",
+      "supplierName": "name",
+      "performanceScore": number (0-100),
+      "issues": ["issue1", "issue2"],
+      "strengths": ["strength1"],
+      "recommendations": ["action1"]
+    }
+  ],
+  "variantAnalysis": {
+    "variants": [
+      {
+        "variantId": "id",
+        "description": "variant description",
+        "consistency": number (0-100),
+        "deviations": ["deviation1"]
+      }
+    ],
+    "overallConsistency": number (0-100)
+  }
+}
+`,
+
+  // Analyze Finding
+  analyzeFinding: (finding: { title: string; description: string; severity: string; category: string }) => `
+Analyze this audit finding and provide recommendations:
+
+Finding:
+- Title: ${finding.title}
+- Description: ${finding.description}
+- Severity: ${finding.severity}
+- Category: ${finding.category}
+
+Provide your analysis in JSON format:
+{
+  "analysis": "root cause analysis and context",
+  "recommendations": [
+    "corrective action 1",
+    "corrective action 2",
+    "preventive action"
+  ],
+  "relatedStandards": ["ISO 9001 Clause X.X", ...],
+  "estimatedImpact": "business impact description",
+  "suggestedPriority": "critical|high|medium|low"
+}
 `,
 };
 
