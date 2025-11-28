@@ -39,6 +39,7 @@ import { WorkflowFormPage } from './pages/workflows/WorkflowFormPage';
 import { WebhookFormPage } from './pages/workflows/WebhookFormPage';
 import { ApiKeyFormPage } from './pages/workflows/ApiKeyFormPage';
 import { ActivityFeedPage } from './pages/ActivityFeedPage';
+import { AIPage } from './pages/ai/AIPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +114,7 @@ function App() {
             <Route path="workflows/api-keys/new" element={<ApiKeyFormPage />} />
             <Route path="workflows/api-keys/:id/edit" element={<ApiKeyFormPage />} />
             <Route path="activity" element={<ActivityFeedPage />} />
+            <Route path="ai" element={<AIPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -28,6 +28,9 @@ preview_id = "2cf6285c5c1f4db2a32eb4c71e53cbff"
 binding = "CACHE"
 preview_id = "0392b051b75b4a4ca3136707a71b21a4"
 
+[env.dev.ai]
+binding = "AI"
+
 # ===============================================
 # STAGING ENVIRONMENT
 # ===============================================
@@ -49,6 +52,9 @@ id = "7a0c3cb3fbf047ca9d7f8977c9b98004"
 binding = "CACHE"
 id = "db57371d4269410bb4459e519f5c33c3"
 
+[env.staging.ai]
+binding = "AI"
+
 # ===============================================
 # PRODUCTION ENVIRONMENT
 # ===============================================
@@ -69,3 +75,6 @@ id = "85379b8924b444188374361b23898c75"
 [[env.production.kv_namespaces]]
 binding = "CACHE"
 id = "f7fff34646004bdd80b6ce1f17fdc7aa"
+
+[env.production.ai]
+binding = "AI"

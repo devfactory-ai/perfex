@@ -106,6 +106,13 @@ export const PERMISSIONS = {
   // Settings
   'settings:read': 'View settings',
   'settings:update': 'Update settings',
+
+  // AI Features
+  'ai:chat:use': 'Use AI chat assistant',
+  'ai:search:use': 'Use AI semantic search',
+  'ai:extract:use': 'Use AI data extraction',
+  'ai:insights:use': 'Use AI insights',
+  'ai:usage:view': 'View AI usage statistics',
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -136,6 +143,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'crm:opportunities:create',
     'crm:opportunities:update',
     'settings:read',
+    'ai:chat:use',
+    'ai:search:use',
+    'ai:extract:use',
+    'ai:insights:use',
+    'ai:usage:view',
   ],
   member: [
     'users:read',
@@ -146,5 +158,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'crm:contacts:read',
     'crm:opportunities:read',
     'settings:read',
+    'ai:chat:use',
+    'ai:search:use',
+    'ai:insights:use',
   ],
 };

@@ -32,6 +32,7 @@ import assetsRoutes from './routes/assets';
 import notificationsRoutes from './routes/notifications';
 import documentsRoutes from './routes/documents';
 import workflowsRoutes from './routes/workflows';
+import aiRoutes from './routes/ai';
 import type { Env } from './types';
 
 /**
@@ -177,6 +178,9 @@ apiV1.route('/documents', documentsRoutes);
 
 // Mount Workflows routes
 apiV1.route('/workflows', workflowsRoutes);
+
+// Mount AI routes
+apiV1.route('/ai', aiRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);

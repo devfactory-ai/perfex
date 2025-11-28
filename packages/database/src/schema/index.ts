@@ -16,6 +16,7 @@ export * from './assets';
 export * from './notifications';
 export * from './documents';
 export * from './workflows';
+export * from './ai';
 
 // Export all tables for drizzle-kit
 export {
@@ -144,3 +145,10 @@ export {
   tags,
   entityTags,
 } from './workflows';
+
+export {
+  aiEmbeddings,
+  aiConversations,
+  aiInsights,
+  aiUsage,
+} from './ai';

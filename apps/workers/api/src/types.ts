@@ -13,6 +13,9 @@ export interface Env {
   CACHE: KVNamespace;
   SESSIONS: KVNamespace;
 
+  // AI
+  AI: Ai;
+
   // Vectorize
   VECTORIZE: VectorizeIndex;
 

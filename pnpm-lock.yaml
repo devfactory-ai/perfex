@@ -105,6 +105,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.7.5
         version: 0.7.5(hono@4.10.6)(zod@3.25.76)
+      '@perfex/ai-core':
+        specifier: workspace:*
+        version: link:../../../packages/ai-core
       '@perfex/database':
         specifier: workspace:*
         version: link:../../../packages/database
@@ -148,6 +151,15 @@ importers:
       wrangler:
         specifier: ^4.50.0
         version: 4.50.0(@cloudflare/workers-types@4.20251121.0)
+
+  packages/ai-core:
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20241205.0
+        version: 4.20251121.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
   packages/database:
     dependencies:

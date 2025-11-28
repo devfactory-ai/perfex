@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.5",
+    "@perfex/ai-core": "workspace:*",
     "@perfex/database": "workspace:*",
     "@perfex/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
