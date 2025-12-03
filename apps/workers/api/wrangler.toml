@@ -31,6 +31,16 @@ preview_id = "0392b051b75b4a4ca3136707a71b21a4"
 [env.dev.ai]
 binding = "AI"
 
+# Cron Triggers for dev
+[env.dev.triggers]
+crons = [
+  "0 * * * *",     # Every hour - Session cleanup
+  "0 6 * * *",     # Daily at 6 AM - Risk assessments
+  "0 0 * * *",     # Daily at midnight - Overdue task check
+  "0 7 * * 1",     # Weekly Monday 7 AM - Reports
+  "0 1 * * *",     # Daily at 1 AM - Process scheduled audits
+]
+
 # ===============================================
 # STAGING ENVIRONMENT
 # ===============================================
@@ -55,6 +65,16 @@ id = "db57371d4269410bb4459e519f5c33c3"
 [env.staging.ai]
 binding = "AI"
 
+# Cron Triggers for staging
+[env.staging.triggers]
+crons = [
+  "0 * * * *",     # Every hour - Session cleanup
+  "0 6 * * *",     # Daily at 6 AM - Risk assessments
+  "0 0 * * *",     # Daily at midnight - Overdue task check
+  "0 7 * * 1",     # Weekly Monday 7 AM - Reports
+  "0 1 * * *",     # Daily at 1 AM - Process scheduled audits
+]
+
 # ===============================================
 # PRODUCTION ENVIRONMENT
 # ===============================================
@@ -78,3 +98,13 @@ id = "f7fff34646004bdd80b6ce1f17fdc7aa"
 
 [env.production.ai]
 binding = "AI"
+
+# Cron Triggers for production
+[env.production.triggers]
+crons = [
+  "0 * * * *",     # Every hour - Session cleanup
+  "0 6 * * *",     # Daily at 6 AM - Risk assessments
+  "0 0 * * *",     # Daily at midnight - Overdue task check
+  "0 7 * * 1",     # Weekly Monday 7 AM - Reports
+  "0 1 * * *",     # Daily at 1 AM - Process scheduled audits
+]

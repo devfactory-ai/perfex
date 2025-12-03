@@ -35,6 +35,7 @@ import workflowsRoutes from './routes/workflows';
 import aiRoutes from './routes/ai';
 import auditRoutes from './routes/audit';
 import type { Env } from './types';
+import { ScheduledService } from './services/scheduled.service';
 
 /**
  * Create and configure Hono app
@@ -226,6 +227,19 @@ app.onError((err, c) => {
 });
 
 /**
- * Export the Hono app
+ * Export the worker with scheduled handler
  */
-export default app;
+export default {
+  /**
+   * HTTP fetch handler - Hono app
+   */
+  fetch: app.fetch,
+
+  /**
+   * Scheduled event handler - Cron triggers
+   */
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    const scheduledService = new ScheduledService(env);
+    ctx.waitUntil(scheduledService.handleScheduledEvent(event));
+  },
+};
