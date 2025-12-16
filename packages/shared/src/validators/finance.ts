@@ -188,10 +188,17 @@ export type UpdateBankAccountInput = z.infer<typeof updateBankAccountSchema>;
 
 /**
  * Report filters schema
+ * Accepts dates in both "yyyy-MM-dd" and ISO 8601 datetime formats
  */
 export const reportFiltersSchema = z.object({
-  startDate: z.string().datetime().or(z.date()),
-  endDate: z.string().datetime().or(z.date()),
+  startDate: z.string().refine((val) => {
+    // Accept both "yyyy-MM-dd" and ISO 8601 datetime formats
+    return /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(val);
+  }, { message: 'Invalid date format' }).or(z.date()),
+  endDate: z.string().refine((val) => {
+    // Accept both "yyyy-MM-dd" and ISO 8601 datetime formats
+    return /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(val);
+  }, { message: 'Invalid date format' }).or(z.date()),
   accountIds: z.array(z.string().uuid()).optional(),
 });
 

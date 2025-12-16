@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { InvoiceWithLines } from '@perfex/shared';
 import { Pagination } from '@/components/Pagination';
 import { format } from 'date-fns';
 
 export function InvoicesPage() {
+  const { t } = useLanguage();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,12 +30,12 @@ export function InvoicesPage() {
   });
 
   const statusOptions = [
-    { value: 'all', label: 'All Invoices', color: 'bg-gray-100 text-gray-800' },
-    { value: 'draft', label: 'Draft', color: 'bg-gray-100 text-gray-800' },
-    { value: 'sent', label: 'Sent', color: 'bg-blue-100 text-blue-800' },
-    { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-800' },
-    { value: 'partial', label: 'Partial', color: 'bg-yellow-100 text-yellow-800' },
-    { value: 'overdue', label: 'Overdue', color: 'bg-red-100 text-red-800' },
+    { value: 'all', labelKey: 'finance.allInvoices', color: 'bg-gray-100 text-gray-800' },
+    { value: 'draft', labelKey: 'finance.draft', color: 'bg-gray-100 text-gray-800' },
+    { value: 'sent', labelKey: 'finance.sent', color: 'bg-blue-100 text-blue-800' },
+    { value: 'paid', labelKey: 'finance.paid', color: 'bg-green-100 text-green-800' },
+    { value: 'partial', labelKey: 'finance.partial', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'overdue', labelKey: 'finance.overdue', color: 'bg-red-100 text-red-800' },
   ];
 
   const getStatusColor = (status: string) => {
@@ -74,16 +76,16 @@ export function InvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('finance.invoices')}</h1>
           <p className="text-muted-foreground">
-            Manage your customer invoices
+            {t('finance.invoicesSubtitle')}
           </p>
         </div>
         <Link
           to="/finance/invoices/new"
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Invoice
+          {t('finance.createInvoice')}
         </Link>
       </div>
 
@@ -91,15 +93,15 @@ export function InvoicesPage() {
       {totals && (
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Invoiced</p>
+            <p className="text-sm text-muted-foreground">{t('finance.totalInvoiced')}</p>
             <p className="text-2xl font-bold">€{totals.total.toFixed(2)}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Amount Paid</p>
+            <p className="text-sm text-muted-foreground">{t('finance.amountPaid')}</p>
             <p className="text-2xl font-bold text-green-600">€{totals.paid.toFixed(2)}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Amount Due</p>
+            <p className="text-sm text-muted-foreground">{t('finance.amountDue')}</p>
             <p className="text-2xl font-bold text-orange-600">€{totals.due.toFixed(2)}</p>
           </div>
         </div>
@@ -111,7 +113,7 @@ export function InvoicesPage() {
         <div className="flex gap-4">
           <input
             type="text"
-            placeholder="Search by invoice number or customer..."
+            placeholder={t('finance.searchByInvoiceOrCustomer')}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -136,7 +138,7 @@ export function InvoicesPage() {
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              {option.label}
+              {t(option.labelKey)}
             </button>
           ))}
         </div>
@@ -148,12 +150,12 @@ export function InvoicesPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading invoices...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedInvoices.data.length > 0 ? (
           <>
@@ -162,25 +164,25 @@ export function InvoicesPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Invoice #
+                      {t('finance.invoiceNumber')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Customer
+                      {t('finance.customer')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Date
+                      {t('common.date')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Due Date
+                      {t('finance.dueDate')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Amount
+                      {t('common.amount')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
+                      {t('common.status')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
+                      {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -204,7 +206,7 @@ export function InvoicesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                          {invoice.status}
+                          {t(`finance.${invoice.status}`)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
@@ -212,7 +214,7 @@ export function InvoicesPage() {
                           to={`/finance/invoices/${invoice.id}`}
                           className="text-primary hover:text-primary/80 font-medium"
                         >
-                          View
+                          {t('common.view')}
                         </Link>
                       </td>
                     </tr>
@@ -232,12 +234,12 @@ export function InvoicesPage() {
           </>
         ) : (
           <div className="p-12 text-center">
-            <p className="text-muted-foreground">No invoices found. Create your first invoice to get started.</p>
+            <p className="text-muted-foreground">{t('finance.noInvoicesFound')}</p>
             <Link
               to="/finance/invoices/new"
               className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Create Invoice
+              {t('finance.createInvoice')}
             </Link>
           </div>
         )}

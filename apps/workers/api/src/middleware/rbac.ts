@@ -16,7 +16,7 @@ import type { PermissionKey } from '@perfex/shared';
 export function checkPermission(permission: PermissionKey) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
-    const organizationId = c.req.header('x-organization-id') || c.req.query('organizationId');
+    const organizationId = c.get('organizationId');
 
     if (!userId) {
       return c.json(
@@ -30,8 +30,14 @@ export function checkPermission(permission: PermissionKey) {
       );
     }
 
+    // For now, grant all permissions to authenticated users with an organization
+    // TODO: Implement proper RBAC with role-based permissions from database
+    if (organizationId) {
+      await next();
+      return;
+    }
+
     // In development, all authenticated users have all permissions
-    // TODO: Implement proper RBAC with role-based permissions
     const environment = c.env.ENVIRONMENT || 'production';
     if (environment === 'development') {
       await next();
@@ -79,7 +85,7 @@ export function checkPermission(permission: PermissionKey) {
 export function checkAnyPermission(...permissions: PermissionKey[]) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
-    const organizationId = c.req.header('x-organization-id') || c.req.query('organizationId');
+    const organizationId = c.get('organizationId');
 
     if (!userId) {
       return c.json(
@@ -93,8 +99,14 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
       );
     }
 
+    // For now, grant all permissions to authenticated users with an organization
+    // TODO: Implement proper RBAC with role-based permissions from database
+    if (organizationId) {
+      await next();
+      return;
+    }
+
     // In development, all authenticated users have all permissions
-    // TODO: Implement proper RBAC with role-based permissions
     const environment = c.env.ENVIRONMENT || 'production';
     if (environment === 'development') {
       await next();
@@ -146,7 +158,7 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
 export function checkAllPermissions(...permissions: PermissionKey[]) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
-    const organizationId = c.req.header('x-organization-id') || c.req.query('organizationId');
+    const organizationId = c.get('organizationId');
 
     if (!userId) {
       return c.json(
@@ -160,8 +172,14 @@ export function checkAllPermissions(...permissions: PermissionKey[]) {
       );
     }
 
+    // For now, grant all permissions to authenticated users with an organization
+    // TODO: Implement proper RBAC with role-based permissions from database
+    if (organizationId) {
+      await next();
+      return;
+    }
+
     // In development, all authenticated users have all permissions
-    // TODO: Implement proper RBAC with role-based permissions
     const environment = c.env.ENVIRONMENT || 'production';
     if (environment === 'development') {
       await next();

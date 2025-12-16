@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Project } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function ProjectsPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,20 +69,20 @@ export function ProjectsPage() {
   };
 
   const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'planning', label: 'Planning' },
-    { value: 'active', label: 'Active' },
-    { value: 'on_hold', label: 'On Hold' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'all', labelKey: 'projects.allStatus' },
+    { value: 'planning', labelKey: 'projects.planning' },
+    { value: 'active', labelKey: 'projects.active' },
+    { value: 'on_hold', labelKey: 'projects.on_hold' },
+    { value: 'completed', labelKey: 'projects.completed' },
+    { value: 'cancelled', labelKey: 'projects.cancelled' },
   ];
 
   const priorityOptions = [
-    { value: 'all', label: 'All Priorities' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
+    { value: 'all', labelKey: 'projects.allPriorities' },
+    { value: 'low', labelKey: 'projects.low' },
+    { value: 'medium', labelKey: 'projects.medium' },
+    { value: 'high', labelKey: 'projects.high' },
+    { value: 'urgent', labelKey: 'projects.urgent' },
   ];
 
   // Calculate paginated data
@@ -117,16 +119,16 @@ export function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('projects.title')}</h1>
           <p className="text-muted-foreground">
-            Manage your projects, tasks, and track progress
+            {t('projects.subtitle')}
           </p>
         </div>
         <button
           onClick={handleAddProject}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          New Project
+          {t('projects.newProject')}
         </button>
       </div>
 
@@ -135,7 +137,7 @@ export function ProjectsPage() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search projects by name or description..."
+            placeholder={t('projects.searchProjects')}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -149,7 +151,7 @@ export function ProjectsPage() {
           >
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -160,7 +162,7 @@ export function ProjectsPage() {
           >
             {priorityOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -173,12 +175,12 @@ export function ProjectsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading projects...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('projects.loadingProjects')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedProjects.data.length > 0 ? (
           <>
@@ -187,25 +189,25 @@ export function ProjectsPage() {
               <thead className="border-b bg-muted/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Project
+                    {t('projects.projectName')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
+                    {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Priority
+                    {t('common.priority')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Budget
+                    {t('projects.budget')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Progress
+                    {t('projects.progress')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Dates
+                    {t('projects.dates')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -231,7 +233,7 @@ export function ProjectsPage() {
                         project.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {project.status.replace('_', ' ')}
+                        {t(`projects.${project.status}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -241,7 +243,7 @@ export function ProjectsPage() {
                         project.priority === 'medium' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {project.priority}
+                        {t(`projects.${project.priority}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -251,7 +253,7 @@ export function ProjectsPage() {
                             {project.budgetCurrency} {project.budgetAmount.toFixed(2)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Cost: {project.budgetCurrency} {project.actualCost.toFixed(2)}
+                            {t('projects.cost')}: {project.budgetCurrency} {project.actualCost.toFixed(2)}
                           </div>
                         </div>
                       ) : (
@@ -273,12 +275,12 @@ export function ProjectsPage() {
                       <div>
                         {project.startDate && (
                           <div className="text-xs">
-                            Start: {new Date(project.startDate).toLocaleDateString()}
+                            {t('projects.start')}: {new Date(project.startDate).toLocaleDateString()}
                           </div>
                         )}
                         {project.dueDate && (
                           <div className="text-xs text-muted-foreground">
-                            Due: {new Date(project.dueDate).toLocaleDateString()}
+                            {t('projects.due')}: {new Date(project.dueDate).toLocaleDateString()}
                           </div>
                         )}
                       </div>
@@ -288,13 +290,13 @@ export function ProjectsPage() {
                         onClick={() => handleEditProject(project.id)}
                         className="text-primary hover:text-primary/80 font-medium"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(project.id, project.name)}
                         className="text-destructive hover:text-destructive/80 font-medium"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>
@@ -314,11 +316,11 @@ export function ProjectsPage() {
           </>
         ) : (
           <EmptyState
-            title="No projects found"
-            description="Get started by creating your first project. Track tasks, milestones, and manage your team effectively."
+            title={t('projects.noProjectsFound')}
+            description={t('projects.noProjectsDescription')}
             icon="folder"
             action={{
-              label: "New Project",
+              label: t('projects.newProject'),
               onClick: handleAddProject,
             }}
           />
@@ -329,23 +331,23 @@ export function ProjectsPage() {
       {projects && projects.length > 0 && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Projects</p>
+            <p className="text-sm text-muted-foreground">{t('projects.totalProjects')}</p>
             <p className="text-2xl font-bold">{projects.length}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Active</p>
+            <p className="text-sm text-muted-foreground">{t('projects.active')}</p>
             <p className="text-2xl font-bold">
               {projects.filter(p => p.status === 'active').length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Completed</p>
+            <p className="text-sm text-muted-foreground">{t('projects.completed')}</p>
             <p className="text-2xl font-bold">
               {projects.filter(p => p.status === 'completed').length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Budget</p>
+            <p className="text-sm text-muted-foreground">{t('projects.totalBudget')}</p>
             <p className="text-2xl font-bold">
               €{projects.reduce((sum, p) => sum + (p.budgetAmount || 0), 0).toFixed(2)}
             </p>

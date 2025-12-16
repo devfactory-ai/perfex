@@ -22,7 +22,10 @@ import {
   Loader2,
   AlertTriangle,
   Info,
+  Check,
 } from 'lucide-react';
+import { IndustrySelector } from '@/components/IndustrySelector';
+import { industryPresets, type IndustryPreset } from '@/config/industryPresets';
 
 interface Module {
   id: string;
@@ -64,26 +67,30 @@ const ICON_MAP: Record<string, typeof Settings> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   core: 'Modules de Base',
-  industry: 'Modules Métier',
-  advanced: 'Modules Avancés',
+  industry: 'Modules Metier',
+  advanced: 'Modules Avances',
 };
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  core: 'Fonctionnalités essentielles de l\'ERP, activées par défaut.',
-  industry: 'Modules spécialisés pour boulangeries, usines et industries alimentaires.',
-  advanced: 'Fonctionnalités avancées comme l\'IA et l\'audit automatisé.',
+  core: 'Fonctionnalites essentielles de l\'ERP, activees par defaut.',
+  industry: 'Modules specialises pour boulangeries, usines et industries alimentaires.',
+  advanced: 'Fonctionnalites avancees comme l\'IA et l\'audit automatise.',
 };
 
 export function ModulesSettingsPage() {
   const queryClient = useQueryClient();
   const [pendingChanges, setPendingChanges] = useState<Map<string, boolean>>(new Map());
+  const [currentPreset, setCurrentPreset] = useState<string | undefined>(() => {
+    return localStorage.getItem('industryPreset') || undefined;
+  });
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // For now, use a mock organization ID - in production this would come from context
   const organizationId = 'default-org';
   const token = localStorage.getItem('accessToken');
 
   // Fetch modules
-  const { data: modules, isLoading, error } = useQuery({
+  const { data: modules, isLoading, error, refetch } = useQuery({
     queryKey: ['modules', organizationId],
     queryFn: async () => {
       const response = await fetch(
@@ -130,10 +137,43 @@ export function ModulesSettingsPage() {
     },
   });
 
+  // Apply preset - enable/disable modules based on preset
+  const applyPreset = async (preset: IndustryPreset) => {
+    if (!modules) return;
+
+    const presetModules = new Set(preset.modules);
+
+    // Update each module's enabled status
+    const updates = modules.map(async (mod) => {
+      const shouldBeEnabled = presetModules.has(mod.id);
+      if (mod.enabled !== shouldBeEnabled) {
+        return updateModule.mutateAsync({ moduleId: mod.id, enabled: shouldBeEnabled });
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(updates);
+
+    // Save preset to localStorage
+    localStorage.setItem('industryPreset', preset.id);
+    setCurrentPreset(preset.id);
+
+    // Show success message
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+
+    // Refetch modules
+    await refetch();
+  };
+
   // Handle toggle
   const handleToggle = async (moduleId: string, currentEnabled: boolean) => {
     const newEnabled = !currentEnabled;
     setPendingChanges(prev => new Map(prev).set(moduleId, newEnabled));
+
+    // When manually toggling, switch to custom preset
+    localStorage.setItem('industryPreset', 'custom');
+    setCurrentPreset('custom');
 
     try {
       await updateModule.mutateAsync({ moduleId, enabled: newEnabled });
@@ -159,10 +199,14 @@ export function ModulesSettingsPage() {
     return ICON_MAP[iconName] || Settings;
   };
 
+  // Count enabled modules
+  const enabledCount = modules?.filter(m => m.enabled).length || 0;
+  const totalCount = modules?.length || 0;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -177,7 +221,7 @@ export function ModulesSettingsPage() {
               Erreur de chargement
             </h3>
             <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-              Impossible de charger les modules. Veuillez réessayer.
+              Impossible de charger les modules. Veuillez reessayer.
             </p>
           </div>
         </div>
@@ -186,30 +230,68 @@ export function ModulesSettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Gestion des Modules
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Activez ou désactivez les modules selon les besoins de votre organisation.
-          Les modules désactivés n'apparaîtront pas dans la navigation.
-        </p>
-      </div>
-
-      {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 flex items-start">
-        <Info className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Header with stats */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h3 className="font-medium text-blue-800 dark:text-blue-200">
-            Modules Métier pour Boulangeries et Usines
-          </h3>
-          <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
-            Activez les modules Recettes, Traçabilité HACCP et Paie pour bénéficier
-            de fonctionnalités spécialisées pour l'industrie alimentaire.
+          <h1 className="text-2xl font-bold">
+            Gestion des Modules
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Configurez les modules actifs selon votre type d'activite
           </p>
         </div>
+        <div className="flex items-center gap-4">
+          <div className="px-4 py-2 bg-primary/10 rounded-lg">
+            <span className="text-2xl font-bold text-primary">{enabledCount}</span>
+            <span className="text-sm text-muted-foreground ml-1">/ {totalCount} modules actifs</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {showSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
+          <Check className="h-5 w-5 text-green-600" />
+          <span className="text-green-800 dark:text-green-200 font-medium">
+            Configuration appliquee avec succes ! Les modules ont ete mis a jour.
+          </span>
+        </div>
+      )}
+
+      {/* Industry Preset Selector */}
+      <div className="bg-card rounded-xl border p-6">
+        <IndustrySelector
+          currentPreset={currentPreset}
+          onSelectPreset={applyPreset}
+          isLoading={updateModule.isPending}
+        />
+      </div>
+
+      {/* Current Preset Info */}
+      {currentPreset && currentPreset !== 'custom' && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
+          <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="font-medium text-primary">
+              Configuration active : {industryPresets.find(p => p.id === currentPreset)?.name}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Vous pouvez ajuster les modules individuellement ci-dessous. Cela passera en mode "Configuration Personnalisee".
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Module Toggle Section */}
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Configuration Manuelle des Modules
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Activez ou desactivez individuellement chaque module selon vos besoins specifiques.
+        </p>
       </div>
 
       {/* Modules by Category */}
@@ -217,18 +299,25 @@ export function ModulesSettingsPage() {
         const categoryModules = modulesByCategory[category] || [];
         if (categoryModules.length === 0) return null;
 
+        const enabledInCategory = categoryModules.filter(m => m.enabled).length;
+
         return (
           <div key={category} className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {CATEGORY_LABELS[category]}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {CATEGORY_DESCRIPTIONS[category]}
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {CATEGORY_LABELS[category]}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {CATEGORY_DESCRIPTIONS[category]}
+                </p>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {enabledInCategory}/{categoryModules.length} actifs
+              </span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {categoryModules.map((mod) => {
                 const Icon = getIcon(mod.icon);
                 const isUpdating = pendingChanges.has(mod.id);
@@ -239,9 +328,9 @@ export function ModulesSettingsPage() {
                 return (
                   <div
                     key={mod.id}
-                    className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-colors ${
+                    className={`bg-card rounded-lg shadow-sm p-4 border-2 transition-all ${
                       displayEnabled
-                        ? 'border-green-500'
+                        ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
                         : 'border-transparent'
                     }`}
                   >
@@ -251,23 +340,23 @@ export function ModulesSettingsPage() {
                           className={`p-2 rounded-lg ${
                             displayEnabled
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                              : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 dark:text-white">
+                          <h3 className="font-medium">
                             {mod.name}
                           </h3>
                           {mod.description && (
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                               {mod.description}
                             </p>
                           )}
                           {mod.isDefault && (
                             <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                              Par défaut
+                              Par defaut
                             </span>
                           )}
                         </div>
@@ -277,12 +366,12 @@ export function ModulesSettingsPage() {
                       <button
                         onClick={() => handleToggle(mod.id, mod.enabled)}
                         disabled={isUpdating}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          displayEnabled ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                          displayEnabled ? 'bg-green-500' : 'bg-muted'
                         } ${isUpdating ? 'opacity-50' : ''}`}
                       >
                         <span className="sr-only">
-                          {displayEnabled ? 'Désactiver' : 'Activer'} {mod.name}
+                          {displayEnabled ? 'Desactiver' : 'Activer'} {mod.name}
                         </span>
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -290,7 +379,7 @@ export function ModulesSettingsPage() {
                           }`}
                         >
                           {isUpdating && (
-                            <Loader2 className="h-3 w-3 m-1 animate-spin text-gray-400" />
+                            <Loader2 className="h-3 w-3 m-1 animate-spin text-muted-foreground" />
                           )}
                         </span>
                       </button>
@@ -305,13 +394,13 @@ export function ModulesSettingsPage() {
 
       {/* Empty State if no modules */}
       {modules?.length === 0 && (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <Package className="h-12 w-12 mx-auto text-gray-300" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+        <div className="text-center py-12 bg-card rounded-lg shadow border">
+          <Package className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-medium">
             Aucun module disponible
           </h3>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Les modules seront disponibles une fois le système initialisé.
+          <p className="mt-2 text-muted-foreground">
+            Les modules seront disponibles une fois le systeme initialise.
           </p>
         </div>
       )}

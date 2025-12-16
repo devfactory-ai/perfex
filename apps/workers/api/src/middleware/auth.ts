@@ -4,9 +4,12 @@
  */
 
 import { Context, Next } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
+import { eq } from 'drizzle-orm';
 import { verifyToken } from '../utils/crypto';
 import type { Env } from '../index';
 import type { AccessTokenPayload } from '@perfex/shared';
+import { organizationMembers } from '@perfex/database';
 
 /**
  * Extend Hono context with user data
@@ -66,8 +69,27 @@ export async function authMiddleware(
       );
     }
 
-    // Extract organization ID from header
-    const organizationId = c.req.header('x-organization-id') || null;
+    // Fetch organization ID from database based on user membership
+    let organizationId: string | null = c.req.header('x-organization-id') || null;
+
+    // If no header provided, look up from organization_members table
+    if (!organizationId) {
+      try {
+        const db = drizzle(c.env.DB);
+        const membership = await db
+          .select({ organizationId: organizationMembers.organizationId })
+          .from(organizationMembers)
+          .where(eq(organizationMembers.userId, payload.sub))
+          .limit(1);
+
+        if (membership.length > 0) {
+          organizationId = membership[0].organizationId;
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization membership:', error);
+        // Continue without organization - some routes may not require it
+      }
+    }
 
     // Add user data to context
     c.set('userId', payload.sub);

@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Company } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function CompaniesPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,17 +69,17 @@ export function CompaniesPage() {
   };
 
   const typeOptions = [
-    { value: 'all', label: 'All Types' },
-    { value: 'customer', label: 'Customer' },
-    { value: 'prospect', label: 'Prospect' },
-    { value: 'partner', label: 'Partner' },
-    { value: 'vendor', label: 'Vendor' },
+    { value: 'all', labelKey: 'crm.allTypes' },
+    { value: 'customer', labelKey: 'crm.customer' },
+    { value: 'prospect', labelKey: 'crm.prospect' },
+    { value: 'partner', labelKey: 'crm.partner' },
+    { value: 'vendor', labelKey: 'crm.vendor' },
   ];
 
   const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
+    { value: 'all', labelKey: 'crm.allStatus' },
+    { value: 'active', labelKey: 'common.active' },
+    { value: 'inactive', labelKey: 'common.inactive' },
   ];
 
   // Calculate paginated data
@@ -114,16 +116,16 @@ export function CompaniesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Companies</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('crm.companies')}</h1>
           <p className="text-muted-foreground">
-            Manage your customer, prospect, partner, and vendor companies
+            {t('crm.companiesSubtitle')}
           </p>
         </div>
         <button
           onClick={handleAddCompany}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Add Company
+          {t('crm.addCompany')}
         </button>
       </div>
 
@@ -132,7 +134,7 @@ export function CompaniesPage() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search companies by name, email, or phone..."
+            placeholder={t('crm.searchCompanies')}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -146,7 +148,7 @@ export function CompaniesPage() {
           >
             {typeOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -157,7 +159,7 @@ export function CompaniesPage() {
           >
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -170,12 +172,12 @@ export function CompaniesPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading companies...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedCompanies.data.length > 0 ? (
           <>
@@ -184,25 +186,25 @@ export function CompaniesPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Company
+                      {t('crm.company')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Type
+                      {t('common.type')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Contact Info
+                      {t('crm.contactInfo')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Industry
+                      {t('crm.industry')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Size
+                      {t('crm.size')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
+                      {t('common.status')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
+                      {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -231,7 +233,7 @@ export function CompaniesPage() {
                         company.type === 'partner' ? 'bg-green-100 text-green-800' :
                         'bg-orange-100 text-orange-800'
                       }`}>
-                        {company.type}
+                        {t(`crm.${company.type}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm">
@@ -258,7 +260,7 @@ export function CompaniesPage() {
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {company.status}
+                        {t(`common.${company.status}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
@@ -266,13 +268,13 @@ export function CompaniesPage() {
                         onClick={() => handleEditCompany(company.id)}
                         className="text-primary hover:text-primary/80 font-medium"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(company.id, company.name)}
                         className="text-destructive hover:text-destructive/80 font-medium"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>
@@ -292,11 +294,11 @@ export function CompaniesPage() {
           </>
         ) : (
           <EmptyState
-            title="No companies found"
-            description="Get started by adding your first company. Companies help you organize your customer, partner, and vendor relationships."
+            title={t('crm.noCompaniesFound')}
+            description={t('crm.noCompaniesDescription')}
             icon="users"
             action={{
-              label: "Add Company",
+              label: t('crm.addCompany'),
               onClick: handleAddCompany,
             }}
           />
@@ -307,23 +309,23 @@ export function CompaniesPage() {
       {companies && companies.length > 0 && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Companies</p>
+            <p className="text-sm text-muted-foreground">{t('crm.totalCompanies')}</p>
             <p className="text-2xl font-bold">{companies.length}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Customers</p>
+            <p className="text-sm text-muted-foreground">{t('crm.customers')}</p>
             <p className="text-2xl font-bold">
               {companies.filter(c => c.type === 'customer').length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Prospects</p>
+            <p className="text-sm text-muted-foreground">{t('crm.prospects')}</p>
             <p className="text-2xl font-bold">
               {companies.filter(c => c.type === 'prospect').length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Active</p>
+            <p className="text-sm text-muted-foreground">{t('common.active')}</p>
             <p className="text-2xl font-bold">
               {companies.filter(c => c.status === 'active').length}
             </p>

@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Opportunity } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function PipelinePage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>('open');
@@ -68,10 +70,10 @@ export function PipelinePage() {
   };
 
   const statusOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'open', label: 'Open' },
-    { value: 'won', label: 'Won' },
-    { value: 'lost', label: 'Lost' },
+    { value: 'all', labelKey: 'crm.all' },
+    { value: 'open', labelKey: 'crm.open' },
+    { value: 'won', labelKey: 'crm.won' },
+    { value: 'lost', labelKey: 'crm.lost' },
   ];
 
   // Calculate paginated data
@@ -98,16 +100,16 @@ export function PipelinePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales Pipeline</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('crm.pipeline')}</h1>
           <p className="text-muted-foreground">
-            Track your sales opportunities and deals
+            {t('crm.pipelineSubtitle')}
           </p>
         </div>
         <button
           onClick={handleAddOpportunity}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Opportunity
+          {t('crm.createOpportunity')}
         </button>
       </div>
 
@@ -115,24 +117,24 @@ export function PipelinePage() {
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Value</p>
+            <p className="text-sm text-muted-foreground">{t('crm.totalValue')}</p>
             <p className="text-2xl font-bold">€{stats.totalValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.totalCount} opportunities</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.totalCount} {t('crm.opportunities')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Open Pipeline</p>
+            <p className="text-sm text-muted-foreground">{t('crm.openPipeline')}</p>
             <p className="text-2xl font-bold text-blue-600">€{stats.openValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.openCount} deals</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.openCount} {t('crm.deals')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Won</p>
+            <p className="text-sm text-muted-foreground">{t('crm.won')}</p>
             <p className="text-2xl font-bold text-green-600">€{stats.wonValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.wonCount} deals</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.wonCount} {t('crm.deals')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Lost</p>
+            <p className="text-sm text-muted-foreground">{t('crm.lost')}</p>
             <p className="text-2xl font-bold text-red-600">{stats.lostCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">opportunities</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('crm.opportunities')}</p>
           </div>
         </div>
       )}
@@ -149,7 +151,7 @@ export function PipelinePage() {
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {option.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>
@@ -160,12 +162,12 @@ export function PipelinePage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading opportunities...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('crm.loadingOpportunities')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedOpportunities.data.length > 0 ? (
           <>
@@ -174,22 +176,22 @@ export function PipelinePage() {
               <thead className="border-b bg-muted/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Opportunity
+                    {t('crm.opportunity')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Value
+                    {t('crm.value')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Probability
+                    {t('crm.probability')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Expected Close
+                    {t('crm.expectedClose')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
+                    {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -228,7 +230,7 @@ export function PipelinePage() {
                         opportunity.status === 'lost' ? 'bg-red-100 text-red-800' :
                         'bg-blue-100 text-blue-800'
                       }`}>
-                        {opportunity.status}
+                        {t(`crm.${opportunity.status}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
@@ -236,13 +238,13 @@ export function PipelinePage() {
                         onClick={() => handleEditOpportunity(opportunity.id)}
                         className="text-primary hover:text-primary/80 font-medium"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(opportunity.id, opportunity.name)}
                         className="text-destructive hover:text-destructive/80 font-medium"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>
@@ -262,11 +264,11 @@ export function PipelinePage() {
           </>
         ) : (
           <EmptyState
-            title="No opportunities found"
-            description="Get started by creating your first sales opportunity. Track deals and manage your sales pipeline effectively."
+            title={t('crm.noOpportunitiesFound')}
+            description={t('crm.noOpportunitiesDescription')}
             icon="chart"
             action={{
-              label: "Create Opportunity",
+              label: t('crm.createOpportunity'),
               onClick: handleAddOpportunity,
             }}
           />

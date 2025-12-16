@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   ChefHat,
   Plus,
@@ -51,6 +52,7 @@ interface RecipeCategory {
 const API_URL = import.meta.env.VITE_API_URL;
 
 export function RecipesPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -152,9 +154,9 @@ export function RecipesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Recettes</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('recipes.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gérez vos recettes, formulations et fiches techniques
+            {t('recipes.subtitle')}
           </p>
         </div>
         <Link
@@ -162,7 +164,7 @@ export function RecipesPage() {
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-5 w-5 mr-2" />
-          Nouvelle Recette
+          {t('recipes.newRecipe')}
         </Link>
       </div>
 
@@ -174,7 +176,7 @@ export function RecipesPage() {
               <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Recettes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('recipes.totalRecipes')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats?.totalRecipes || 0}
               </p>
@@ -187,7 +189,7 @@ export function RecipesPage() {
               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Actives</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('recipes.activeRecipes')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats?.activeRecipes || 0}
               </p>
@@ -200,7 +202,7 @@ export function RecipesPage() {
               <FileText className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Brouillons</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('recipes.draftRecipes')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats?.draftRecipes || 0}
               </p>
@@ -213,7 +215,7 @@ export function RecipesPage() {
               <Filter className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Catégories</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('recipes.categories')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats?.totalCategories || 0}
               </p>
@@ -230,7 +232,7 @@ export function RecipesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Rechercher une recette..."
+                placeholder={t('recipes.searchRecipe')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
@@ -242,17 +244,17 @@ export function RecipesPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="">Tous les statuts</option>
-            <option value="active">Actives</option>
-            <option value="draft">Brouillons</option>
-            <option value="archived">Archivées</option>
+            <option value="">{t('recipes.allStatuses')}</option>
+            <option value="active">{t('recipes.activeRecipes')}</option>
+            <option value="draft">{t('recipes.draftRecipes')}</option>
+            <option value="archived">{t('recipes.archived')}</option>
           </select>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="">Toutes les catégories</option>
+            <option value="">{t('recipes.allCategories')}</option>
             {categories?.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
@@ -294,7 +296,7 @@ export function RecipesPage() {
                     </h3>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(recipe.status)}`}>
-                    {recipe.status === 'active' ? 'Active' : recipe.status === 'draft' ? 'Brouillon' : 'Archivée'}
+                    {recipe.status === 'active' ? t('recipes.active') : recipe.status === 'draft' ? t('recipes.draft') : t('recipes.archived')}
                   </span>
                 </div>
 
@@ -334,7 +336,7 @@ export function RecipesPage() {
 
                 {recipe.sellingPrice && (
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Prix de vente</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{t('recipes.sellingPrice')}</span>
                     <span className="font-semibold text-gray-900 dark:text-white">
                       {recipe.sellingPrice.toFixed(2)} €
                     </span>
@@ -347,14 +349,14 @@ export function RecipesPage() {
                     className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
                   >
                     <Eye className="h-4 w-4 mr-1" />
-                    Voir
+                    {t('recipes.view')}
                   </Link>
                   <Link
                     to={`/recipes/${recipe.id}/edit`}
                     className="text-gray-600 hover:text-gray-700 dark:text-gray-400 text-sm font-medium flex items-center"
                   >
                     <Edit className="h-4 w-4 mr-1" />
-                    Modifier
+                    {t('common.edit')}
                   </Link>
                   <button
                     onClick={() => {
@@ -364,7 +366,7 @@ export function RecipesPage() {
                     className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
-                    Supprimer
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -375,17 +377,17 @@ export function RecipesPage() {
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
           <ChefHat className="h-12 w-12 mx-auto text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-            Aucune recette
+            {t('recipes.noRecipes')}
           </h3>
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Commencez par créer votre première recette.
+            {t('recipes.noRecipesDescription')}
           </p>
           <Link
             to="/recipes/new"
             className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="h-5 w-5 mr-2" />
-            Créer une recette
+            {t('recipes.createRecipe')}
           </Link>
         </div>
       )}
@@ -395,11 +397,11 @@ export function RecipesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Supprimer la recette
+              {t('recipes.deleteRecipe')}
             </h3>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Êtes-vous sûr de vouloir supprimer "{selectedRecipe.name}" ?
-              Cette action est irréversible.
+              {t('recipes.deleteConfirmation')} "{selectedRecipe.name}" ?
+              {t('recipes.deleteWarning')}
             </p>
             <div className="mt-4 flex justify-end space-x-3">
               <button
@@ -409,14 +411,14 @@ export function RecipesPage() {
                 }}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => deleteMutation.mutate(selectedRecipe.id)}
                 disabled={deleteMutation.isPending}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
-                {deleteMutation.isPending ? 'Suppression...' : 'Supprimer'}
+                {deleteMutation.isPending ? t('recipes.deleting') : t('common.delete')}
               </button>
             </div>
           </div>

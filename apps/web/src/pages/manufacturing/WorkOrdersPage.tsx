@@ -6,11 +6,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { WorkOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function WorkOrdersPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,33 +107,33 @@ export function WorkOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Work Orders</h1>
-          <p className="text-muted-foreground">Manage production orders and manufacturing</p>
+          <h1 className="text-3xl font-bold">{t('manufacturing.workOrders')}</h1>
+          <p className="text-muted-foreground">{t('manufacturing.workOrdersSubtitle')}</p>
         </div>
         <button
           onClick={handleCreateWorkOrder}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Work Order
+          {t('manufacturing.createWorkOrder')}
         </button>
       </div>
 
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total BOMs</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.totalBOMs')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalBOMs}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Active BOMs</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.activeBOMs')}</div>
             <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeBOMs}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Work Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.totalWorkOrders')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalWorkOrders}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">In Progress</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.inProgress')}</div>
             <div className="mt-2 text-2xl font-bold text-yellow-600">{stats.inProgressOrders}</div>
           </div>
         </div>
@@ -140,7 +142,7 @@ export function WorkOrdersPage() {
       <div className="flex gap-4">
         <input
           type="text"
-          placeholder="Search work orders..."
+          placeholder={t('manufacturing.searchWorkOrders')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -150,23 +152,23 @@ export function WorkOrdersPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="released">Released</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('manufacturing.allStatuses')}</option>
+          <option value="draft">{t('manufacturing.draft')}</option>
+          <option value="released">{t('manufacturing.released')}</option>
+          <option value="in_progress">{t('manufacturing.inProgress')}</option>
+          <option value="completed">{t('common.completed')}</option>
+          <option value="cancelled">{t('manufacturing.cancelled')}</option>
         </select>
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">All Priorities</option>
-          <option value="low">Low</option>
-          <option value="normal">Normal</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
+          <option value="">{t('manufacturing.allPriorities')}</option>
+          <option value="low">{t('manufacturing.low')}</option>
+          <option value="normal">{t('manufacturing.normal')}</option>
+          <option value="high">{t('manufacturing.high')}</option>
+          <option value="urgent">{t('manufacturing.urgent')}</option>
         </select>
       </div>
 
@@ -175,7 +177,7 @@ export function WorkOrdersPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading work orders...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('manufacturing.loadingWorkOrders')}</p>
             </div>
           </div>
         ) : paginatedWorkOrders.data.length > 0 ? (
@@ -184,14 +186,14 @@ export function WorkOrdersPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">WO #</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Priority</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Scheduled Start</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Scheduled End</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Qty Planned</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Qty Produced</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('manufacturing.woNumber')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.priority')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('manufacturing.scheduledStart')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('manufacturing.scheduledEnd')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('manufacturing.qtyPlanned')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('manufacturing.qtyProduced')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -223,14 +225,14 @@ export function WorkOrdersPage() {
                           onClick={() => handleEditWorkOrder(wo.id)}
                           className="text-sm text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => deleteWorkOrder.mutate(wo.id)}
                           className="text-sm text-red-600 hover:underline"
                           disabled={deleteWorkOrder.isPending}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                     </tr>
@@ -250,11 +252,11 @@ export function WorkOrdersPage() {
           </>
         ) : (
           <EmptyState
-            title="No work orders found"
-            description="Get started by creating your first work order for production."
+            title={t('manufacturing.noWorkOrdersFound')}
+            description={t('manufacturing.noWorkOrdersDescription')}
             icon="document"
             action={{
-              label: "Create Work Order",
+              label: t('manufacturing.createWorkOrder'),
               onClick: handleCreateWorkOrder,
             }}
           />

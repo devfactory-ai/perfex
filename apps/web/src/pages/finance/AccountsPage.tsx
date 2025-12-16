@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { type Account } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function AccountsPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<string>('all');
@@ -71,12 +73,12 @@ export function AccountsPage() {
   };
 
   const accountTypes = [
-    { value: 'all', label: 'All Accounts' },
-    { value: 'asset', label: 'Assets' },
-    { value: 'liability', label: 'Liabilities' },
-    { value: 'equity', label: 'Equity' },
-    { value: 'revenue', label: 'Revenue' },
-    { value: 'expense', label: 'Expenses' },
+    { value: 'all', labelKey: 'finance.allAccounts' },
+    { value: 'asset', labelKey: 'finance.assets' },
+    { value: 'liability', labelKey: 'finance.liabilities' },
+    { value: 'equity', labelKey: 'finance.equity' },
+    { value: 'revenue', labelKey: 'finance.revenues' },
+    { value: 'expense', labelKey: 'finance.expenses' },
   ];
 
   return (
@@ -84,9 +86,9 @@ export function AccountsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Chart of Accounts</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('finance.accounts')}</h1>
           <p className="text-muted-foreground">
-            Manage your accounting structure
+            {t('finance.accountsSubtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -95,20 +97,20 @@ export function AccountsPage() {
             disabled={importTemplate.isPending}
             className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
           >
-            Import French Plan
+            {t('finance.importFrenchPlan')}
           </button>
           <button
             onClick={() => importTemplate.mutate('syscohada')}
             disabled={importTemplate.isPending}
             className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
           >
-            Import SYSCOHADA
+            {t('finance.importSyscohada')}
           </button>
           <button
             onClick={handleAddAccount}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Add Account
+            {t('finance.addAccount')}
           </button>
         </div>
       </div>
@@ -125,7 +127,7 @@ export function AccountsPage() {
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {type.label}
+            {t(type.labelKey)}
           </button>
         ))}
       </div>
@@ -136,12 +138,12 @@ export function AccountsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading accounts...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedAccounts.data.length > 0 ? (
           <>
@@ -150,22 +152,22 @@ export function AccountsPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Code
+                      {t('common.code')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Name
+                      {t('common.name')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Type
+                      {t('common.type')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Currency
+                      {t('common.currency')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
+                      {t('common.status')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
+                      {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -186,7 +188,7 @@ export function AccountsPage() {
                           account.type === 'revenue' ? 'bg-green-100 text-green-800' :
                           'bg-orange-100 text-orange-800'
                         }`}>
-                          {account.type}
+                          {t(`finance.${account.type}`)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -195,11 +197,11 @@ export function AccountsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {account.active ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
+                            {t('common.active')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            Inactive
+                            {t('common.inactive')}
                           </span>
                         )}
                       </td>
@@ -208,7 +210,7 @@ export function AccountsPage() {
                           onClick={() => handleEditAccount(account.id)}
                           className="text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                       </td>
                     </tr>
@@ -228,11 +230,11 @@ export function AccountsPage() {
           </>
         ) : (
           <EmptyState
-            title="No accounts found"
-            description="Get started by importing a chart of accounts template (French Plan or SYSCOHADA) or create your first account manually."
+            title={t('finance.noAccountsFound')}
+            description={t('finance.noAccountsDescription')}
             icon="document"
             action={{
-              label: "Add Account",
+              label: t('finance.addAccount'),
               onClick: handleAddAccount,
             }}
           />
@@ -246,7 +248,7 @@ export function AccountsPage() {
             const count = accounts.filter(a => a.type === type.value).length;
             return (
               <div key={type.value} className="rounded-lg border bg-card p-4">
-                <p className="text-sm text-muted-foreground">{type.label}</p>
+                <p className="text-sm text-muted-foreground">{t(type.labelKey)}</p>
                 <p className="text-2xl font-bold">{count}</p>
               </div>
             );

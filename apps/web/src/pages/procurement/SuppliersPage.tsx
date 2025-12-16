@@ -6,11 +6,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Supplier } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function SuppliersPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,33 +70,33 @@ export function SuppliersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Suppliers</h1>
-          <p className="text-muted-foreground">Manage your suppliers and vendors</p>
+          <h1 className="text-3xl font-bold">{t('procurement.suppliers')}</h1>
+          <p className="text-muted-foreground">{t('procurement.subtitle')}</p>
         </div>
         <button
           onClick={handleAddSupplier}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Add Supplier
+          {t('procurement.addSupplier')}
         </button>
       </div>
 
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Suppliers</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('procurement.totalSuppliers')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalSuppliers}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Active Suppliers</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('procurement.activeSuppliers')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.activeSuppliers}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Purchase Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('procurement.purchaseOrders')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalPurchaseOrders}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Pending Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('procurement.pendingOrders')}</div>
             <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingOrders}</div>
           </div>
         </div>
@@ -103,7 +105,7 @@ export function SuppliersPage() {
       <div className="flex gap-4">
         <input
           type="text"
-          placeholder="Search suppliers..."
+          placeholder={t('procurement.searchSuppliers')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -115,7 +117,7 @@ export function SuppliersPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading suppliers...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('procurement.loadingSuppliers')}</p>
             </div>
           </div>
         ) : paginatedSuppliers.data.length > 0 ? (
@@ -124,14 +126,14 @@ export function SuppliersPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Supplier #</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Phone</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Country</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Rating</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('procurement.supplierNumber')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.name')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.email')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.phone')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.country')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('procurement.rating')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -150,7 +152,7 @@ export function SuppliersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${supplier.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {supplier.active ? 'Active' : 'Inactive'}
+                          {supplier.active ? t('common.active') : t('common.inactive')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
@@ -158,13 +160,13 @@ export function SuppliersPage() {
                           onClick={() => handleEditSupplier(supplier.id)}
                           className="text-sm text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => deleteSupplier.mutate(supplier.id)}
                           className="text-sm text-red-600 hover:underline"
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                     </tr>
@@ -184,11 +186,11 @@ export function SuppliersPage() {
           </>
         ) : (
           <EmptyState
-            title="No suppliers found"
-            description="Get started by adding your first supplier to the database."
+            title={t('procurement.noSuppliersFound')}
+            description={t('procurement.noSuppliersDescription')}
             icon="document"
             action={{
-              label: "Add Supplier",
+              label: t('procurement.addSupplier'),
               onClick: handleAddSupplier,
             }}
           />

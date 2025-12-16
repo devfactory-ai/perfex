@@ -4,6 +4,7 @@ import { Suspense, lazy } from 'react';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardLayout } from './components/layouts/DashboardLayout';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { PasswordlessVerifyPage } from './pages/auth/PasswordlessVerifyPage';
@@ -72,6 +73,7 @@ const FAQPage = lazy(() => import('./pages/help/FAQPage').then(m => ({ default: 
 const ModuleGuidesPage = lazy(() => import('./pages/help/ModuleGuidesPage').then(m => ({ default: m.ModuleGuidesPage })));
 
 // Settings pages
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ModulesSettingsPage = lazy(() => import('./pages/settings/ModulesSettingsPage').then(m => ({ default: m.ModulesSettingsPage })));
 
 // Recipes pages (Bakery module)
@@ -106,8 +108,9 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <BrowserRouter>
+      <ThemeProvider>
+        <LanguageProvider>
+          <BrowserRouter>
           <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -179,6 +182,7 @@ function App() {
             <Route path="help/faq" element={<Suspense fallback={<PageLoader />}><FAQPage /></Suspense>} />
             <Route path="help/modules" element={<Suspense fallback={<PageLoader />}><ModuleGuidesPage /></Suspense>} />
             <Route path="help/modules/:moduleId" element={<Suspense fallback={<PageLoader />}><ModuleGuidesPage /></Suspense>} />
+            <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
             <Route path="settings/modules" element={<Suspense fallback={<PageLoader />}><ModulesSettingsPage /></Suspense>} />
             <Route path="recipes" element={<Suspense fallback={<PageLoader />}><RecipesPage /></Suspense>} />
             <Route path="recipes/new" element={<Suspense fallback={<PageLoader />}><RecipeFormPage /></Suspense>} />
@@ -191,8 +195,9 @@ function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
-      </LanguageProvider>
+          </BrowserRouter>
+        </LanguageProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

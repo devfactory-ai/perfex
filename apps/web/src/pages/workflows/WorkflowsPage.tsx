@@ -7,10 +7,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Workflow, Webhook, ApiKey, ApiResponse } from '@perfex/shared';
 import { Pagination } from '@/components/Pagination';
 
 export function WorkflowsPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -199,14 +201,14 @@ export function WorkflowsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Workflow Automation</h1>
-          <p className="text-gray-600 mt-1">Manage workflows, approvals, webhooks, and integrations</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('workflows.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('workflows.subtitle')}</p>
         </div>
         <button
           onClick={handleCreateWorkflow}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Workflow
+          {t('workflows.createWorkflow')}
         </button>
       </div>
 
@@ -216,9 +218,9 @@ export function WorkflowsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Workflows</p>
+                <p className="text-sm text-gray-600">{t('workflows.totalWorkflows')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalWorkflows}</p>
-                <p className="text-sm text-green-600 mt-1">{stats.activeWorkflows} active</p>
+                <p className="text-sm text-green-600 mt-1">{stats.activeWorkflows} {t('workflows.activeWorkflows')}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,9 +233,9 @@ export function WorkflowsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending Approvals</p>
+                <p className="text-sm text-gray-600">{t('workflows.pendingApprovals')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stats.pendingApprovals}</p>
-                <p className="text-sm text-gray-600 mt-1">of {stats.totalApprovals} total</p>
+                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalApprovals} {t('workflows.total')}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,9 +248,9 @@ export function WorkflowsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Webhooks</p>
+                <p className="text-sm text-gray-600">{t('workflows.activeWebhooks')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stats.activeWebhooks}</p>
-                <p className="text-sm text-gray-600 mt-1">of {stats.totalWebhooks} total</p>
+                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalWebhooks} {t('workflows.total')}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,9 +263,9 @@ export function WorkflowsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">API Keys</p>
+                <p className="text-sm text-gray-600">{t('workflows.apiKeys')}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalApiKeys}</p>
-                <p className="text-sm text-gray-600 mt-1">{stats.totalTags} tags</p>
+                <p className="text-sm text-gray-600 mt-1">{stats.totalTags} {t('workflows.tags')}</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,7 +289,7 @@ export function WorkflowsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Workflows
+              {t('workflows.workflows')}
             </button>
             <button
               onClick={() => setActiveTab('approvals')}
@@ -297,7 +299,7 @@ export function WorkflowsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Approvals {stats && stats.pendingApprovals > 0 && (
+              {t('workflows.approvals')} {stats && stats.pendingApprovals > 0 && (
                 <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full">
                   {stats.pendingApprovals}
                 </span>
@@ -311,7 +313,7 @@ export function WorkflowsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Webhooks
+              {t('workflows.webhooks')}
             </button>
             <button
               onClick={() => setActiveTab('api-keys')}
@@ -321,7 +323,7 @@ export function WorkflowsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              API Keys
+              {t('workflows.apiKeys')}
             </button>
             <button
               onClick={() => setActiveTab('tags')}
@@ -331,7 +333,7 @@ export function WorkflowsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Tags
+              {t('workflows.tags')}
             </button>
           </nav>
         </div>
@@ -343,7 +345,7 @@ export function WorkflowsPage() {
             <div className="flex gap-4 mb-6">
               <input
                 type="text"
-                placeholder="Search workflows..."
+                placeholder={t('workflows.searchWorkflows')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -353,11 +355,11 @@ export function WorkflowsPage() {
                 onChange={(e) => setEntityTypeFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">All Entity Types</option>
-                <option value="invoice">Invoice</option>
-                <option value="purchase_order">Purchase Order</option>
-                <option value="expense">Expense</option>
-                <option value="opportunity">Opportunity</option>
+                <option value="">{t('workflows.allEntityTypes')}</option>
+                <option value="invoice">{t('workflows.invoice')}</option>
+                <option value="purchase_order">{t('workflows.purchaseOrder')}</option>
+                <option value="expense">{t('workflows.expense')}</option>
+                <option value="opportunity">{t('workflows.opportunity')}</option>
               </select>
             </div>
 
@@ -365,7 +367,7 @@ export function WorkflowsPage() {
             {loadingWorkflows ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading workflows...</p>
+                <p className="text-gray-600 mt-4">{t('workflows.loadingWorkflows')}</p>
               </div>
             ) : paginatedWorkflows.data.length > 0 ? (
               <>
@@ -374,25 +376,25 @@ export function WorkflowsPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
+                          {t('common.name')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Entity Type
+                          {t('workflows.entityType')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Trigger
+                          {t('workflows.trigger')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Priority
+                          {t('workflows.priority')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          {t('common.status')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Created
+                          {t('workflows.created')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
+                          {t('common.actions')}
                         </th>
                       </tr>
                     </thead>
@@ -426,7 +428,7 @@ export function WorkflowsPage() {
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {workflow.isActive ? 'Active' : 'Inactive'}
+                              {workflow.isActive ? t('workflows.active') : t('workflows.inactive')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -437,14 +439,14 @@ export function WorkflowsPage() {
                               onClick={() => handleEditWorkflow(workflow.id)}
                               className="text-primary hover:text-primary/80 font-medium"
                             >
-                              Edit
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => deleteWorkflow.mutate(workflow.id)}
                               className="text-red-600 hover:underline"
                               disabled={deleteWorkflow.isPending}
                             >
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </td>
                         </tr>
@@ -477,13 +479,13 @@ export function WorkflowsPage() {
                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                   />
                 </svg>
-                <p className="text-gray-600 mt-4">No workflows found</p>
-                <p className="text-gray-500 text-sm mt-2">Create your first workflow to automate business processes</p>
+                <p className="text-gray-600 mt-4">{t('workflows.noWorkflowsFound')}</p>
+                <p className="text-gray-500 text-sm mt-2">{t('workflows.noWorkflowsDescription')}</p>
                 <button
                   onClick={handleCreateWorkflow}
                   className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Create Workflow
+                  {t('workflows.createWorkflow')}
                 </button>
               </div>
             )}
@@ -497,7 +499,7 @@ export function WorkflowsPage() {
             <div className="flex gap-4 mb-6">
               <input
                 type="text"
-                placeholder="Search webhooks..."
+                placeholder={t('workflows.searchWebhooks')}
                 value={webhookSearchTerm}
                 onChange={(e) => setWebhookSearchTerm(e.target.value)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -506,7 +508,7 @@ export function WorkflowsPage() {
                 onClick={handleCreateWebhook}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Create Webhook
+                {t('workflows.createWebhook')}
               </button>
             </div>
 
@@ -514,7 +516,7 @@ export function WorkflowsPage() {
             {loadingWebhooks ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading webhooks...</p>
+                <p className="text-gray-600 mt-4">{t('workflows.loadingWebhooks')}</p>
               </div>
             ) : paginatedWebhooks.data.length > 0 ? (
               <>
@@ -523,22 +525,22 @@ export function WorkflowsPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
+                          {t('common.name')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          URL
+                          {t('workflows.url')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Events
+                          {t('workflows.events')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          {t('common.status')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Triggered
+                          {t('workflows.lastTriggered')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
+                          {t('common.actions')}
                         </th>
                       </tr>
                     </thead>
@@ -558,7 +560,7 @@ export function WorkflowsPage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-900">
-                              {webhook.events.length} event{webhook.events.length !== 1 ? 's' : ''}
+                              {webhook.events.length} {webhook.events.length !== 1 ? t('workflows.events') : t('workflows.event')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -569,27 +571,27 @@ export function WorkflowsPage() {
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {webhook.isActive ? 'Active' : 'Inactive'}
+                              {webhook.isActive ? t('workflows.active') : t('workflows.inactive')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {webhook.lastTriggeredAt
                               ? new Date(webhook.lastTriggeredAt).toLocaleString()
-                              : 'Never'}
+                              : t('workflows.never')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
                             <button
                               onClick={() => handleEditWebhook(webhook.id)}
                               className="text-primary hover:text-primary/80 font-medium"
                             >
-                              Edit
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => deleteWebhook.mutate(webhook.id)}
                               className="text-red-600 hover:underline"
                               disabled={deleteWebhook.isPending}
                             >
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </td>
                         </tr>
@@ -622,13 +624,13 @@ export function WorkflowsPage() {
                     d="M13 10V3L4 14h7v7l9-11h-7z"
                   />
                 </svg>
-                <p className="text-gray-600 mt-4">No webhooks found</p>
-                <p className="text-gray-500 text-sm mt-2">Create your first webhook to receive event notifications</p>
+                <p className="text-gray-600 mt-4">{t('workflows.noWebhooksFound')}</p>
+                <p className="text-gray-500 text-sm mt-2">{t('workflows.noWebhooksDescription')}</p>
                 <button
                   onClick={handleCreateWebhook}
                   className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Create Webhook
+                  {t('workflows.createWebhook')}
                 </button>
               </div>
             )}
@@ -642,7 +644,7 @@ export function WorkflowsPage() {
             <div className="flex gap-4 mb-6">
               <input
                 type="text"
-                placeholder="Search API keys..."
+                placeholder={t('workflows.searchApiKeys')}
                 value={apiKeySearchTerm}
                 onChange={(e) => setApiKeySearchTerm(e.target.value)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -651,7 +653,7 @@ export function WorkflowsPage() {
                 onClick={handleCreateApiKey}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Create API Key
+                {t('workflows.createApiKey')}
               </button>
             </div>
 
@@ -659,7 +661,7 @@ export function WorkflowsPage() {
             {loadingApiKeys ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading API keys...</p>
+                <p className="text-gray-600 mt-4">{t('workflows.loadingApiKeys')}</p>
               </div>
             ) : paginatedApiKeys.data.length > 0 ? (
               <>
@@ -668,25 +670,25 @@ export function WorkflowsPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
+                          {t('common.name')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Permissions
+                          {t('workflows.permissions')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rate Limit
+                          {t('workflows.rateLimit')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Expires
+                          {t('workflows.expires')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Used
+                          {t('workflows.lastUsed')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          {t('common.status')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
+                          {t('common.actions')}
                         </th>
                       </tr>
                     </thead>
@@ -701,23 +703,23 @@ export function WorkflowsPage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-900">
-                              {apiKey.permissions.length} permission{apiKey.permissions.length !== 1 ? 's' : ''}
+                              {apiKey.permissions.length} {apiKey.permissions.length !== 1 ? t('workflows.permissions') : t('workflows.permission')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {apiKey.rateLimit}/hour
+                              {apiKey.rateLimit}/{t('workflows.perHour')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {apiKey.expiresAt
                               ? new Date(apiKey.expiresAt).toLocaleDateString()
-                              : 'Never'}
+                              : t('workflows.never')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {apiKey.lastUsedAt
                               ? new Date(apiKey.lastUsedAt).toLocaleString()
-                              : 'Never'}
+                              : t('workflows.never')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -727,7 +729,7 @@ export function WorkflowsPage() {
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {apiKey.isActive ? 'Active' : 'Inactive'}
+                              {apiKey.isActive ? t('workflows.active') : t('workflows.inactive')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
@@ -735,14 +737,14 @@ export function WorkflowsPage() {
                               onClick={() => handleEditApiKey(apiKey.id)}
                               className="text-primary hover:text-primary/80 font-medium"
                             >
-                              Edit
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => deleteApiKey.mutate(apiKey.id)}
                               className="text-red-600 hover:underline"
                               disabled={deleteApiKey.isPending}
                             >
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </td>
                         </tr>
@@ -775,13 +777,13 @@ export function WorkflowsPage() {
                     d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
                   />
                 </svg>
-                <p className="text-gray-600 mt-4">No API keys found</p>
-                <p className="text-gray-500 text-sm mt-2">Create your first API key for programmatic access</p>
+                <p className="text-gray-600 mt-4">{t('workflows.noApiKeysFound')}</p>
+                <p className="text-gray-500 text-sm mt-2">{t('workflows.noApiKeysDescription')}</p>
                 <button
                   onClick={handleCreateApiKey}
                   className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Create API Key
+                  {t('workflows.createApiKey')}
                 </button>
               </div>
             )}
@@ -792,8 +794,8 @@ export function WorkflowsPage() {
         {activeTab !== 'workflows' && activeTab !== 'webhooks' && activeTab !== 'api-keys' && (
           <div className="p-6 text-center py-12">
             <p className="text-gray-600">
-              {activeTab === 'approvals' && 'Approvals management coming soon'}
-              {activeTab === 'tags' && 'Tags management coming soon'}
+              {activeTab === 'approvals' && t('workflows.approvalsComingSoon')}
+              {activeTab === 'tags' && t('workflows.tagsComingSoon')}
             </p>
           </div>
         )}

@@ -6,11 +6,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { FixedAsset } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function AssetsPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,35 +102,35 @@ export function AssetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Fixed Assets</h1>
-          <p className="text-muted-foreground">Manage equipment, property, and fixed assets</p>
+          <h1 className="text-3xl font-bold">{t('assets.fixedAssets')}</h1>
+          <p className="text-muted-foreground">{t('assets.subtitle')}</p>
         </div>
         <button
           onClick={handleAddAsset}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Add Asset
+          {t('assets.addAsset')}
         </button>
       </div>
 
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Assets</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('assets.totalAssets')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalAssets}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Active Assets</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('assets.activeAssets')}</div>
             <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeAssets}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Value</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('assets.totalValue')}</div>
             <div className="mt-2 text-2xl font-bold text-blue-600">
               {formatCurrency(stats.totalValue)}
             </div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Pending Maintenance</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('assets.pendingMaintenance')}</div>
             <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingMaintenance}</div>
           </div>
         </div>
@@ -137,7 +139,7 @@ export function AssetsPage() {
       <div className="flex gap-4">
         <input
           type="text"
-          placeholder="Search assets..."
+          placeholder={t('assets.searchAssets')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -147,12 +149,12 @@ export function AssetsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="disposed">Disposed</option>
-          <option value="sold">Sold</option>
-          <option value="donated">Donated</option>
-          <option value="lost">Lost</option>
+          <option value="">{t('assets.allStatuses')}</option>
+          <option value="active">{t('assets.active')}</option>
+          <option value="disposed">{t('assets.disposed')}</option>
+          <option value="sold">{t('assets.sold')}</option>
+          <option value="donated">{t('assets.donated')}</option>
+          <option value="lost">{t('assets.lost')}</option>
         </select>
       </div>
 
@@ -161,7 +163,7 @@ export function AssetsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading assets...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('assets.loadingAssets')}</p>
             </div>
           </div>
         ) : paginatedAssets.data.length > 0 ? (
@@ -170,14 +172,14 @@ export function AssetsPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Asset #</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Purchase Date</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Purchase Cost</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Current Value</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('assets.assetNumber')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.name')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('assets.location')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('assets.purchaseDate')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('assets.purchaseCost')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('assets.currentValue')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -202,14 +204,14 @@ export function AssetsPage() {
                           onClick={() => handleEditAsset(asset.id)}
                           className="text-sm text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => deleteAsset.mutate(asset.id)}
                           className="text-sm text-red-600 hover:underline"
                           disabled={deleteAsset.isPending}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                     </tr>
@@ -229,11 +231,11 @@ export function AssetsPage() {
           </>
         ) : (
           <EmptyState
-            title="No assets found"
-            description="Get started by adding your first fixed asset to track."
+            title={t('assets.noAssetsFound')}
+            description={t('assets.noAssetsDescription')}
             icon="document"
             action={{
-              label: "Add Asset",
+              label: t('assets.addAsset'),
               onClick: handleAddAsset,
             }}
           />

@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { InventoryItem } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function InventoryPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,16 +147,16 @@ export function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('inventory.title')}</h1>
           <p className="text-muted-foreground">
-            Manage inventory items and stock levels
+            {t('inventory.subtitle')}
           </p>
         </div>
         <button
           onClick={handleAddItem}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          New Item
+          {t('inventory.newItem')}
         </button>
       </div>
 
@@ -162,19 +164,19 @@ export function InventoryPage() {
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Items</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('inventory.totalItems')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalItems}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Active Items</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('inventory.activeItems')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.activeItems}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Warehouses</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('inventory.warehouses')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalWarehouses}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Low Stock</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('inventory.lowStock')}</div>
             <div className="mt-2 text-2xl font-bold text-orange-600">{stats.lowStockItems}</div>
           </div>
         </div>
@@ -185,7 +187,7 @@ export function InventoryPage() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search items by SKU, name, or description..."
+            placeholder={t('inventory.searchItems')}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -197,7 +199,7 @@ export function InventoryPage() {
             onChange={(e) => handleCategoryFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t('inventory.allCategories')}</option>
             {categories.map((category) => (
               <option key={category} value={category}>
                 {category}
@@ -209,9 +211,9 @@ export function InventoryPage() {
             onChange={(e) => handleActiveFilterChange(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="all">All Status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
+            <option value="all">{t('inventory.allStatus')}</option>
+            <option value="true">{t('common.active')}</option>
+            <option value="false">{t('common.inactive')}</option>
           </select>
         </div>
       </div>
@@ -222,12 +224,12 @@ export function InventoryPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading items...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('inventory.loadingItems')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedItems.data.length > 0 ? (
           <>
@@ -235,14 +237,14 @@ export function InventoryPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">SKU</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Selling Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Unit</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('inventory.sku')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('common.name')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('inventory.category')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('inventory.costPrice')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('inventory.sellingPrice')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('inventory.unit')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('common.status')}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -281,7 +283,7 @@ export function InventoryPage() {
                       <td className="px-6 py-4 text-sm">{item.unit}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.active)}`}>
-                          {item.active ? 'Active' : 'Inactive'}
+                          {item.active ? t('common.active') : t('common.inactive')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
@@ -289,13 +291,13 @@ export function InventoryPage() {
                           onClick={() => handleEditItem(item.id)}
                           className="text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(item.id, item.name)}
                           className="text-destructive hover:text-destructive/80 font-medium"
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                   </tr>
@@ -315,11 +317,11 @@ export function InventoryPage() {
           </>
         ) : (
           <EmptyState
-            title="No inventory items found"
-            description="Get started by adding your first inventory item. Track stock levels, manage pricing, and organize your products efficiently."
+            title={t('inventory.noItemsFound')}
+            description={t('inventory.noItemsDescription')}
             icon="box"
             action={{
-              label: "New Item",
+              label: t('inventory.newItem'),
               onClick: handleAddItem,
             }}
           />

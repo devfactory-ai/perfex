@@ -52,3 +52,4 @@ wrangler-state/
 # Misc
 *.tsbuildinfo
 .cache/
+perfex-vitrine/

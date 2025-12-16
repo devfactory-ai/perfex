@@ -6,12 +6,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { TrialBalanceEntry } from '@perfex/shared';
 import { format } from 'date-fns';
 
 type ReportType = 'trial-balance' | 'balance-sheet' | 'income-statement';
 
 export function ReportsPage() {
+  const { t } = useLanguage();
   const [reportType, setReportType] = useState<ReportType>('trial-balance');
   const [startDate, setStartDate] = useState(
     format(new Date(new Date().getFullYear(), 0, 1), 'yyyy-MM-dd')
@@ -52,18 +54,18 @@ export function ReportsPage() {
   });
 
   const reportTypes = [
-    { value: 'trial-balance', label: 'Trial Balance' },
-    { value: 'balance-sheet', label: 'Balance Sheet' },
-    { value: 'income-statement', label: 'Income Statement' },
+    { value: 'trial-balance', labelKey: 'finance.trialBalance' },
+    { value: 'balance-sheet', labelKey: 'finance.balanceSheet' },
+    { value: 'income-statement', labelKey: 'finance.incomeStatement' },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('finance.reports')}</h1>
         <p className="text-muted-foreground">
-          View and analyze your financial data
+          {t('finance.reportsSubtitle')}
         </p>
       </div>
 
@@ -71,7 +73,7 @@ export function ReportsPage() {
       <div className="rounded-lg border bg-card p-6 space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium mb-2">Report Type</label>
+            <label className="block text-sm font-medium mb-2">{t('common.type')}</label>
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value as ReportType)}
@@ -79,14 +81,14 @@ export function ReportsPage() {
             >
               {reportTypes.map((type) => (
                 <option key={type.value} value={type.value}>
-                  {type.label}
+                  {t(type.labelKey)}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Start Date</label>
+            <label className="block text-sm font-medium mb-2">{t('finance.startDate')}</label>
             <input
               type="date"
               value={startDate}
@@ -96,7 +98,7 @@ export function ReportsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">End Date</label>
+            <label className="block text-sm font-medium mb-2">{t('finance.endDate')}</label>
             <input
               type="date"
               value={endDate}
@@ -111,13 +113,13 @@ export function ReportsPage() {
             onClick={() => refetch()}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Generate Report
+            {t('finance.generateReport')}
           </button>
           <button className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
-            Export PDF
+            {t('finance.exportPdf')}
           </button>
           <button className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
-            Export Excel
+            {t('finance.exportExcel')}
           </button>
         </div>
       </div>
@@ -128,18 +130,18 @@ export function ReportsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Generating report...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : data ? (
           <div className="p-6">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold">
-                {reportTypes.find(r => r.value === reportType)?.label}
+                {t(reportTypes.find(r => r.value === reportType)?.labelKey || '')}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {reportType === 'balance-sheet'
@@ -154,10 +156,10 @@ export function ReportsPage() {
               <table className="w-full">
                 <thead className="border-b">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Account</th>
-                    <th className="px-4 py-2 text-right text-sm font-semibold">Debit</th>
-                    <th className="px-4 py-2 text-right text-sm font-semibold">Credit</th>
-                    <th className="px-4 py-2 text-right text-sm font-semibold">Balance</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold">{t('finance.accountName')}</th>
+                    <th className="px-4 py-2 text-right text-sm font-semibold">{t('finance.debit')}</th>
+                    <th className="px-4 py-2 text-right text-sm font-semibold">{t('finance.credit')}</th>
+                    <th className="px-4 py-2 text-right text-sm font-semibold">{t('finance.balance')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -186,7 +188,7 @@ export function ReportsPage() {
             {data.type === 'balance-sheet' && typeof data.data === 'object' && 'assets' in data.data && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Assets</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('finance.asset')}</h3>
                   <table className="w-full">
                     <tbody className="divide-y">
                       {data.data.assets.map((entry) => (
@@ -200,7 +202,7 @@ export function ReportsPage() {
                         </tr>
                       ))}
                       <tr className="font-semibold bg-muted/50">
-                        <td className="px-4 py-2 text-sm">Total Assets</td>
+                        <td className="px-4 py-2 text-sm">{t('finance.totalAssets')}</td>
                         <td className="px-4 py-2 text-sm text-right font-mono">
                           €{data.data.totalAssets.toFixed(2)}
                         </td>
@@ -210,7 +212,7 @@ export function ReportsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Liabilities</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('finance.liability')}</h3>
                   <table className="w-full">
                     <tbody className="divide-y">
                       {data.data.liabilities.map((entry) => (
@@ -224,7 +226,7 @@ export function ReportsPage() {
                         </tr>
                       ))}
                       <tr className="font-semibold bg-muted/50">
-                        <td className="px-4 py-2 text-sm">Total Liabilities</td>
+                        <td className="px-4 py-2 text-sm">{t('finance.totalLiabilities')}</td>
                         <td className="px-4 py-2 text-sm text-right font-mono">
                           €{data.data.totalLiabilities.toFixed(2)}
                         </td>
@@ -234,7 +236,7 @@ export function ReportsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Equity</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('finance.equity')}</h3>
                   <table className="w-full">
                     <tbody className="divide-y">
                       {data.data.equity.map((entry) => (
@@ -248,7 +250,7 @@ export function ReportsPage() {
                         </tr>
                       ))}
                       <tr className="font-semibold bg-muted/50">
-                        <td className="px-4 py-2 text-sm">Total Equity</td>
+                        <td className="px-4 py-2 text-sm">{t('finance.totalEquity')}</td>
                         <td className="px-4 py-2 text-sm text-right font-mono">
                           €{data.data.totalEquity.toFixed(2)}
                         </td>
@@ -263,7 +265,7 @@ export function ReportsPage() {
             {data.type === 'income-statement' && typeof data.data === 'object' && 'revenue' in data.data && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Revenue</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('finance.revenue')}</h3>
                   <table className="w-full">
                     <tbody className="divide-y">
                       {data.data.revenue.map((entry) => (
@@ -277,7 +279,7 @@ export function ReportsPage() {
                         </tr>
                       ))}
                       <tr className="font-semibold bg-muted/50">
-                        <td className="px-4 py-2 text-sm">Total Revenue</td>
+                        <td className="px-4 py-2 text-sm">{t('finance.totalRevenue')}</td>
                         <td className="px-4 py-2 text-sm text-right font-mono text-green-600">
                           €{data.data.totalRevenue.toFixed(2)}
                         </td>
@@ -287,7 +289,7 @@ export function ReportsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Expenses</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('finance.expense')}</h3>
                   <table className="w-full">
                     <tbody className="divide-y">
                       {data.data.expenses.map((entry) => (
@@ -301,7 +303,7 @@ export function ReportsPage() {
                         </tr>
                       ))}
                       <tr className="font-semibold bg-muted/50">
-                        <td className="px-4 py-2 text-sm">Total Expenses</td>
+                        <td className="px-4 py-2 text-sm">{t('finance.totalExpenses')}</td>
                         <td className="px-4 py-2 text-sm text-right font-mono text-red-600">
                           €{data.data.totalExpenses.toFixed(2)}
                         </td>
@@ -312,7 +314,7 @@ export function ReportsPage() {
 
                 <div className="border-t-2 pt-4">
                   <div className="flex justify-between items-center text-xl font-bold">
-                    <span>Net Income</span>
+                    <span>{t('finance.netIncome')}</span>
                     <span className={data.data.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}>
                       €{data.data.netIncome.toFixed(2)}
                     </span>

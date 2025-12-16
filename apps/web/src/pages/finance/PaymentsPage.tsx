@@ -7,12 +7,14 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { Payment } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 import { format } from 'date-fns';
 
 export function PaymentsPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
@@ -54,12 +56,12 @@ export function PaymentsPage() {
     return { data, total, totalPages };
   }, [filteredPayments, currentPage, itemsPerPage]);
 
-  const paymentMethods = {
-    cash: 'Cash',
-    bank_transfer: 'Bank Transfer',
-    check: 'Check',
-    credit_card: 'Credit Card',
-    other: 'Other',
+  const paymentMethods: Record<string, string> = {
+    cash: t('finance.cash'),
+    bank_transfer: t('finance.bankTransfer'),
+    check: t('finance.check'),
+    credit_card: t('finance.creditCard'),
+    other: t('finance.other'),
   };
 
   const getMethodBadge = (method: string) => {
@@ -81,35 +83,35 @@ export function PaymentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('finance.payments')}</h1>
           <p className="text-muted-foreground">
-            Track all payment transactions
+            {t('finance.paymentsSubtitle')}
           </p>
         </div>
         <button
           onClick={handleRecordPayment}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Record Payment
+          {t('finance.recordPayment')}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">Total Payments</p>
+          <p className="text-sm text-muted-foreground">{t('finance.totalPayments')}</p>
           <p className="text-2xl font-bold">€{totalAmount.toFixed(2)}</p>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">Count</p>
+          <p className="text-sm text-muted-foreground">{t('finance.count')}</p>
           <p className="text-2xl font-bold">{filteredPayments?.length || 0}</p>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">This Month</p>
+          <p className="text-sm text-muted-foreground">{t('finance.thisMonth')}</p>
           <p className="text-2xl font-bold">€0.00</p>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">Average</p>
+          <p className="text-sm text-muted-foreground">{t('finance.average')}</p>
           <p className="text-2xl font-bold">
             €{filteredPayments && filteredPayments.length > 0 ? (totalAmount / filteredPayments.length).toFixed(2) : '0.00'}
           </p>
@@ -121,7 +123,7 @@ export function PaymentsPage() {
         {/* Search */}
         <input
           type="text"
-          placeholder="Search by reference or notes..."
+          placeholder={t('finance.searchByReferenceOrNotes')}
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
@@ -139,12 +141,12 @@ export function PaymentsPage() {
           }}
           className="px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-w-[200px]"
         >
-          <option value="all">All Methods</option>
-          <option value="cash">Cash</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="check">Check</option>
-          <option value="credit_card">Credit Card</option>
-          <option value="other">Other</option>
+          <option value="all">{t('finance.allMethods')}</option>
+          <option value="cash">{t('finance.cash')}</option>
+          <option value="bank_transfer">{t('finance.bankTransfer')}</option>
+          <option value="check">{t('finance.check')}</option>
+          <option value="credit_card">{t('finance.creditCard')}</option>
+          <option value="other">{t('finance.other')}</option>
         </select>
       </div>
 
@@ -154,12 +156,12 @@ export function PaymentsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading payments...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedPayments.data.length > 0 ? (
           <>
@@ -168,25 +170,25 @@ export function PaymentsPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Reference
+                      {t('finance.reference')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Date
+                      {t('common.date')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Amount
+                      {t('common.amount')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Method
+                      {t('finance.paymentMethod')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Currency
+                      {t('common.currency')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Notes
+                      {t('finance.notes')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
+                      {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -215,7 +217,7 @@ export function PaymentsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                         <button className="text-primary hover:text-primary/80 font-medium">
-                          View
+                          {t('common.view')}
                         </button>
                       </td>
                     </tr>
@@ -235,11 +237,11 @@ export function PaymentsPage() {
           </>
         ) : (
           <EmptyState
-            title="No payments recorded yet"
-            description="Get started by recording your first payment transaction."
+            title={t('finance.noPaymentsYet')}
+            description={t('finance.startByRecording')}
             icon="document"
             action={{
-              label: "Record Payment",
+              label: t('finance.recordPayment'),
               onClick: handleRecordPayment,
             }}
           />

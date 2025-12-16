@@ -7,11 +7,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { ContactWithCompany } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function ContactsPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,9 +63,9 @@ export function ContactsPage() {
   };
 
   const statusOptions = [
-    { value: 'all', label: 'All Contacts' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
+    { value: 'all', labelKey: 'crm.allContacts' },
+    { value: 'active', labelKey: 'common.active' },
+    { value: 'inactive', labelKey: 'common.inactive' },
   ];
 
   // Calculate paginated data
@@ -95,16 +97,16 @@ export function ContactsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('crm.contacts')}</h1>
           <p className="text-muted-foreground">
-            Manage your customer and prospect contacts
+            {t('crm.contactsSubtitle')}
           </p>
         </div>
         <button
           onClick={handleAddContact}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Add Contact
+          {t('crm.addContact')}
         </button>
       </div>
 
@@ -113,7 +115,7 @@ export function ContactsPage() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search contacts by name, email, or phone..."
+            placeholder={t('crm.searchContacts')}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -130,7 +132,7 @@ export function ContactsPage() {
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              {option.label}
+              {t(option.labelKey)}
             </button>
           ))}
         </div>
@@ -142,12 +144,12 @@ export function ContactsPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading contacts...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Error: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('common.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedContacts.data.length > 0 ? (
           <>
@@ -156,25 +158,25 @@ export function ContactsPage() {
               <thead className="border-b bg-muted/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Name
+                    {t('common.name')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Company
+                    {t('crm.company')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Email
+                    {t('common.email')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Phone
+                    {t('common.phone')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Position
+                    {t('crm.position')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
+                    {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -188,7 +190,7 @@ export function ContactsPage() {
                         </div>
                         {contact.isPrimary && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                            Primary
+                            {t('crm.primary')}
                           </span>
                         )}
                       </div>
@@ -200,7 +202,7 @@ export function ContactsPage() {
                           <div className="text-xs text-muted-foreground">{contact.company.type}</div>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">No company</span>
+                        <span className="text-muted-foreground">{t('crm.noCompany')}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -220,7 +222,7 @@ export function ContactsPage() {
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {contact.status}
+                        {t(`common.${contact.status}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
@@ -228,13 +230,13 @@ export function ContactsPage() {
                         onClick={() => handleEditContact(contact.id)}
                         className="text-primary hover:text-primary/80 font-medium"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(contact.id, `${contact.firstName} ${contact.lastName}`)}
                         className="text-destructive hover:text-destructive/80 font-medium"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>
@@ -254,11 +256,11 @@ export function ContactsPage() {
           </>
         ) : (
           <EmptyState
-            title="No contacts found"
-            description="Get started by adding your first contact. Contacts help you manage relationships with individuals at your customer companies."
+            title={t('crm.noContactsFound')}
+            description={t('crm.noContactsDescription')}
             icon="users"
             action={{
-              label: "Add Contact",
+              label: t('crm.addContact'),
               onClick: handleAddContact,
             }}
           />
@@ -269,23 +271,23 @@ export function ContactsPage() {
       {contacts && contacts.length > 0 && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Total Contacts</p>
+            <p className="text-sm text-muted-foreground">{t('crm.totalContacts')}</p>
             <p className="text-2xl font-bold">{contacts.length}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Active</p>
+            <p className="text-sm text-muted-foreground">{t('common.active')}</p>
             <p className="text-2xl font-bold">
               {contacts.filter(c => c.status === 'active').length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">With Company</p>
+            <p className="text-sm text-muted-foreground">{t('crm.withCompany')}</p>
             <p className="text-2xl font-bold">
               {contacts.filter(c => c.company).length}
             </p>
           </div>
           <div className="rounded-lg border bg-card p-6">
-            <p className="text-sm text-muted-foreground">Primary Contacts</p>
+            <p className="text-sm text-muted-foreground">{t('crm.primaryContacts')}</p>
             <p className="text-2xl font-bold">
               {contacts.filter(c => c.isPrimary).length}
             </p>

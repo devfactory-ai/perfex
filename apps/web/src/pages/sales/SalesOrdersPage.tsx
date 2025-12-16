@@ -6,11 +6,13 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { SalesOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
 export function SalesOrdersPage() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,33 +102,33 @@ export function SalesOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Sales Orders</h1>
-          <p className="text-muted-foreground">Manage customer orders and shipments</p>
+          <h1 className="text-3xl font-bold">{t('sales.salesOrders')}</h1>
+          <p className="text-muted-foreground">{t('sales.subtitle')}</p>
         </div>
         <button
           onClick={handleAddOrder}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Order
+          {t('sales.createOrder')}
         </button>
       </div>
 
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('sales.totalOrders')}</div>
             <div className="mt-2 text-2xl font-bold">{stats.totalOrders}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Draft Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('sales.draftOrders')}</div>
             <div className="mt-2 text-2xl font-bold text-gray-600">{stats.draftOrders}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Confirmed Orders</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('sales.confirmedOrders')}</div>
             <div className="mt-2 text-2xl font-bold text-blue-600">{stats.confirmedOrders}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Revenue</div>
+            <div className="text-sm font-medium text-muted-foreground">{t('sales.totalRevenue')}</div>
             <div className="mt-2 text-2xl font-bold text-green-600">
               {formatCurrency(stats.totalRevenue)}
             </div>
@@ -137,7 +139,7 @@ export function SalesOrdersPage() {
       <div className="flex gap-4">
         <input
           type="text"
-          placeholder="Search orders..."
+          placeholder={t('sales.searchOrders')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -147,13 +149,13 @@ export function SalesOrdersPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">{t('sales.allStatuses')}</option>
+          <option value="draft">{t('sales.draft')}</option>
+          <option value="confirmed">{t('sales.confirmed')}</option>
+          <option value="processing">{t('sales.processing')}</option>
+          <option value="shipped">{t('sales.shipped')}</option>
+          <option value="delivered">{t('sales.delivered')}</option>
+          <option value="cancelled">{t('sales.cancelled')}</option>
         </select>
       </div>
 
@@ -162,7 +164,7 @@ export function SalesOrdersPage() {
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Loading sales orders...</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t('sales.loadingOrders')}</p>
             </div>
           </div>
         ) : paginatedOrders.data.length > 0 ? (
@@ -171,14 +173,14 @@ export function SalesOrdersPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Order #</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Expected Delivery</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Subtotal</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('sales.orderNumber')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.date')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('sales.expectedDelivery')}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('sales.subtotal')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('sales.tax')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common.total')}</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -202,14 +204,14 @@ export function SalesOrdersPage() {
                           onClick={() => handleEditOrder(order.id)}
                           className="text-sm text-primary hover:text-primary/80 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => deleteOrder.mutate(order.id)}
                           className="text-sm text-red-600 hover:underline"
                           disabled={deleteOrder.isPending}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                     </tr>
@@ -229,11 +231,11 @@ export function SalesOrdersPage() {
           </>
         ) : (
           <EmptyState
-            title="No sales orders found"
-            description="Get started by creating your first sales order for a customer."
+            title={t('sales.noOrdersFound')}
+            description={t('sales.noOrdersDescription')}
             icon="document"
             action={{
-              label: "Create Order",
+              label: t('sales.createOrder'),
               onClick: handleAddOrder,
             }}
           />
