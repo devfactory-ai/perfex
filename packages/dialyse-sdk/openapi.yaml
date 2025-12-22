@@ -1,0 +1,2747 @@
+openapi: 3.0.3
+info:
+  title: Perfex Dialyse API
+  description: |
+    API REST pour le module Dialyse (Hémodialyse) de Perfex ERP.
+
+    Cette API permet de gérer:
+    - Patients dialysés avec suivi sérologique
+    - Accès vasculaires (FAV, cathéters)
+    - Prescriptions de dialyse
+    - Machines de dialyse et maintenance
+    - Sessions de dialyse avec monitoring per-dialytique
+    - Résultats de laboratoire
+    - Alertes cliniques
+
+    ## Authentification
+
+    L'API supporte deux méthodes d'authentification:
+    - **Bearer Token**: `Authorization: Bearer <jwt-token>`
+    - **API Key**: `X-API-Key: <api-key>`
+
+    ## Multi-tenant
+
+    L'organisation doit être spécifiée via le header:
+    - `X-Organization-Id: <organization-uuid>`
+  version: 1.0.0
+  contact:
+    name: Perfex Support
+    email: support@perfex.io
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.perfex.io/api/v1/dialyse
+    description: Production
+  - url: https://staging-api.perfex.io/api/v1/dialyse
+    description: Staging
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+tags:
+  - name: Dashboard
+    description: Vue d'ensemble et statistiques
+  - name: Patients
+    description: Gestion des patients dialysés
+  - name: Vascular Accesses
+    description: Gestion des accès vasculaires
+  - name: Prescriptions
+    description: Prescriptions de dialyse
+  - name: Machines
+    description: Machines de dialyse
+  - name: Maintenance
+    description: Maintenance des machines
+  - name: Slots
+    description: Créneaux de sessions
+  - name: Sessions
+    description: Sessions de dialyse
+  - name: Session Records
+    description: Monitoring per-dialytique
+  - name: Session Incidents
+    description: Incidents de session
+  - name: Lab Results
+    description: Résultats de laboratoire
+  - name: Alerts
+    description: Alertes cliniques
+
+paths:
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Données du tableau de bord
+      operationId: getDashboard
+      responses:
+        '200':
+          description: Données du dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+
+  /patients:
+    get:
+      tags: [Patients]
+      summary: Liste des patients
+      operationId: listPatients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Recherche par nom, prénom ou ID médical
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PatientStatus'
+        - name: requiresIsolation
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Liste des patients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientListResponse'
+
+    post:
+      tags: [Patients]
+      summary: Créer un patient
+      operationId: createPatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatientInput'
+      responses:
+        '201':
+          description: Patient créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+
+  /patients/stats:
+    get:
+      tags: [Patients]
+      summary: Statistiques des patients
+      operationId: getPatientStats
+      responses:
+        '200':
+          description: Statistiques
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientStatsResponse'
+
+  /patients/{patientId}:
+    get:
+      tags: [Patients]
+      summary: Obtenir un patient
+      operationId: getPatient
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      responses:
+        '200':
+          description: Patient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Patients]
+      summary: Mettre à jour un patient
+      operationId: updatePatient
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientInput'
+      responses:
+        '200':
+          description: Patient mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+
+    delete:
+      tags: [Patients]
+      summary: Supprimer un patient
+      operationId: deletePatient
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      responses:
+        '204':
+          description: Patient supprimé
+
+  /patients/{patientId}/serology:
+    put:
+      tags: [Patients]
+      summary: Mettre à jour la sérologie
+      operationId: updatePatientSerology
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hivStatus:
+                  $ref: '#/components/schemas/SerologyStatus'
+                hbvStatus:
+                  $ref: '#/components/schemas/SerologyStatus'
+                hcvStatus:
+                  $ref: '#/components/schemas/SerologyStatus'
+      responses:
+        '200':
+          description: Sérologie mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+
+  /patients/{patientId}/vascular-accesses:
+    get:
+      tags: [Vascular Accesses]
+      summary: Liste des accès vasculaires
+      operationId: listVascularAccesses
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      responses:
+        '200':
+          description: Liste des accès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VascularAccessListResponse'
+
+  /vascular-accesses:
+    post:
+      tags: [Vascular Accesses]
+      summary: Créer un accès vasculaire
+      operationId: createVascularAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVascularAccessInput'
+      responses:
+        '201':
+          description: Accès créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VascularAccessResponse'
+
+  /vascular-accesses/{accessId}/status:
+    put:
+      tags: [Vascular Accesses]
+      summary: Mettre à jour le statut
+      operationId: updateVascularAccessStatus
+      parameters:
+        - name: accessId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/VascularAccessStatus'
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Statut mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VascularAccessResponse'
+
+  /patients/{patientId}/prescriptions:
+    get:
+      tags: [Prescriptions]
+      summary: Liste des prescriptions
+      operationId: listPrescriptions
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PrescriptionStatus'
+      responses:
+        '200':
+          description: Liste des prescriptions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionListResponse'
+
+  /patients/{patientId}/prescriptions/active:
+    get:
+      tags: [Prescriptions]
+      summary: Prescription active
+      operationId: getActivePrescription
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      responses:
+        '200':
+          description: Prescription active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionResponse'
+
+  /prescriptions:
+    post:
+      tags: [Prescriptions]
+      summary: Créer une prescription
+      operationId: createPrescription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrescriptionInput'
+      responses:
+        '201':
+          description: Prescription créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionResponse'
+
+  /prescriptions/{prescriptionId}/renew:
+    post:
+      tags: [Prescriptions]
+      summary: Renouveler une prescription
+      operationId: renewPrescription
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrescriptionInput'
+      responses:
+        '201':
+          description: Nouvelle prescription créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionResponse'
+
+  /prescriptions/{prescriptionId}/cancel:
+    post:
+      tags: [Prescriptions]
+      summary: Annuler une prescription
+      operationId: cancelPrescription
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescription annulée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionResponse'
+
+  /machines:
+    get:
+      tags: [Machines]
+      summary: Liste des machines
+      operationId: listMachines
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/MachineStatus'
+        - name: isolationOnly
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des machines
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineListResponse'
+
+    post:
+      tags: [Machines]
+      summary: Créer une machine
+      operationId: createMachine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMachineInput'
+      responses:
+        '201':
+          description: Machine créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineResponse'
+
+  /machines/stats:
+    get:
+      tags: [Machines]
+      summary: Statistiques des machines
+      operationId: getMachineStats
+      responses:
+        '200':
+          description: Statistiques
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineStatsResponse'
+
+  /machines/available:
+    get:
+      tags: [Machines]
+      summary: Machines disponibles
+      operationId: getAvailableMachines
+      parameters:
+        - name: forIsolation
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Machines disponibles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineListResponse'
+
+  /machines/{machineId}:
+    get:
+      tags: [Machines]
+      summary: Obtenir une machine
+      operationId: getMachine
+      parameters:
+        - $ref: '#/components/parameters/machineId'
+      responses:
+        '200':
+          description: Machine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineResponse'
+
+    put:
+      tags: [Machines]
+      summary: Mettre à jour une machine
+      operationId: updateMachine
+      parameters:
+        - $ref: '#/components/parameters/machineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMachineInput'
+      responses:
+        '200':
+          description: Machine mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineResponse'
+
+  /machines/{machineId}/status:
+    put:
+      tags: [Machines]
+      summary: Mettre à jour le statut
+      operationId: updateMachineStatus
+      parameters:
+        - $ref: '#/components/parameters/machineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/MachineStatus'
+      responses:
+        '200':
+          description: Statut mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineResponse'
+
+  /machines/{machineId}/maintenance:
+    get:
+      tags: [Maintenance]
+      summary: Historique maintenance
+      operationId: listMachineMaintenance
+      parameters:
+        - $ref: '#/components/parameters/machineId'
+      responses:
+        '200':
+          description: Historique
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceListResponse'
+
+  /maintenance:
+    post:
+      tags: [Maintenance]
+      summary: Planifier une maintenance
+      operationId: createMaintenance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMaintenanceInput'
+      responses:
+        '201':
+          description: Maintenance planifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceResponse'
+
+  /maintenance/{maintenanceId}/complete:
+    post:
+      tags: [Maintenance]
+      summary: Compléter une maintenance
+      operationId: completeMaintenance
+      parameters:
+        - name: maintenanceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workPerformed:
+                  type: string
+                cost:
+                  type: number
+                partsReplaced:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Maintenance complétée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceResponse'
+
+  /slots:
+    get:
+      tags: [Slots]
+      summary: Liste des créneaux
+      operationId: listSlots
+      responses:
+        '200':
+          description: Créneaux
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotListResponse'
+
+    post:
+      tags: [Slots]
+      summary: Créer un créneau
+      operationId: createSlot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSlotInput'
+      responses:
+        '201':
+          description: Créneau créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotResponse'
+
+  /slots/{slotId}:
+    put:
+      tags: [Slots]
+      summary: Mettre à jour un créneau
+      operationId: updateSlot
+      parameters:
+        - name: slotId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSlotInput'
+      responses:
+        '200':
+          description: Créneau mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotResponse'
+
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: Liste des sessions
+      operationId: listSessions
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: machineId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/SessionStatus'
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+
+    post:
+      tags: [Sessions]
+      summary: Créer une session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionInput'
+      responses:
+        '201':
+          description: Session créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/recurring:
+    post:
+      tags: [Sessions]
+      summary: Créer des sessions récurrentes
+      operationId: createRecurringSessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/CreateSessionInput'
+                - type: object
+                  properties:
+                    weeks:
+                      type: integer
+                      default: 4
+      responses:
+        '201':
+          description: Sessions créées
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+
+  /sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      summary: Obtenir une session
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{sessionId}/check-in:
+    post:
+      tags: [Sessions]
+      summary: Check-in patient
+      operationId: checkInSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Patient checked-in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{sessionId}/start:
+    post:
+      tags: [Sessions]
+      summary: Démarrer la session
+      operationId: startSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                machineId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Session démarrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{sessionId}/complete:
+    post:
+      tags: [Sessions]
+      summary: Terminer la session
+      operationId: completeSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Session terminée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{sessionId}/cancel:
+    post:
+      tags: [Sessions]
+      summary: Annuler la session
+      operationId: cancelSession
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Session annulée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /sessions/{sessionId}/records:
+    get:
+      tags: [Session Records]
+      summary: Liste des enregistrements
+      operationId: listSessionRecords
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Enregistrements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionRecordListResponse'
+
+    post:
+      tags: [Session Records]
+      summary: Ajouter un enregistrement
+      operationId: createSessionRecord
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRecordInput'
+      responses:
+        '201':
+          description: Enregistrement créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionRecordResponse'
+
+  /sessions/{sessionId}/incidents:
+    get:
+      tags: [Session Incidents]
+      summary: Liste des incidents
+      operationId: listSessionIncidents
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '200':
+          description: Incidents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionIncidentListResponse'
+
+    post:
+      tags: [Session Incidents]
+      summary: Signaler un incident
+      operationId: createSessionIncident
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionIncidentInput'
+      responses:
+        '201':
+          description: Incident créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionIncidentResponse'
+
+  /patients/{patientId}/lab-results:
+    get:
+      tags: [Lab Results]
+      summary: Liste des résultats
+      operationId: listLabResults
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Résultats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResultListResponse'
+
+  /patients/{patientId}/lab-results/latest:
+    get:
+      tags: [Lab Results]
+      summary: Dernier résultat
+      operationId: getLatestLabResult
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      responses:
+        '200':
+          description: Dernier résultat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResultResponse'
+
+  /patients/{patientId}/lab-results/import:
+    post:
+      tags: [Lab Results]
+      summary: Importer des résultats
+      operationId: importLabResults
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [results]
+              properties:
+                results:
+                  type: array
+                  items:
+                    type: object
+                    required: [marker, value]
+                    properties:
+                      marker:
+                        type: string
+                      value:
+                        type: number
+                      unit:
+                        type: string
+      responses:
+        '200':
+          description: Import terminé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      imported:
+                        type: integer
+                      errors:
+                        type: array
+                        items:
+                          type: string
+
+  /patients/{patientId}/lab-results/trend/{marker}:
+    get:
+      tags: [Lab Results]
+      summary: Tendance d'un marqueur
+      operationId: getLabTrend
+      parameters:
+        - $ref: '#/components/parameters/patientId'
+        - name: marker
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: months
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        '200':
+          description: Tendance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        value:
+                          type: number
+
+  /lab-results:
+    post:
+      tags: [Lab Results]
+      summary: Créer un résultat
+      operationId: createLabResult
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabResultInput'
+      responses:
+        '201':
+          description: Résultat créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResultResponse'
+
+  /lab-results/calculate-ktv:
+    post:
+      tags: [Lab Results]
+      summary: Calculer Kt/V
+      operationId: calculateKtV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ureaPre, ureaPost, postWeight, durationMinutes]
+              properties:
+                ureaPre:
+                  type: number
+                  description: Urée pré-dialyse (mg/dL)
+                ureaPost:
+                  type: number
+                  description: Urée post-dialyse (mg/dL)
+                postWeight:
+                  type: number
+                  description: Poids post-dialyse (kg)
+                durationMinutes:
+                  type: integer
+                  description: Durée de la session (minutes)
+                ufVolume:
+                  type: number
+                  description: Volume d'ultrafiltration (L)
+      responses:
+        '200':
+          description: Kt/V calculé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      ktV:
+                        type: number
+
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: Liste des alertes
+      operationId: listAlerts
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlertStatus'
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlertSeverity'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlertType'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alertes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertListResponse'
+
+    post:
+      tags: [Alerts]
+      summary: Créer une alerte
+      operationId: createAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertInput'
+      responses:
+        '201':
+          description: Alerte créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+
+  /alerts/stats:
+    get:
+      tags: [Alerts]
+      summary: Statistiques des alertes
+      operationId: getAlertStats
+      responses:
+        '200':
+          description: Statistiques
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertStatsResponse'
+
+  /alerts/generate:
+    post:
+      tags: [Alerts]
+      summary: Générer les alertes automatiques
+      operationId: generateAutomatedAlerts
+      responses:
+        '200':
+          description: Alertes générées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      serology:
+                        type: integer
+                      vascularAccess:
+                        type: integer
+                      lab:
+                        type: integer
+
+  /alerts/{alertId}:
+    get:
+      tags: [Alerts]
+      summary: Obtenir une alerte
+      operationId: getAlert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alerte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+
+  /alerts/{alertId}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acquitter une alerte
+      operationId: acknowledgeAlert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alerte acquittée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+
+  /alerts/{alertId}/resolve:
+    post:
+      tags: [Alerts]
+      summary: Résoudre une alerte
+      operationId: resolveAlert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Alerte résolue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+
+  /alerts/{alertId}/dismiss:
+    post:
+      tags: [Alerts]
+      summary: Rejeter une alerte
+      operationId: dismissAlert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alerte rejetée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    patientId:
+      name: patientId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    machineId:
+      name: machineId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    sessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Resource not found
+
+  schemas:
+    # Enums
+    SerologyStatus:
+      type: string
+      enum: [negative, positive, unknown]
+
+    PatientStatus:
+      type: string
+      enum: [active, transferred, deceased, transplanted, recovered]
+
+    BloodType:
+      type: string
+      enum: [A+, A-, B+, B-, AB+, AB-, O+, O-]
+
+    VascularAccessType:
+      type: string
+      enum: [fav, catheter_permanent, catheter_temporary, graft]
+
+    VascularAccessStatus:
+      type: string
+      enum: [active, failed, removed, maturing]
+
+    DialysisType:
+      type: string
+      enum: [hemodialysis, hemofiltration, hemodiafiltration]
+
+    PrescriptionStatus:
+      type: string
+      enum: [active, expired, cancelled, superseded]
+
+    MachineStatus:
+      type: string
+      enum: [available, in_use, maintenance, out_of_service]
+
+    MaintenanceType:
+      type: string
+      enum: [preventive, corrective, calibration, inspection]
+
+    MaintenanceStatus:
+      type: string
+      enum: [scheduled, in_progress, completed, cancelled]
+
+    SessionStatus:
+      type: string
+      enum: [scheduled, checked_in, in_progress, completed, cancelled, no_show]
+
+    SessionPhase:
+      type: string
+      enum: [pre, intra, post]
+
+    IncidentType:
+      type: string
+      enum: [hypotension, cramps, nausea, bleeding, clotting, fever, chest_pain, arrhythmia, access_problem, other]
+
+    IncidentSeverity:
+      type: string
+      enum: [mild, moderate, severe]
+
+    AlertType:
+      type: string
+      enum: [prescription_renewal, lab_due, vaccination, vascular_access, serology_update, weight_deviation, custom]
+
+    AlertSeverity:
+      type: string
+      enum: [info, warning, critical]
+
+    AlertStatus:
+      type: string
+      enum: [active, acknowledged, resolved, dismissed]
+
+    # Patient
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        contactId:
+          type: string
+          format: uuid
+        medicalId:
+          type: string
+        photo:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        emergencyContactRelation:
+          type: string
+        bloodType:
+          $ref: '#/components/schemas/BloodType'
+        dryWeight:
+          type: number
+        renalFailureEtiology:
+          type: string
+        medicalHistory:
+          type: object
+        allergies:
+          type: array
+          items:
+            type: string
+        contraindications:
+          type: array
+          items:
+            type: string
+        hivStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        hbvStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        hcvStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        serologyLastUpdate:
+          type: string
+          format: date-time
+        requiresIsolation:
+          type: boolean
+        hepatitisBVaccinated:
+          type: boolean
+        hepatitisBLastDose:
+          type: string
+          format: date
+        patientStatus:
+          $ref: '#/components/schemas/PatientStatus'
+        dialysisStartDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        contact:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+            dateOfBirth:
+              type: string
+              format: date
+            address:
+              type: string
+
+    CreatePatientInput:
+      type: object
+      required: [contactId, medicalId]
+      properties:
+        contactId:
+          type: string
+          format: uuid
+        medicalId:
+          type: string
+        photo:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        emergencyContactRelation:
+          type: string
+        bloodType:
+          $ref: '#/components/schemas/BloodType'
+        dryWeight:
+          type: number
+        renalFailureEtiology:
+          type: string
+        medicalHistory:
+          type: object
+        allergies:
+          type: array
+          items:
+            type: string
+        contraindications:
+          type: array
+          items:
+            type: string
+        hivStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        hbvStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        hcvStatus:
+          $ref: '#/components/schemas/SerologyStatus'
+        requiresIsolation:
+          type: boolean
+        hepatitisBVaccinated:
+          type: boolean
+        hepatitisBLastDose:
+          type: string
+          format: date
+        patientStatus:
+          $ref: '#/components/schemas/PatientStatus'
+        dialysisStartDate:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    UpdatePatientInput:
+      type: object
+      properties:
+        photo:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        emergencyContactRelation:
+          type: string
+        bloodType:
+          $ref: '#/components/schemas/BloodType'
+        dryWeight:
+          type: number
+        renalFailureEtiology:
+          type: string
+        medicalHistory:
+          type: object
+        allergies:
+          type: array
+          items:
+            type: string
+        contraindications:
+          type: array
+          items:
+            type: string
+        requiresIsolation:
+          type: boolean
+        hepatitisBVaccinated:
+          type: boolean
+        hepatitisBLastDose:
+          type: string
+          format: date
+        patientStatus:
+          $ref: '#/components/schemas/PatientStatus'
+        dialysisStartDate:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    PatientStats:
+      type: object
+      properties:
+        totalPatients:
+          type: integer
+        activePatients:
+          type: integer
+        isolationPatients:
+          type: integer
+        recentlyAdded:
+          type: integer
+
+    # Vascular Access
+    VascularAccess:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/VascularAccessType'
+        location:
+          type: string
+        creationDate:
+          type: string
+          format: date
+        surgeon:
+          type: string
+        status:
+          $ref: '#/components/schemas/VascularAccessStatus'
+        failureDate:
+          type: string
+          format: date
+        failureReason:
+          type: string
+        removalDate:
+          type: string
+          format: date
+        lastControlDate:
+          type: string
+          format: date
+        nextControlDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateVascularAccessInput:
+      type: object
+      required: [patientId, type, location]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/VascularAccessType'
+        location:
+          type: string
+        creationDate:
+          type: string
+          format: date
+        surgeon:
+          type: string
+        status:
+          $ref: '#/components/schemas/VascularAccessStatus'
+        notes:
+          type: string
+
+    # Prescription
+    Prescription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        prescribedBy:
+          type: string
+          format: uuid
+        prescriptionNumber:
+          type: string
+        type:
+          $ref: '#/components/schemas/DialysisType'
+        isPermanent:
+          type: boolean
+        durationMinutes:
+          type: integer
+        frequencyPerWeek:
+          type: integer
+        dryWeight:
+          type: number
+        bloodFlowRate:
+          type: number
+        dialysateFlowRate:
+          type: number
+        dialyzerType:
+          type: string
+        membraneSurface:
+          type: number
+        anticoagulationType:
+          type: string
+        anticoagulationDose:
+          type: string
+        anticoagulationProtocol:
+          type: string
+        sessionMedications:
+          type: array
+          items:
+            type: object
+        dialysateType:
+          type: string
+        dialysateSodium:
+          type: number
+        dialysatePotassium:
+          type: number
+        dialysateBicarbonate:
+          type: number
+        dialysateCalcium:
+          type: number
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/PrescriptionStatus'
+        supersededById:
+          type: string
+          format: uuid
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePrescriptionInput:
+      type: object
+      required: [patientId, type, durationMinutes, frequencyPerWeek, startDate]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DialysisType'
+        isPermanent:
+          type: boolean
+        durationMinutes:
+          type: integer
+        frequencyPerWeek:
+          type: integer
+        dryWeight:
+          type: number
+        bloodFlowRate:
+          type: number
+        dialysateFlowRate:
+          type: number
+        dialyzerType:
+          type: string
+        membraneSurface:
+          type: number
+        anticoagulationType:
+          type: string
+        anticoagulationDose:
+          type: string
+        dialysateType:
+          type: string
+        dialysateSodium:
+          type: number
+        dialysatePotassium:
+          type: number
+        dialysateBicarbonate:
+          type: number
+        dialysateCalcium:
+          type: number
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    # Machine
+    Machine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        warehouseId:
+          type: string
+          format: uuid
+        machineNumber:
+          type: string
+        model:
+          type: string
+        manufacturer:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          $ref: '#/components/schemas/MachineStatus'
+        isolationOnly:
+          type: boolean
+        location:
+          type: string
+        totalHours:
+          type: number
+        totalSessions:
+          type: integer
+        installationDate:
+          type: string
+          format: date
+        lastMaintenanceDate:
+          type: string
+          format: date
+        nextMaintenanceDate:
+          type: string
+          format: date
+        warrantyExpiry:
+          type: string
+          format: date
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateMachineInput:
+      type: object
+      required: [machineNumber, model]
+      properties:
+        machineNumber:
+          type: string
+        model:
+          type: string
+        manufacturer:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          $ref: '#/components/schemas/MachineStatus'
+        isolationOnly:
+          type: boolean
+        location:
+          type: string
+        installationDate:
+          type: string
+          format: date
+        warrantyExpiry:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    MachineStats:
+      type: object
+      properties:
+        totalMachines:
+          type: integer
+        availableMachines:
+          type: integer
+        inUseMachines:
+          type: integer
+        maintenanceMachines:
+          type: integer
+        outOfServiceMachines:
+          type: integer
+        isolationMachines:
+          type: integer
+
+    # Maintenance
+    Maintenance:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        machineId:
+          type: string
+          format: uuid
+        maintenanceNumber:
+          type: string
+        type:
+          $ref: '#/components/schemas/MaintenanceType'
+        status:
+          $ref: '#/components/schemas/MaintenanceStatus'
+        scheduledDate:
+          type: string
+          format: date
+        completedDate:
+          type: string
+          format: date
+        performedBy:
+          type: string
+        vendor:
+          type: string
+        description:
+          type: string
+        workPerformed:
+          type: string
+        cost:
+          type: number
+        downtime:
+          type: number
+        partsReplaced:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateMaintenanceInput:
+      type: object
+      required: [machineId, type]
+      properties:
+        machineId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/MaintenanceType'
+        scheduledDate:
+          type: string
+          format: date
+        description:
+          type: string
+        vendor:
+          type: string
+        notes:
+          type: string
+
+    # Slot
+    Slot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+        maxPatients:
+          type: integer
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateSlotInput:
+      type: object
+      required: [name, startTime, endTime, daysOfWeek, maxPatients]
+      properties:
+        name:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+        maxPatients:
+          type: integer
+        active:
+          type: boolean
+
+    # Session
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        prescriptionId:
+          type: string
+          format: uuid
+        machineId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        sessionNumber:
+          type: string
+        sessionDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        scheduledStartTime:
+          type: string
+        actualStartTime:
+          type: string
+          format: date-time
+        actualEndTime:
+          type: string
+          format: date-time
+        actualDurationMinutes:
+          type: integer
+        isRecurring:
+          type: boolean
+        recurrenceGroupId:
+          type: string
+          format: uuid
+        primaryNurseId:
+          type: string
+          format: uuid
+        supervisingDoctorId:
+          type: string
+          format: uuid
+        cancellationReason:
+          type: string
+        cancelledBy:
+          type: string
+          format: uuid
+        cancelledAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        patient:
+          $ref: '#/components/schemas/Patient'
+        machine:
+          $ref: '#/components/schemas/Machine'
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionRecord'
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionIncident'
+
+    CreateSessionInput:
+      type: object
+      required: [patientId, prescriptionId, sessionDate]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        prescriptionId:
+          type: string
+          format: uuid
+        machineId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        sessionDate:
+          type: string
+          format: date
+        scheduledStartTime:
+          type: string
+        isRecurring:
+          type: boolean
+        primaryNurseId:
+          type: string
+          format: uuid
+        supervisingDoctorId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+
+    # Session Record
+    SessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        phase:
+          $ref: '#/components/schemas/SessionPhase'
+        recordTime:
+          type: string
+          format: date-time
+        weightKg:
+          type: number
+        systolicBp:
+          type: integer
+        diastolicBp:
+          type: integer
+        heartRate:
+          type: integer
+        temperature:
+          type: number
+        arterialPressure:
+          type: number
+        venousPressure:
+          type: number
+        transmembranePressure:
+          type: number
+        bloodFlowRate:
+          type: number
+        dialysateFlowRate:
+          type: number
+        cumulativeUf:
+          type: number
+        clinicalState:
+          type: string
+        vascularAccessState:
+          type: string
+        compressionTime:
+          type: integer
+        ufAchieved:
+          type: number
+        ufPrescribed:
+          type: number
+        hasIncident:
+          type: boolean
+        recordedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateSessionRecordInput:
+      type: object
+      required: [phase]
+      properties:
+        phase:
+          $ref: '#/components/schemas/SessionPhase'
+        weightKg:
+          type: number
+        systolicBp:
+          type: integer
+        diastolicBp:
+          type: integer
+        heartRate:
+          type: integer
+        temperature:
+          type: number
+        arterialPressure:
+          type: number
+        venousPressure:
+          type: number
+        transmembranePressure:
+          type: number
+        bloodFlowRate:
+          type: number
+        dialysateFlowRate:
+          type: number
+        cumulativeUf:
+          type: number
+        clinicalState:
+          type: string
+        vascularAccessState:
+          type: string
+        compressionTime:
+          type: integer
+        ufAchieved:
+          type: number
+        ufPrescribed:
+          type: number
+
+    # Session Incident
+    SessionIncident:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        sessionRecordId:
+          type: string
+          format: uuid
+        incidentTime:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/IncidentType'
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+        description:
+          type: string
+        intervention:
+          type: string
+        outcome:
+          type: string
+        reportedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateSessionIncidentInput:
+      type: object
+      required: [type, severity]
+      properties:
+        type:
+          $ref: '#/components/schemas/IncidentType'
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+        description:
+          type: string
+        intervention:
+          type: string
+        outcome:
+          type: string
+
+    # Lab Result
+    LabResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        labDate:
+          type: string
+          format: date
+        labSource:
+          type: string
+        importMethod:
+          type: string
+          enum: [manual, file_import, api]
+        urea:
+          type: number
+        ureaPre:
+          type: number
+        ureaPost:
+          type: number
+        creatinine:
+          type: number
+        ktV:
+          type: number
+        hemoglobin:
+          type: number
+        hematocrit:
+          type: number
+        pth:
+          type: number
+        calcium:
+          type: number
+        phosphorus:
+          type: number
+        potassium:
+          type: number
+        sodium:
+          type: number
+        bicarbonate:
+          type: number
+        albumin:
+          type: number
+        ferritin:
+          type: number
+        transferrinSaturation:
+          type: number
+        crp:
+          type: number
+        allResults:
+          type: object
+        hasOutOfRangeValues:
+          type: boolean
+        outOfRangeMarkers:
+          type: array
+          items:
+            type: string
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateLabResultInput:
+      type: object
+      required: [patientId, labDate]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        labDate:
+          type: string
+          format: date
+        labSource:
+          type: string
+        urea:
+          type: number
+        ureaPre:
+          type: number
+        ureaPost:
+          type: number
+        creatinine:
+          type: number
+        hemoglobin:
+          type: number
+        hematocrit:
+          type: number
+        pth:
+          type: number
+        calcium:
+          type: number
+        phosphorus:
+          type: number
+        potassium:
+          type: number
+        sodium:
+          type: number
+        bicarbonate:
+          type: number
+        albumin:
+          type: number
+        ferritin:
+          type: number
+        transferrinSaturation:
+          type: number
+        crp:
+          type: number
+        notes:
+          type: string
+
+    # Alert
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        alertType:
+          $ref: '#/components/schemas/AlertType'
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+        title:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/AlertStatus'
+        assignedTo:
+          type: string
+          format: uuid
+        acknowledgedBy:
+          type: string
+          format: uuid
+        acknowledgedAt:
+          type: string
+          format: date-time
+        resolvedBy:
+          type: string
+          format: uuid
+        resolvedAt:
+          type: string
+          format: date-time
+        resolutionNotes:
+          type: string
+        relatedToType:
+          type: string
+        relatedToId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        patient:
+          $ref: '#/components/schemas/Patient'
+
+    CreateAlertInput:
+      type: object
+      required: [patientId, alertType, severity, title]
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        alertType:
+          $ref: '#/components/schemas/AlertType'
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+        title:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        assignedTo:
+          type: string
+          format: uuid
+        relatedToType:
+          type: string
+        relatedToId:
+          type: string
+          format: uuid
+
+    AlertStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        acknowledged:
+          type: integer
+        resolved:
+          type: integer
+        critical:
+          type: integer
+        high:
+          type: integer
+        medium:
+          type: integer
+        low:
+          type: integer
+
+    # Dashboard
+    DashboardData:
+      type: object
+      properties:
+        patients:
+          $ref: '#/components/schemas/PatientStats'
+        machines:
+          $ref: '#/components/schemas/MachineStats'
+        sessions:
+          type: object
+          properties:
+            totalSessions:
+              type: integer
+            completedSessions:
+              type: integer
+            cancelledSessions:
+              type: integer
+            inProgressSessions:
+              type: integer
+            scheduledSessions:
+              type: integer
+            averageDuration:
+              type: number
+            incidentCount:
+              type: integer
+        alerts:
+          $ref: '#/components/schemas/AlertStats'
+        todaySessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        criticalAlerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+
+    # Response Wrappers
+    PatientResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Patient'
+
+    PatientListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patient'
+
+    PatientStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/PatientStats'
+
+    VascularAccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/VascularAccess'
+
+    VascularAccessListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VascularAccess'
+
+    PrescriptionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Prescription'
+
+    PrescriptionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+
+    MachineResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Machine'
+
+    MachineListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Machine'
+
+    MachineStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MachineStats'
+
+    MaintenanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Maintenance'
+
+    MaintenanceListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+
+    SlotResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Slot'
+
+    SlotListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
+
+    SessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Session'
+
+    SessionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+
+    SessionRecordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/SessionRecord'
+
+    SessionRecordListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionRecord'
+
+    SessionIncidentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/SessionIncident'
+
+    SessionIncidentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionIncident'
+
+    LabResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/LabResult'
+
+    LabResultListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabResult'
+
+    AlertResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Alert'
+
+    AlertListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+
+    AlertStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AlertStats'
+
+    DashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/DashboardData'

@@ -150,6 +150,7 @@ const fr: Translations = {
     traceability: 'Traçabilité',
     payroll: 'Paie',
     ai: 'Intelligence Artificielle',
+    dialyse: 'Dialyse',
   },
   sidebar: {
     // Finance
@@ -211,6 +212,12 @@ const fr: Translations = {
     payslips: 'Bulletins de paie',
     // Integrations
     connectors: 'Connecteurs',
+    // Dialyse (Healthcare)
+    dialyseDashboard: 'Tableau de bord Dialyse',
+    dialysePatients: 'Patients Dialysés',
+    dialysePlanning: 'Planning Séances',
+    dialyseMachines: 'Machines & Équipements',
+    dialyseAlerts: 'Alertes Cliniques',
     // Settings
     moduleManagement: 'Gestion modules',
     platformSettings: 'Paramètres plateforme',
@@ -1156,6 +1163,7 @@ const en: Translations = {
     traceability: 'Traceability',
     payroll: 'Payroll',
     ai: 'Artificial Intelligence',
+    dialyse: 'Dialysis',
   },
   sidebar: {
     accounts: 'Accounts',
@@ -1201,6 +1209,11 @@ const en: Translations = {
     payrollManagement: 'Payroll Management',
     payslips: 'Payslips',
     connectors: 'Connectors',
+    dialyseDashboard: 'Dialysis Dashboard',
+    dialysePatients: 'Dialysis Patients',
+    dialysePlanning: 'Session Planning',
+    dialyseMachines: 'Machines & Equipment',
+    dialyseAlerts: 'Clinical Alerts',
     moduleManagement: 'Module Management',
     platformSettings: 'Platform Settings',
     helpCenter: 'Help Center',
@@ -2137,6 +2150,7 @@ const ar: Translations = {
     traceability: 'التتبع',
     payroll: 'الرواتب',
     ai: 'الذكاء الاصطناعي',
+    dialyse: 'غسيل الكلى',
   },
   sidebar: {
     accounts: 'الحسابات',
@@ -2182,6 +2196,11 @@ const ar: Translations = {
     payrollManagement: 'إدارة الرواتب',
     payslips: 'كشوف المرتبات',
     connectors: 'الموصلات',
+    dialyseDashboard: 'لوحة غسيل الكلى',
+    dialysePatients: 'مرضى غسيل الكلى',
+    dialysePlanning: 'جدولة الجلسات',
+    dialyseMachines: 'الأجهزة والمعدات',
+    dialyseAlerts: 'التنبيهات السريرية',
     moduleManagement: 'إدارة الوحدات',
     platformSettings: 'إعدادات المنصة',
     helpCenter: 'مركز المساعدة',

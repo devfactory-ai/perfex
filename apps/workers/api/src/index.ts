@@ -39,6 +39,7 @@ import recipesRoutes from './routes/recipes';
 import traceabilityRoutes from './routes/traceability';
 import payrollRoutes from './routes/payroll';
 import integrationsRoutes from './routes/integrations';
+import dialyseRoutes from './routes/dialyse';
 import type { Env } from './types';
 import { ScheduledService } from './services/scheduled.service';
 
@@ -206,6 +207,9 @@ apiV1.route('/payroll', payrollRoutes);
 
 // Mount Integrations routes (Tunisian market connectors)
 apiV1.route('/integrations', integrationsRoutes);
+
+// Mount Dialyse routes (Healthcare - Dialysis module)
+apiV1.route('/dialyse', dialyseRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);

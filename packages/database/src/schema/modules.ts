@@ -77,4 +77,7 @@ export const DEFAULT_MODULES = [
   { id: 'audit', name: 'Smart Audit', category: 'advanced', isDefault: false, sortOrder: 21, icon: 'Shield' },
   { id: 'payroll', name: 'Paie', category: 'advanced', isDefault: false, sortOrder: 22, icon: 'Banknote', description: 'Bulletins de salaire, cotisations sociales' },
   { id: 'analytics', name: 'Analytics Avancés', category: 'advanced', isDefault: false, sortOrder: 23, icon: 'BarChart3', description: 'Tableaux de bord avancés, KPIs' },
+
+  // Healthcare modules (NOT enabled by default)
+  { id: 'dialyse', name: 'Dialyse', category: 'industry', isDefault: false, sortOrder: 30, icon: 'HeartPulse', description: 'Gestion des centres de dialyse: patients, séances, machines, biologie' },
 ] as const;

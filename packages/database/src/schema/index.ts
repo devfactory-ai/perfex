@@ -21,6 +21,7 @@ export * from './modules';
 export * from './recipes';
 export * from './traceability';
 export * from './payroll';
+export * from './dialyse';
 
 // Export all tables for drizzle-kit
 export {
@@ -225,3 +226,20 @@ export {
   fiscalDeclarations,
   integrationWebhookEvents,
 } from './integrations';
+
+export {
+  dialysePatients,
+  vascularAccesses,
+  dialysePrescriptions,
+  dialysisMachines,
+  machineMaintenanceRecords,
+  dialysisSessionSlots,
+  dialysisSessions,
+  sessionRecords,
+  sessionIncidents,
+  sessionMedications,
+  sessionConsumables,
+  sessionSignatures,
+  labResults,
+  clinicalAlerts,
+} from './dialyse';
