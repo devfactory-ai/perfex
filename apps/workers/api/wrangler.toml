@@ -17,16 +17,16 @@ vars = { ENVIRONMENT = "development", LOG_LEVEL = "debug" }
 [[env.dev.d1_databases]]
 binding = "DB"
 database_name = "perfex-db-dev"
-database_id = "990c74a6-b0b6-4904-8d52-5f1968e06768"
+database_id = "ee413e83-d9ff-4537-910b-1518c21c411d"
 migrations_dir = "../../../packages/database/migrations"
 
 [[env.dev.kv_namespaces]]
 binding = "SESSIONS"
-preview_id = "2cf6285c5c1f4db2a32eb4c71e53cbff"
+id = "2f01fde43e7948b9b8c675eb2c071a53"
 
 [[env.dev.kv_namespaces]]
 binding = "CACHE"
-preview_id = "0392b051b75b4a4ca3136707a71b21a4"
+id = "91daa70dba574f4ea2817fe3e6c4e697"
 
 [env.dev.ai]
 binding = "AI"
