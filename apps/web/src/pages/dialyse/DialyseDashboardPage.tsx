@@ -322,7 +322,7 @@ export function DialyseDashboardPage() {
       {/* Quick Actions */}
       <div className="rounded-lg border bg-card p-4">
         <h3 className="font-semibold mb-4">Accès Rapide</h3>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <Link
             to="/dialyse/patients"
             className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
@@ -380,6 +380,36 @@ export function DialyseDashboardPage() {
             <div>
               <div className="font-medium">Alertes</div>
               <div className="text-xs text-muted-foreground">Alertes cliniques</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/dialyse/consumables"
+            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+          >
+            <div className="p-2 rounded-lg bg-orange-100">
+              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-medium">Consommables</div>
+              <div className="text-xs text-muted-foreground">Stocks et inventaire</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/dialyse/reports"
+            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+          >
+            <div className="p-2 rounded-lg bg-teal-100">
+              <svg className="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-medium">Rapports</div>
+              <div className="text-xs text-muted-foreground">Statistiques</div>
             </div>
           </Link>
         </div>

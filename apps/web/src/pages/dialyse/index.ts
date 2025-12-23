@@ -17,3 +17,5 @@ export { DialysePrescriptionFormPage } from './DialysePrescriptionFormPage';
 export { DialyseLabResultFormPage } from './DialyseLabResultFormPage';
 export { DialyseVascularAccessFormPage } from './DialyseVascularAccessFormPage';
 export { DialyseSlotsPage } from './DialyseSlotsPage';
+export { DialyseReportsPage } from './DialyseReportsPage';
+export { DialyseConsumablesPage } from './DialyseConsumablesPage';
