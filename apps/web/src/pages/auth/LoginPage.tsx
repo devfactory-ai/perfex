@@ -35,7 +35,7 @@ export function LoginPage() {
 
   const fillDemoCredentials = () => {
     setValue('email', 'demo@perfex.io');
-    setValue('password', 'Demo@2024!');
+    setValue('password', 'DemoPass@123');
   };
 
   const onSubmit = async (data: LoginInput) => {
