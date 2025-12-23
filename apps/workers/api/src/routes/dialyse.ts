@@ -41,6 +41,12 @@ import {
   sessionService,
   labService,
   alertService,
+  protocolService,
+  staffService,
+  billingService,
+  transportService,
+  consumablesService,
+  reportsService,
 } from '../services/dialyse';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import type { Env } from '../types';
@@ -1778,6 +1784,660 @@ dialyse.get(
         criticalAlerts,
       },
     });
+  }
+);
+
+// ============================================================================
+// PROTOCOLS ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/protocols
+ * List protocols
+ */
+dialyse.get(
+  '/protocols',
+  requirePermission('dialyse:prescriptions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const status = c.req.query('status');
+    const type = c.req.query('type');
+    const limit = parseInt(c.req.query('limit') || '25');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    const result = await protocolService.list(organizationId, { status, type, limit, offset });
+    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+  }
+);
+
+/**
+ * GET /dialyse/protocols/stats
+ */
+dialyse.get(
+  '/protocols/stats',
+  requirePermission('dialyse:prescriptions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const stats = await protocolService.getStats(organizationId);
+    return c.json({ success: true, data: stats });
+  }
+);
+
+/**
+ * GET /dialyse/protocols/:id
+ */
+dialyse.get(
+  '/protocols/:id',
+  requirePermission('dialyse:prescriptions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const protocol = await protocolService.getById(organizationId, id);
+    if (!protocol) return c.json({ success: false, error: 'Protocol not found' }, 404);
+    return c.json({ success: true, data: protocol });
+  }
+);
+
+/**
+ * POST /dialyse/protocols
+ */
+dialyse.post(
+  '/protocols',
+  requirePermission('dialyse:prescriptions:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const data = await c.req.json();
+    try {
+      const protocol = await protocolService.create(organizationId, userId, data);
+      return c.json({ success: true, data: protocol }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/protocols/:id
+ */
+dialyse.put(
+  '/protocols/:id',
+  requirePermission('dialyse:prescriptions:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    try {
+      const protocol = await protocolService.update(organizationId, id, data);
+      return c.json({ success: true, data: protocol });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * POST /dialyse/protocols/:id/duplicate
+ */
+dialyse.post(
+  '/protocols/:id/duplicate',
+  requirePermission('dialyse:prescriptions:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const id = c.req.param('id');
+    try {
+      const protocol = await protocolService.duplicate(organizationId, id, userId);
+      return c.json({ success: true, data: protocol }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/protocols/:id
+ */
+dialyse.delete(
+  '/protocols/:id',
+  requirePermission('dialyse:prescriptions:delete'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    try {
+      await protocolService.delete(organizationId, id);
+      return c.json({ success: true, data: { message: 'Protocol deleted' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+// ============================================================================
+// STAFF ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/staff
+ */
+dialyse.get(
+  '/staff',
+  requirePermission('dialyse:patients:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const role = c.req.query('role');
+    const status = c.req.query('status');
+    const limit = parseInt(c.req.query('limit') || '25');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    const result = await staffService.list(organizationId, { role, status, limit, offset });
+    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+  }
+);
+
+/**
+ * GET /dialyse/staff/stats
+ */
+dialyse.get(
+  '/staff/stats',
+  requirePermission('dialyse:patients:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const stats = await staffService.getStats(organizationId);
+    return c.json({ success: true, data: stats });
+  }
+);
+
+/**
+ * GET /dialyse/staff/:id
+ */
+dialyse.get(
+  '/staff/:id',
+  requirePermission('dialyse:patients:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const staff = await staffService.getById(organizationId, id);
+    if (!staff) return c.json({ success: false, error: 'Staff not found' }, 404);
+    return c.json({ success: true, data: staff });
+  }
+);
+
+/**
+ * POST /dialyse/staff
+ */
+dialyse.post(
+  '/staff',
+  requirePermission('dialyse:patients:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const data = await c.req.json();
+    try {
+      const staff = await staffService.create(organizationId, userId, data);
+      return c.json({ success: true, data: staff }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/staff/:id
+ */
+dialyse.put(
+  '/staff/:id',
+  requirePermission('dialyse:patients:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    try {
+      const staff = await staffService.update(organizationId, id, data);
+      return c.json({ success: true, data: staff });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/staff/:id/schedule
+ */
+dialyse.put(
+  '/staff/:id/schedule',
+  requirePermission('dialyse:patients:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const { schedule } = await c.req.json();
+    try {
+      const staff = await staffService.updateSchedule(organizationId, id, schedule);
+      return c.json({ success: true, data: staff });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/staff/:id
+ */
+dialyse.delete(
+  '/staff/:id',
+  requirePermission('dialyse:patients:delete'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    try {
+      await staffService.delete(organizationId, id);
+      return c.json({ success: true, data: { message: 'Staff deleted' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+// ============================================================================
+// BILLING ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/billing
+ */
+dialyse.get(
+  '/billing',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const status = c.req.query('status');
+    const patientId = c.req.query('patientId');
+    const startDate = c.req.query('startDate');
+    const endDate = c.req.query('endDate');
+    const limit = parseInt(c.req.query('limit') || '25');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    const result = await billingService.list(organizationId, { status, patientId, startDate, endDate, limit, offset });
+    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+  }
+);
+
+/**
+ * GET /dialyse/billing/stats
+ */
+dialyse.get(
+  '/billing/stats',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const stats = await billingService.getStats(organizationId);
+    return c.json({ success: true, data: stats });
+  }
+);
+
+/**
+ * GET /dialyse/billing/:id
+ */
+dialyse.get(
+  '/billing/:id',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const billing = await billingService.getById(organizationId, id);
+    if (!billing) return c.json({ success: false, error: 'Billing not found' }, 404);
+    return c.json({ success: true, data: billing });
+  }
+);
+
+/**
+ * POST /dialyse/billing
+ */
+dialyse.post(
+  '/billing',
+  requirePermission('dialyse:sessions:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const data = await c.req.json();
+    try {
+      const billing = await billingService.create(organizationId, userId, data);
+      return c.json({ success: true, data: billing }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/billing/:id
+ */
+dialyse.put(
+  '/billing/:id',
+  requirePermission('dialyse:sessions:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    try {
+      const billing = await billingService.update(organizationId, id, data);
+      return c.json({ success: true, data: billing });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * POST /dialyse/billing/:id/pay
+ */
+dialyse.post(
+  '/billing/:id/pay',
+  requirePermission('dialyse:sessions:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const { paidAmount, paidDate } = await c.req.json();
+    try {
+      const billing = await billingService.markPaid(organizationId, id, paidAmount, paidDate);
+      return c.json({ success: true, data: billing });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/billing/:id
+ */
+dialyse.delete(
+  '/billing/:id',
+  requirePermission('dialyse:sessions:delete'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    try {
+      await billingService.delete(organizationId, id);
+      return c.json({ success: true, data: { message: 'Billing deleted' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+// ============================================================================
+// TRANSPORT ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/transport
+ */
+dialyse.get(
+  '/transport',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const status = c.req.query('status');
+    const date = c.req.query('date');
+    const patientId = c.req.query('patientId');
+    const direction = c.req.query('direction');
+    const limit = parseInt(c.req.query('limit') || '25');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    const result = await transportService.list(organizationId, { status, date, patientId, direction, limit, offset });
+    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+  }
+);
+
+/**
+ * GET /dialyse/transport/stats
+ */
+dialyse.get(
+  '/transport/stats',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const stats = await transportService.getStats(organizationId);
+    return c.json({ success: true, data: stats });
+  }
+);
+
+/**
+ * GET /dialyse/transport/:id
+ */
+dialyse.get(
+  '/transport/:id',
+  requirePermission('dialyse:sessions:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const transport = await transportService.getById(organizationId, id);
+    if (!transport) return c.json({ success: false, error: 'Transport not found' }, 404);
+    return c.json({ success: true, data: transport });
+  }
+);
+
+/**
+ * POST /dialyse/transport
+ */
+dialyse.post(
+  '/transport',
+  requirePermission('dialyse:sessions:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const data = await c.req.json();
+    try {
+      const transport = await transportService.create(organizationId, userId, data);
+      return c.json({ success: true, data: transport }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/transport/:id
+ */
+dialyse.put(
+  '/transport/:id',
+  requirePermission('dialyse:sessions:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    try {
+      const transport = await transportService.update(organizationId, id, data);
+      return c.json({ success: true, data: transport });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PATCH /dialyse/transport/:id/status
+ */
+dialyse.patch(
+  '/transport/:id/status',
+  requirePermission('dialyse:sessions:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const { status, actualTime } = await c.req.json();
+    try {
+      const transport = await transportService.updateStatus(organizationId, id, status, actualTime);
+      return c.json({ success: true, data: transport });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/transport/:id
+ */
+dialyse.delete(
+  '/transport/:id',
+  requirePermission('dialyse:sessions:delete'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    try {
+      await transportService.delete(organizationId, id);
+      return c.json({ success: true, data: { message: 'Transport deleted' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+// ============================================================================
+// CONSUMABLES ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/consumables
+ */
+dialyse.get(
+  '/consumables',
+  requirePermission('dialyse:machines:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const category = c.req.query('category');
+    const status = c.req.query('status');
+    const lowStock = c.req.query('lowStock') === 'true';
+    const limit = parseInt(c.req.query('limit') || '50');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    const result = await consumablesService.list(organizationId, { category, status, lowStock, limit, offset });
+    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+  }
+);
+
+/**
+ * GET /dialyse/consumables/stats
+ */
+dialyse.get(
+  '/consumables/stats',
+  requirePermission('dialyse:machines:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const stats = await consumablesService.getStats(organizationId);
+    return c.json({ success: true, data: stats });
+  }
+);
+
+/**
+ * GET /dialyse/consumables/:id
+ */
+dialyse.get(
+  '/consumables/:id',
+  requirePermission('dialyse:machines:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const consumable = await consumablesService.getById(organizationId, id);
+    if (!consumable) return c.json({ success: false, error: 'Consumable not found' }, 404);
+    return c.json({ success: true, data: consumable });
+  }
+);
+
+/**
+ * POST /dialyse/consumables
+ */
+dialyse.post(
+  '/consumables',
+  requirePermission('dialyse:machines:create'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const data = await c.req.json();
+    try {
+      const consumable = await consumablesService.create(organizationId, userId, data);
+      return c.json({ success: true, data: consumable }, 201);
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * PUT /dialyse/consumables/:id
+ */
+dialyse.put(
+  '/consumables/:id',
+  requirePermission('dialyse:machines:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    try {
+      const consumable = await consumablesService.update(organizationId, id, data);
+      return c.json({ success: true, data: consumable });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * POST /dialyse/consumables/:id/stock
+ */
+dialyse.post(
+  '/consumables/:id/stock',
+  requirePermission('dialyse:machines:update'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const id = c.req.param('id');
+    const movement = await c.req.json();
+    try {
+      const consumable = await consumablesService.adjustStock(organizationId, id, userId, movement);
+      return c.json({ success: true, data: consumable });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/consumables/:id
+ */
+dialyse.delete(
+  '/consumables/:id',
+  requirePermission('dialyse:machines:delete'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const id = c.req.param('id');
+    try {
+      await consumablesService.delete(organizationId, id);
+      return c.json({ success: true, data: { message: 'Consumable deleted' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+// ============================================================================
+// REPORTS ROUTES
+// ============================================================================
+
+/**
+ * GET /dialyse/reports
+ */
+dialyse.get(
+  '/reports',
+  requirePermission('dialyse:patients:read'),
+  async (c) => {
+    const organizationId = c.get('organizationId');
+    const period = c.req.query('period') || 'month';
+    try {
+      const report = await reportsService.getReport(organizationId, period);
+      return c.json({ success: true, data: report });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
   }
 );
 

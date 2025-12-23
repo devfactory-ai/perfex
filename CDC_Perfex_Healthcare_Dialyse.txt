@@ -1,0 +1,391 @@
+================================================================================
+                    CAHIER DES CHARGES
+                    PERFEX HEALTHCARE
+                    MODULE DIALYSE
+================================================================================
+
+Extension verticale santé de l'ERP AI-native Perfex
+
+--------------------------------------------------------------------------------
+INFORMATIONS GÉNÉRALES
+--------------------------------------------------------------------------------
+
+Client          : [Nom du partenaire ERP]
+Réalisateur     : DevFactory
+Version         : 1.0 - Draft
+Date            : Décembre 2025
+
+================================================================================
+                    1. CONTEXTE ET OBJECTIFS
+================================================================================
+
+1.1 CONTEXTE
+------------
+
+Ce projet vise à développer le premier module vertical santé de l'ERP AI-native 
+Perfex : Perfex Healthcare - Dialyse. Ce module spécialisé s'intègre nativement 
+à l'écosystème Perfex, tirant parti de l'architecture multi-agents et de 
+l'interface conversationnelle pour révolutionner la gestion des centres de 
+dialyse.
+
+Le module s'appuie sur les modules core de Perfex existants :
+- Finance (facturation séances)
+- CRM (dossiers patients)
+- Inventory (consommables)
+- HR (planning soignants)
+- Projects (protocoles)
+
+L'enrichissement IA permet une interaction en langage naturel pour les équipes 
+médicales.
+
+L'immersion directe d'un développeur DevFactory (Forward Deployed Engineer) 
+dans un centre médical pilote en Tunisie permettra de capturer les besoins 
+métier réels. Ce premier module Healthcare ouvre la voie aux futurs modules 
+verticaux : Ophtalmologie et Cardiologie.
+
+
+1.2 OBJECTIFS
+-------------
+
+1. Optimiser la gestion des séances de dialyse (planification, suivi, traçabilité)
+2. Améliorer le suivi clinique des patients dialysés chroniques
+3. Automatiser les tâches administratives et réduire la charge documentaire
+4. Assurer la conformité réglementaire et la traçabilité des actes
+5. Fournir des outils de reporting et d'aide à la décision clinique
+
+
+1.3 PÉRIMÈTRE ET INTÉGRATION PERFEX
+-----------------------------------
+
+Le module Dialyse étend Perfex avec des fonctionnalités métier spécifiques 
+tout en réutilisant les modules core :
+
+• Perfex CRM → Gestion des patients dialysés comme entités CRM enrichies
+• Perfex Finance → Facturation des séances, cotations CNAM/CNSS, suivi impayés
+• Perfex Inventory → Stock consommables, dialyseurs, traçabilité lots
+• Perfex HR → Planning équipes soignantes, affectation postes
+• Perfex AI Core → Chat contextuel, Healthcare Agent, alertes intelligentes
+
+Le système expose également une API REST/GraphQL pour intégration avec l'ERP 
+du partenaire commercial.
+
+
+================================================================================
+                    2. SPÉCIFICATIONS FONCTIONNELLES
+================================================================================
+
+2.1 GESTION DES PATIENTS DIALYSÉS
+---------------------------------
+
+DOSSIER PATIENT:
+• Identité complète, photo, coordonnées, personne à contacter
+• Antécédents médicaux et néphrologiques
+• Étiologie de l'insuffisance rénale
+• Historique des abords vasculaires (FAV, cathéters)
+• Allergies, contre-indications, spécificités
+• Statut sérologique (VIH, VHB, VHC) avec gestion des isolements
+
+PRESCRIPTION DE DIALYSE:
+• Type de dialyse (hémodialyse, hémofiltration, hémodiafiltration)
+• Paramètres : durée, fréquence, poids sec cible, débit sanguin, débit dialysat
+• Type de dialyseur et surface membranaire
+• Anticoagulation : type, dose, protocole
+• Prescriptions médicamenteuses associées (EPO, fer, vitamines)
+• Gestion des prescriptions temporaires et permanentes
+
+
+2.2 PLANNING ET ORGANISATION DES SÉANCES
+----------------------------------------
+
+GESTION DU PLANNING:
+• Vue calendrier multi-postes et multi-créneaux (matin, après-midi, soir)
+• Affectation patient/machine/créneau avec contraintes automatiques
+• Gestion des séances récurrentes (programmes hebdomadaires)
+• Gestion des modifications, reports, annulations
+• Alertes en cas de conflit ou surcharge
+• Gestion des patients isolés (séro+) et contraintes de placement
+
+LISTE DE TRAVAIL QUOTIDIENNE:
+• Liste des patients du jour par créneau
+• Fiche de préparation par poste (paramètres, consommables)
+• Impression des étiquettes et feuilles de séance
+
+
+2.3 SUIVI PER-DIALYTIQUE
+------------------------
+
+DONNÉES PRÉ-DIALYSE:
+• Poids d'arrivée et calcul automatique de la prise de poids
+• Constantes : tension artérielle, fréquence cardiaque, température
+• État clinique du patient (fatigue, symptômes, douleurs)
+• Vérification de l'abord vasculaire
+
+SUIVI HORAIRE PENDANT LA SÉANCE:
+• Enregistrement des constantes toutes les 30 min à 1h
+• Paramètres machine : pression artérielle/veineuse, PTM, UF cumulée
+• Incidents et interventions (hypotension, crampes, saignement)
+• Médicaments administrés pendant la séance
+
+DONNÉES POST-DIALYSE:
+• Poids de sortie et calcul UF réelle vs prescrite
+• Constantes de fin de séance
+• Temps de compression, état de l'abord
+• Signature électronique infirmier/médecin
+
+
+2.4 GESTION DU PARC MACHINES ET CONSOMMABLES
+--------------------------------------------
+
+GÉNÉRATEURS DE DIALYSE:
+• Inventaire : modèle, numéro de série, date de mise en service
+• Statut : disponible, en maintenance, hors service
+• Planning de maintenance préventive
+• Historique des pannes et interventions
+• Compteur d'heures / nombre de séances
+
+CONSOMMABLES:
+• Gestion des stocks : dialyseurs, lignes, concentrés, aiguilles
+• Alertes de seuil minimum et péremption
+• Traçabilité par lot et par patient
+• Consommation moyenne par séance pour prévisions
+
+
+2.5 BIOLOGIE ET RÉSULTATS
+-------------------------
+
+• Intégration des résultats de laboratoire (import fichier ou API)
+• Suivi des marqueurs clés : urée, créatinine, Kt/V, hémoglobine, PTH, 
+  calcium, phosphore
+• Graphiques d'évolution des paramètres
+• Alertes sur valeurs hors normes
+• Calcul automatique du Kt/V et de l'efficacité de dialyse
+
+
+2.6 ALERTES ET WORKFLOW CLINIQUE
+--------------------------------
+
+• Alertes prescriptions à renouveler
+• Alertes bilans à contrôler
+• Alertes vaccinations (hépatite B)
+• Alertes abord vasculaire (contrôle FAV, changement cathéter)
+• Notifications aux médecins pour validation
+• Tableau de bord des actions en attente par rôle
+
+
+2.7 REPORTING ET STATISTIQUES
+-----------------------------
+
+• Statistiques d'activité : nombre de séances, taux d'occupation
+• Indicateurs qualité : incidents, séances écourtées, non-conformités
+• Rapports patient : synthèse mensuelle, courbes de suivi
+• Rapports réglementaires et exports standardisés
+• Export PDF et Excel des rapports
+
+
+2.8 ENRICHISSEMENT IA (PERFEX AI CORE)
+--------------------------------------
+
+HEALTHCARE AGENT CONVERSATIONNEL:
+• "Montre-moi les patients de ce matin" → Liste filtrée instantanée
+• "Quels sont les bilans en attente pour M. Dupont ?" → Synthèse patient
+• "Génère le rapport mensuel du centre" → PDF automatique
+• "Alerte : TA basse poste 3" → Notification push + contexte patient
+
+AIDE À LA DÉCISION CLINIQUE:
+• Détection patterns anormaux (incidents récurrents, dérive paramètres)
+• Suggestions d'ajustement prescription basées sur historique
+• Prédiction risque hospitalisation
+• Optimisation planning (équilibrage charge, préférences patients)
+
+AUTOMATISATIONS INTELLIGENTES:
+• Pré-remplissage formulaires basé sur contexte
+• Extraction automatique résultats labo (OCR + NLP)
+• Génération automatique courriers médicaux
+• Transcription vocale des observations infirmières
+
+
+================================================================================
+                    3. SPÉCIFICATIONS TECHNIQUES
+================================================================================
+
+3.1 ARCHITECTURE (STACK PERFEX)
+-------------------------------
+
+Le module Dialyse s'intègre à l'architecture AI-native de Perfex, bénéficiant 
+de l'infrastructure edge-first Cloudflare et du système multi-agents.
+
+┌─────────────────────────────────────────────────────────────┐
+│                    CLOUDFLARE EDGE                          │
+└─────────────────────────────────────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+   ┌────▼────┐        ┌────▼────┐        ┌────▼────┐
+   │  Pages  │        │ Workers │        │   R2    │
+   │ (React) │        │(Hono.js)│        │(Storage)│
+   └─────────┘        └────┬────┘        └─────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+   ┌────▼────┐       ┌────▼────┐       ┌────▼────┐
+   │   D1    │       │   KV    │       │ Queues  │
+   │(Database│       │ (Cache) │       │ (Async) │
+   └─────────┘       └─────────┘       └─────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ Claude API  │
+                    │(Healthcare  │
+                    │   Agent)    │
+                    └─────────────┘
+
+
+COMPOSANTS TECHNIQUES:
+
+Composant           | Technologie
+--------------------|------------------------------------------
+Frontend            | React 18+ / TypeScript / TailwindCSS
+Backend API         | Hono.js sur Cloudflare Workers
+Base de données     | Cloudflare D1 (SQLite) + Turso
+Stockage fichiers   | Cloudflare R2
+Authentification    | Clerk / Cloudflare Access
+Temps réel          | Cloudflare Durable Objects
+AI / LLM            | Claude API + Healthcare Agent dédié
+RAG / Embeddings    | Cloudflare Vectorize + BGE embeddings
+
+
+3.2 INTÉGRATIONS
+----------------
+
+• API REST pour intégration avec ERP partenaire
+• Import/export HL7 FHIR pour interopérabilité santé
+• Connecteur laboratoire pour import résultats (fichiers ou API)
+• Webhooks pour notifications temps réel
+
+
+3.3 SÉCURITÉ ET CONFORMITÉ
+--------------------------
+
+• Chiffrement des données au repos et en transit (TLS 1.3)
+• Gestion des rôles et permissions granulaires
+• Journalisation complète des accès et modifications
+• Conformité aux réglementations tunisiennes de protection des données de santé
+• Préparation à la certification HDS pour déploiement France
+
+
+3.4 PERFORMANCE
+---------------
+
+• Temps de réponse API < 200ms (P95)
+• Disponibilité 99.9%
+• Support offline-first pour continuité en cas de coupure réseau
+• Scalabilité horizontale automatique
+
+
+================================================================================
+                    4. LIVRABLES ET PLANNING
+================================================================================
+
+4.1 PHASES DU PROJET
+--------------------
+
+Phase   | Contenu                                          | Durée estimée
+--------|--------------------------------------------------|---------------
+Phase 1 | Immersion terrain et spécifications détaillées   | 2 semaines
+Phase 2 | MVP - Dossier patient + Planning + Suivi séance  | 6 semaines
+Phase 3 | Gestion parc machines + Consommables + Biologie  | 4 semaines
+Phase 4 | Reporting + Intégrations API + Tests terrain     | 3 semaines
+--------|--------------------------------------------------|---------------
+TOTAL   | Module complet opérationnel                      | 15 semaines
+
+
+4.2 LIVRABLES
+-------------
+
+1. Spécifications fonctionnelles détaillées post-immersion
+2. Application SaaS opérationnelle
+3. Documentation technique et API
+4. Guide utilisateur et support de formation
+5. Code source avec droits de propriété intellectuelle complets
+6. Environnement de production déployé et configuré
+
+
+================================================================================
+                    5. ESTIMATION BUDGÉTAIRE
+================================================================================
+
+5.1 ÉQUIPE ET COÛTS DE DÉVELOPPEMENT
+------------------------------------
+
+Estimation basée sur une équipe DevFactory basée en Tunisie 
+(coûts mensuels charges comprises) :
+
+Profil                              | Coût/mois    | Durée
+------------------------------------|--------------|----------
+Développeur Full-Stack Senior       | 5 000 TND    | 4 mois
+Développeur Full-Stack Confirmé     | 3 500 TND    | 4 mois
+Tech Lead / Architecte (temps partiel) | 2 500 TND | 4 mois
+
+
+5.2 BUDGET DÉTAILLÉ
+-------------------
+
+Poste de dépense                        | Montant (TND) | Équiv. €
+----------------------------------------|---------------|----------
+Développeur Senior (4 mois)             | 20 000        | ~6 000
+Développeur Confirmé (4 mois)           | 14 000        | ~4 200
+Tech Lead (4 mois, 50%)                 | 10 000        | ~3 000
+Immersion terrain (déplacement, héberg.)| 3 000         | ~900
+Infrastructure Cloud (4 mois)           | 1 500         | ~450
+Licences et outils (Claude API, etc.)   | 2 000         | ~600
+Marge et imprévus (10%)                 | 5 000         | ~1 500
+----------------------------------------|---------------|----------
+TOTAL INVESTISSEMENT                    | 55 500 TND    | ~16 650 €
+
+* Taux de change indicatif : 1 EUR ≈ 3,33 TND
+
+
+5.3 COÛTS D'EXPLOITATION (MENSUELS)
+-----------------------------------
+
+Une fois en production, les coûts récurrents sont minimaux grâce à 
+l'architecture Cloudflare :
+
+• Cloudflare Workers + D1 + R2 : 150-300 TND/mois (~50-100€)
+• Claude API (usage Healthcare Agent) : 100-200 TND/mois
+• Maintenance évolutive : selon besoins
+• Total exploitation : ~300-500 TND/mois par centre
+
+
+================================================================================
+                    6. ANNEXES
+================================================================================
+
+6.1 GLOSSAIRE MÉTIER
+--------------------
+
+Terme       | Définition
+------------|----------------------------------------------------------
+FAV         | Fistule Artério-Veineuse - abord vasculaire permanent
+Kt/V        | Indice d'efficacité de dialyse (clearance x temps / volume)
+UF          | Ultrafiltration - volume de liquide retiré pendant la séance
+PTM         | Pression TransMembranaire
+EPO         | Érythropoïétine - hormone stimulant la production de globules rouges
+Poids sec   | Poids cible du patient après dialyse, sans surcharge hydrique
+
+
+6.2 RÔLES UTILISATEURS
+----------------------
+
+• Néphrologue : Prescriptions, validation médicale, accès complet dossier
+• Infirmier(e) : Saisie séances, suivi patient, alertes
+• Aide-soignant(e) : Pesée, constantes, préparation poste
+• Technicien : Gestion parc machines, maintenance
+• Administrateur : Configuration, utilisateurs, reporting
+
+
+================================================================================
+                         — Fin du document —
+================================================================================
+
+DevFactory
+Décembre 2025

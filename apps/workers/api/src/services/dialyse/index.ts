@@ -10,6 +10,7 @@ export * from './machine.service';
 export * from './session.service';
 export * from './lab.service';
 export * from './alert.service';
+export * from './extended.service';
 
 // Re-export service instances for convenience
 import { patientService } from './patient.service';
@@ -19,6 +20,14 @@ import { machineService } from './machine.service';
 import { sessionService } from './session.service';
 import { labService } from './lab.service';
 import { alertService } from './alert.service';
+import {
+  protocolService,
+  staffService,
+  billingService,
+  transportService,
+  consumablesService,
+  reportsService,
+} from './extended.service';
 
 export const dialyseServices = {
   patient: patientService,
@@ -28,4 +37,10 @@ export const dialyseServices = {
   session: sessionService,
   lab: labService,
   alert: alertService,
+  protocol: protocolService,
+  staff: staffService,
+  billing: billingService,
+  transport: transportService,
+  consumables: consumablesService,
+  reports: reportsService,
 };
