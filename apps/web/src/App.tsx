@@ -97,6 +97,9 @@ const DialysePatientFormPage = lazy(() => import('./pages/dialyse/DialysePatient
 const DialysePlanningPage = lazy(() => import('./pages/dialyse/DialysePlanningPage').then(m => ({ default: m.DialysePlanningPage })));
 const DialyseMachinesPage = lazy(() => import('./pages/dialyse/DialyseMachinesPage').then(m => ({ default: m.DialyseMachinesPage })));
 const DialyseAlertsPage = lazy(() => import('./pages/dialyse/DialyseAlertsPage').then(m => ({ default: m.DialyseAlertsPage })));
+const DialyseAlertDetailPage = lazy(() => import('./pages/dialyse/DialyseAlertDetailPage').then(m => ({ default: m.DialyseAlertDetailPage })));
+const DialyseSessionFormPage = lazy(() => import('./pages/dialyse/DialyseSessionFormPage').then(m => ({ default: m.DialyseSessionFormPage })));
+const DialyseSessionDetailPage = lazy(() => import('./pages/dialyse/DialyseSessionDetailPage').then(m => ({ default: m.DialyseSessionDetailPage })));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -210,6 +213,9 @@ function App() {
             <Route path="dialyse/planning" element={<Suspense fallback={<PageLoader />}><DialysePlanningPage /></Suspense>} />
             <Route path="dialyse/machines" element={<Suspense fallback={<PageLoader />}><DialyseMachinesPage /></Suspense>} />
             <Route path="dialyse/alerts" element={<Suspense fallback={<PageLoader />}><DialyseAlertsPage /></Suspense>} />
+            <Route path="dialyse/alerts/:id" element={<Suspense fallback={<PageLoader />}><DialyseAlertDetailPage /></Suspense>} />
+            <Route path="dialyse/sessions/new" element={<Suspense fallback={<PageLoader />}><DialyseSessionFormPage /></Suspense>} />
+            <Route path="dialyse/sessions/:id" element={<Suspense fallback={<PageLoader />}><DialyseSessionDetailPage /></Suspense>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -291,7 +291,9 @@ export function DialyseAlertsPage() {
                           {getAlertTypeName(alert.alertType)}
                         </span>
                       </div>
-                      <h3 className="font-medium">{alert.title}</h3>
+                      <Link to={`/dialyse/alerts/${alert.id}`} className="font-medium hover:text-primary hover:underline">
+                        {alert.title}
+                      </Link>
                       {alert.description && (
                         <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
                       )}

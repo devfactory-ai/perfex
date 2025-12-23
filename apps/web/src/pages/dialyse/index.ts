@@ -10,3 +10,6 @@ export { DialysePatientFormPage } from './DialysePatientFormPage';
 export { DialysePlanningPage } from './DialysePlanningPage';
 export { DialyseMachinesPage } from './DialyseMachinesPage';
 export { DialyseAlertsPage } from './DialyseAlertsPage';
+export { DialyseAlertDetailPage } from './DialyseAlertDetailPage';
+export { DialyseSessionFormPage } from './DialyseSessionFormPage';
+export { DialyseSessionDetailPage } from './DialyseSessionDetailPage';

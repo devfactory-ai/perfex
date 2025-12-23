@@ -4,6 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type ApiResponse } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -35,6 +36,7 @@ interface SessionSlot {
 
 export function DialysePlanningPage() {
   const { t: _t } = useLanguage();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -191,7 +193,7 @@ export function DialysePlanningPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => {/* TODO: Open new session modal */}}
+            onClick={() => navigate('/dialyse/sessions/new')}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Nouvelle Séance
@@ -293,7 +295,8 @@ export function DialysePlanningPage() {
                           {slotSessions.map((session) => (
                             <div
                               key={session.id}
-                              className={`p-3 rounded-lg border ${getStatusColor(session.status)}`}
+                              className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow ${getStatusColor(session.status)}`}
+                              onClick={() => navigate(`/dialyse/sessions/${session.id}`)}
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-mono text-sm">{session.sessionNumber}</span>
@@ -302,7 +305,7 @@ export function DialysePlanningPage() {
                               <div className="mt-2 flex gap-2">
                                 {session.status === 'scheduled' && (
                                   <button
-                                    onClick={() => checkInMutation.mutate(session.id)}
+                                    onClick={(e) => { e.stopPropagation(); checkInMutation.mutate(session.id); }}
                                     className="text-xs px-2 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700"
                                   >
                                     Check-in
@@ -310,7 +313,7 @@ export function DialysePlanningPage() {
                                 )}
                                 {session.status === 'checked_in' && (
                                   <button
-                                    onClick={() => startMutation.mutate({ sessionId: session.id })}
+                                    onClick={(e) => { e.stopPropagation(); startMutation.mutate({ sessionId: session.id }); }}
                                     className="text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
                                   >
                                     Démarrer
@@ -318,7 +321,7 @@ export function DialysePlanningPage() {
                                 )}
                                 {session.status === 'in_progress' && (
                                   <button
-                                    onClick={() => completeMutation.mutate(session.id)}
+                                    onClick={(e) => { e.stopPropagation(); completeMutation.mutate(session.id); }}
                                     className="text-xs px-2 py-1 rounded bg-gray-600 text-white hover:bg-gray-700"
                                   >
                                     Terminer
@@ -393,7 +396,8 @@ export function DialysePlanningPage() {
                               {daySessions.map((session) => (
                                 <div
                                   key={session.id}
-                                  className={`text-xs p-1 rounded ${getStatusColor(session.status)}`}
+                                  className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${getStatusColor(session.status)}`}
+                                  onClick={() => navigate(`/dialyse/sessions/${session.id}`)}
                                 >
                                   {session.scheduledStartTime || '--:--'}
                                 </div>
