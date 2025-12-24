@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { DashboardLayout } from './components/layouts/DashboardLayout';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { PasswordlessVerifyPage } from './pages/auth/PasswordlessVerifyPage';
@@ -112,6 +113,35 @@ const DialyseStaffPage = lazy(() => import('./pages/dialyse/DialyseStaffPage').t
 const DialyseBillingPage = lazy(() => import('./pages/dialyse/DialyseBillingPage').then(m => ({ default: m.DialyseBillingPage })));
 const DialyseTransportPage = lazy(() => import('./pages/dialyse/DialyseTransportPage').then(m => ({ default: m.DialyseTransportPage })));
 
+// Dialyse Form pages (dedicated pages instead of modals)
+const DialyseMaintenanceFormPage = lazy(() => import('./pages/dialyse/DialyseMaintenanceFormPage').then(m => ({ default: m.DialyseMaintenanceFormPage })));
+const DialyseBillingFormPage = lazy(() => import('./pages/dialyse/DialyseBillingFormPage').then(m => ({ default: m.DialyseBillingFormPage })));
+const DialyseTransportFormPage = lazy(() => import('./pages/dialyse/DialyseTransportFormPage').then(m => ({ default: m.DialyseTransportFormPage })));
+const DialyseStaffFormPage = lazy(() => import('./pages/dialyse/DialyseStaffFormPage').then(m => ({ default: m.DialyseStaffFormPage })));
+const DialyseProtocolFormPage = lazy(() => import('./pages/dialyse/DialyseProtocolFormPage').then(m => ({ default: m.DialyseProtocolFormPage })));
+const DialyseConsumableFormPage = lazy(() => import('./pages/dialyse/DialyseConsumableFormPage').then(m => ({ default: m.DialyseConsumableFormPage })));
+const DialyseMachineFormPage = lazy(() => import('./pages/dialyse/DialyseMachineFormPage').then(m => ({ default: m.DialyseMachineFormPage })));
+
+// Cardiology pages (Healthcare - Cardiology module)
+const CardiologyDashboardPage = lazy(() => import('./pages/cardiology/CardiologyDashboardPage'));
+const CardiologyPatientsPage = lazy(() => import('./pages/cardiology/CardiologyPatientsPage'));
+const CardiologyPatientFormPage = lazy(() => import('./pages/cardiology/CardiologyPatientFormPage'));
+const CardiologyPatientDetailPage = lazy(() => import('./pages/cardiology/CardiologyPatientDetailPage'));
+const CardiologyConsultationsPage = lazy(() => import('./pages/cardiology/CardiologyConsultationsPage'));
+const CardiologyEcgPage = lazy(() => import('./pages/cardiology/CardiologyEcgPage'));
+const CardiologyPacemakersPage = lazy(() => import('./pages/cardiology/CardiologyPacemakersPage'));
+const CardiologyStentsPage = lazy(() => import('./pages/cardiology/CardiologyStentsPage'));
+
+// Ophthalmology pages (Healthcare - Ophthalmology module)
+const OphthalmologyDashboardPage = lazy(() => import('./pages/ophthalmology/OphthalmologyDashboardPage'));
+const OphthalmologyPatientsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyPatientsPage'));
+const OphthalmologyPatientFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyPatientFormPage'));
+const OphthalmologyPatientDetailPage = lazy(() => import('./pages/ophthalmology/OphthalmologyPatientDetailPage'));
+const OphthalmologyConsultationsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyConsultationsPage'));
+const OphthalmologyOctPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOctPage'));
+const OphthalmologyVisualFieldsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyVisualFieldsPage'));
+const OphthalmologyIvtPage = lazy(() => import('./pages/ophthalmology/OphthalmologyIvtPage'));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -133,6 +163,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <LanguageProvider>
+          <ToastProvider>
           <BrowserRouter>
           <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -241,10 +272,46 @@ function App() {
             <Route path="dialyse/staff" element={<Suspense fallback={<PageLoader />}><DialyseStaffPage /></Suspense>} />
             <Route path="dialyse/billing" element={<Suspense fallback={<PageLoader />}><DialyseBillingPage /></Suspense>} />
             <Route path="dialyse/transport" element={<Suspense fallback={<PageLoader />}><DialyseTransportPage /></Suspense>} />
+            {/* Dialyse Form pages (dedicated pages instead of modals) */}
+            <Route path="dialyse/machines/new" element={<Suspense fallback={<PageLoader />}><DialyseMachineFormPage /></Suspense>} />
+            <Route path="dialyse/machines/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseMachineFormPage /></Suspense>} />
+            <Route path="dialyse/consumables/new" element={<Suspense fallback={<PageLoader />}><DialyseConsumableFormPage /></Suspense>} />
+            <Route path="dialyse/consumables/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseConsumableFormPage /></Suspense>} />
+            <Route path="dialyse/maintenance/new" element={<Suspense fallback={<PageLoader />}><DialyseMaintenanceFormPage /></Suspense>} />
+            <Route path="dialyse/maintenance/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseMaintenanceFormPage /></Suspense>} />
+            <Route path="dialyse/protocols/new" element={<Suspense fallback={<PageLoader />}><DialyseProtocolFormPage /></Suspense>} />
+            <Route path="dialyse/protocols/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseProtocolFormPage /></Suspense>} />
+            <Route path="dialyse/staff/new" element={<Suspense fallback={<PageLoader />}><DialyseStaffFormPage /></Suspense>} />
+            <Route path="dialyse/staff/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseStaffFormPage /></Suspense>} />
+            <Route path="dialyse/billing/new" element={<Suspense fallback={<PageLoader />}><DialyseBillingFormPage /></Suspense>} />
+            <Route path="dialyse/billing/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseBillingFormPage /></Suspense>} />
+            <Route path="dialyse/transport/new" element={<Suspense fallback={<PageLoader />}><DialyseTransportFormPage /></Suspense>} />
+            <Route path="dialyse/transport/:id/edit" element={<Suspense fallback={<PageLoader />}><DialyseTransportFormPage /></Suspense>} />
+            {/* Cardiology (Healthcare - Cardiology module) */}
+            <Route path="cardiology" element={<Suspense fallback={<PageLoader />}><CardiologyDashboardPage /></Suspense>} />
+            <Route path="cardiology/patients" element={<Suspense fallback={<PageLoader />}><CardiologyPatientsPage /></Suspense>} />
+            <Route path="cardiology/patients/new" element={<Suspense fallback={<PageLoader />}><CardiologyPatientFormPage /></Suspense>} />
+            <Route path="cardiology/patients/:id" element={<Suspense fallback={<PageLoader />}><CardiologyPatientDetailPage /></Suspense>} />
+            <Route path="cardiology/patients/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyPatientFormPage /></Suspense>} />
+            <Route path="cardiology/consultations" element={<Suspense fallback={<PageLoader />}><CardiologyConsultationsPage /></Suspense>} />
+            <Route path="cardiology/ecg" element={<Suspense fallback={<PageLoader />}><CardiologyEcgPage /></Suspense>} />
+            <Route path="cardiology/pacemakers" element={<Suspense fallback={<PageLoader />}><CardiologyPacemakersPage /></Suspense>} />
+            <Route path="cardiology/stents" element={<Suspense fallback={<PageLoader />}><CardiologyStentsPage /></Suspense>} />
+            {/* Ophthalmology (Healthcare - Ophthalmology module) */}
+            <Route path="ophthalmology" element={<Suspense fallback={<PageLoader />}><OphthalmologyDashboardPage /></Suspense>} />
+            <Route path="ophthalmology/patients" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientsPage /></Suspense>} />
+            <Route path="ophthalmology/patients/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientFormPage /></Suspense>} />
+            <Route path="ophthalmology/patients/:id" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientDetailPage /></Suspense>} />
+            <Route path="ophthalmology/patients/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientFormPage /></Suspense>} />
+            <Route path="ophthalmology/consultations" element={<Suspense fallback={<PageLoader />}><OphthalmologyConsultationsPage /></Suspense>} />
+            <Route path="ophthalmology/oct" element={<Suspense fallback={<PageLoader />}><OphthalmologyOctPage /></Suspense>} />
+            <Route path="ophthalmology/visual-fields" element={<Suspense fallback={<PageLoader />}><OphthalmologyVisualFieldsPage /></Suspense>} />
+            <Route path="ophthalmology/ivt-injections" element={<Suspense fallback={<PageLoader />}><OphthalmologyIvtPage /></Suspense>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </BrowserRouter>
+          </ToastProvider>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>

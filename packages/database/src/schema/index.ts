@@ -22,6 +22,9 @@ export * from './recipes';
 export * from './traceability';
 export * from './payroll';
 export * from './dialyse';
+export * from './healthcare';
+export * from './cardiology';
+export * from './ophthalmology';
 
 // Export all tables for drizzle-kit
 export {
@@ -243,3 +246,39 @@ export {
   labResults,
   clinicalAlerts,
 } from './dialyse';
+
+export {
+  healthcarePatients,
+  healthcareConsultations,
+  healthcareExaminations,
+  healthcareImplantedDevices,
+  healthcareChronicConditions,
+  healthcareAlerts,
+  healthcareDocuments,
+  healthcareAppointments,
+} from './healthcare';
+
+export {
+  cardiologyEcgRecords,
+  cardiologyEchocardiograms,
+  cardiologyHolterRecords,
+  cardiologyPacemakers,
+  cardiologyPacemakerInterrogations,
+  cardiologyStents,
+  cardiologyRiskScores,
+  cardiologyCardiacEvents,
+  cardiologyMedications,
+} from './cardiology';
+
+export {
+  ophthalmologyOctScans,
+  ophthalmologyVisualFields,
+  ophthalmologyBiometry,
+  ophthalmologyIolImplants,
+  ophthalmologyIvtInjections,
+  ophthalmologySurgeries,
+  ophthalmologyRefraction,
+  ophthalmologyTonometry,
+  ophthalmologyFundusPhotos,
+  ophthalmologyOsdiScores,
+} from './ophthalmology';

@@ -40,6 +40,8 @@ import traceabilityRoutes from './routes/traceability';
 import payrollRoutes from './routes/payroll';
 import integrationsRoutes from './routes/integrations';
 import dialyseRoutes from './routes/dialyse';
+import cardiologyRoutes from './routes/cardiology';
+import ophthalmologyRoutes from './routes/ophthalmology';
 import type { Env } from './types';
 import { ScheduledService } from './services/scheduled.service';
 
@@ -210,6 +212,12 @@ apiV1.route('/integrations', integrationsRoutes);
 
 // Mount Dialyse routes (Healthcare - Dialysis module)
 apiV1.route('/dialyse', dialyseRoutes);
+
+// Mount Cardiology routes (Healthcare - Cardiology module)
+apiV1.route('/cardiology', cardiologyRoutes);
+
+// Mount Ophthalmology routes (Healthcare - Ophthalmology module)
+apiV1.route('/ophthalmology', ophthalmologyRoutes);
 
 // Mount API routes
 app.route('/api/v1', apiV1);
