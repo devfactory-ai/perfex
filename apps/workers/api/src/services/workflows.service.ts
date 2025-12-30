@@ -84,21 +84,28 @@ export class WorkflowsService {
       .from(workflows)
       .where(and(eq(workflows.id, workflowId), eq(workflows.organizationId, organizationId)))
       .get();
-    return workflow || null;
+    return (workflow as Workflow) || null;
   }
 
   async listWorkflows(organizationId: string, filters?: { entityType?: string; isActive?: boolean }): Promise<Workflow[]> {
-    let query = drizzleDb.select().from(workflows).where(eq(workflows.organizationId, organizationId));
+    const conditions = [eq(workflows.organizationId, organizationId)];
 
     if (filters?.entityType) {
-      query = query.where(and(eq(workflows.organizationId, organizationId), eq(workflows.entityType, filters.entityType)));
+      conditions.push(eq(workflows.entityType, filters.entityType));
     }
 
     if (filters?.isActive !== undefined) {
-      query = query.where(and(eq(workflows.organizationId, organizationId), eq(workflows.isActive, filters.isActive)));
+      conditions.push(eq(workflows.isActive, filters.isActive));
     }
 
-    return await query.orderBy(desc(workflows.createdAt)).all();
+    const result = await drizzleDb
+      .select()
+      .from(workflows)
+      .where(and(...conditions))
+      .orderBy(desc(workflows.createdAt))
+      .all();
+
+    return result as Workflow[];
   }
 
   async updateWorkflow(organizationId: string, workflowId: string, data: UpdateWorkflowInput): Promise<Workflow> {
@@ -165,16 +172,17 @@ export class WorkflowsService {
       .from(workflowSteps)
       .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.organizationId, organizationId)))
       .get();
-    return step || null;
+    return (step as WorkflowStep) || null;
   }
 
   async listWorkflowSteps(organizationId: string, workflowId: string): Promise<WorkflowStep[]> {
-    return await drizzleDb
+    const result = await drizzleDb
       .select()
       .from(workflowSteps)
       .where(and(eq(workflowSteps.organizationId, organizationId), eq(workflowSteps.workflowId, workflowId)))
       .orderBy(workflowSteps.position)
       .all();
+    return result as WorkflowStep[];
   }
 
   // ============================================
@@ -212,29 +220,36 @@ export class WorkflowsService {
       .from(workflowInstances)
       .where(and(eq(workflowInstances.id, instanceId), eq(workflowInstances.organizationId, organizationId)))
       .get();
-    return instance || null;
+    return (instance as WorkflowInstance) || null;
   }
 
   async listWorkflowInstances(organizationId: string, filters?: { workflowId?: string; entityType?: string; entityId?: string; status?: string }): Promise<WorkflowInstance[]> {
-    let query = drizzleDb.select().from(workflowInstances).where(eq(workflowInstances.organizationId, organizationId));
+    const conditions = [eq(workflowInstances.organizationId, organizationId)];
 
     if (filters?.workflowId) {
-      query = query.where(and(eq(workflowInstances.organizationId, organizationId), eq(workflowInstances.workflowId, filters.workflowId)));
+      conditions.push(eq(workflowInstances.workflowId, filters.workflowId));
     }
 
     if (filters?.entityType) {
-      query = query.where(and(eq(workflowInstances.organizationId, organizationId), eq(workflowInstances.entityType, filters.entityType)));
+      conditions.push(eq(workflowInstances.entityType, filters.entityType));
     }
 
     if (filters?.entityId) {
-      query = query.where(and(eq(workflowInstances.organizationId, organizationId), eq(workflowInstances.entityId, filters.entityId)));
+      conditions.push(eq(workflowInstances.entityId, filters.entityId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(workflowInstances.organizationId, organizationId), eq(workflowInstances.status, filters.status)));
+      conditions.push(eq(workflowInstances.status, filters.status));
     }
 
-    return await query.orderBy(desc(workflowInstances.createdAt)).all();
+    const result = await drizzleDb
+      .select()
+      .from(workflowInstances)
+      .where(and(...conditions))
+      .orderBy(desc(workflowInstances.createdAt))
+      .all();
+
+    return result as WorkflowInstance[];
   }
 
   // ============================================
@@ -271,21 +286,28 @@ export class WorkflowsService {
       .from(approvals)
       .where(and(eq(approvals.id, approvalId), eq(approvals.organizationId, organizationId)))
       .get();
-    return approval || null;
+    return (approval as Approval) || null;
   }
 
   async listApprovals(organizationId: string, filters?: { approverId?: string; status?: string }): Promise<Approval[]> {
-    let query = drizzleDb.select().from(approvals).where(eq(approvals.organizationId, organizationId));
+    const conditions = [eq(approvals.organizationId, organizationId)];
 
     if (filters?.approverId) {
-      query = query.where(and(eq(approvals.organizationId, organizationId), eq(approvals.approverId, filters.approverId)));
+      conditions.push(eq(approvals.approverId, filters.approverId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(approvals.organizationId, organizationId), eq(approvals.status, filters.status)));
+      conditions.push(eq(approvals.status, filters.status));
     }
 
-    return await query.orderBy(desc(approvals.createdAt)).all();
+    const result = await drizzleDb
+      .select()
+      .from(approvals)
+      .where(and(...conditions))
+      .orderBy(desc(approvals.createdAt))
+      .all();
+
+    return result as Approval[];
   }
 
   async respondToApproval(organizationId: string, approvalId: string, userId: string, data: RespondToApprovalInput): Promise<Approval> {
