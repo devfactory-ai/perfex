@@ -8,6 +8,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { IntegrationsService } from '../services/integrations.service';
 import { authMiddleware, requirePermissions } from '../middleware/auth';
+import { logger } from '../utils/logger';
 import type { Bindings, Variables } from '../types';
 
 const integrationsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -405,7 +406,7 @@ integrationsRoutes.post('/webhooks/:providerId', async (c) => {
     // For now, just acknowledge receipt
     return c.json({ received: true, eventId: event.id });
   } catch (error) {
-    console.error('Webhook error:', error);
+    logger.error('Webhook error', error, { route: 'integrations' });
     return c.json({ error: 'Invalid webhook payload' }, 400);
   }
 });

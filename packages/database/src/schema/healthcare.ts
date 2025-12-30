@@ -18,50 +18,31 @@ import { employees } from './hr';
  */
 export const healthcarePatients = sqliteTable('healthcare_patients', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  contactId: text('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
 
-  // Medical identifiers
-  medicalId: text('medical_id').notNull(),
-  nationalId: text('national_id'), // National health ID
-  photo: text('photo'), // R2 URL
-
-  // Demographics
-  dateOfBirth: integer('date_of_birth', { mode: 'timestamp' }),
-  gender: text('gender', { enum: ['male', 'female', 'other'] }),
-  bloodType: text('blood_type'), // A+, A-, B+, B-, AB+, AB-, O+, O-
-
-  // Emergency contact
-  emergencyContactName: text('emergency_contact_name'),
-  emergencyContactPhone: text('emergency_contact_phone'),
-  emergencyContactRelation: text('emergency_contact_relation'),
-
-  // Medical history
-  allergies: text('allergies'), // JSON array
-  medicalHistory: text('medical_history'), // JSON - general medical history
-  familyHistory: text('family_history'), // JSON - family medical history
-  surgicalHistory: text('surgical_history'), // JSON array
-  currentMedications: text('current_medications'), // JSON array
-
-  // Insurance
+  // Patient info
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name').notNull(),
+  dateOfBirth: text('date_of_birth').notNull(),
+  gender: text('gender').notNull().default('male'),
+  nationalId: text('national_id'),
+  phone: text('phone'),
+  email: text('email'),
+  address: text('address'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  emergencyContact: text('emergency_contact'),
+  emergencyPhone: text('emergency_phone'),
+  bloodType: text('blood_type'),
+  allergies: text('allergies'),
+  medicalHistory: text('medical_history'),
+  familyHistory: text('family_history'),
   insuranceProvider: text('insurance_provider'),
   insuranceNumber: text('insurance_number'),
-  insuranceExpiry: integer('insurance_expiry', { mode: 'timestamp' }),
-
-  // Referring physician
-  referringPhysician: text('referring_physician'),
-  referringPhysicianPhone: text('referring_physician_phone'),
-
-  // Status
-  patientStatus: text('patient_status', { enum: ['active', 'inactive', 'deceased', 'transferred'] }).default('active'),
-
-  // Modules enrolled
-  enrolledModules: text('enrolled_modules'), // JSON array: ['cardiology', 'ophthalmology', 'dialyse']
-
   notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  status: text('status').default('active'),
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').$defaultFn(() => new Date().toISOString()),
 });
 
 // ============================================================================
@@ -71,60 +52,37 @@ export const healthcarePatients = sqliteTable('healthcare_patients', {
 /**
  * Healthcare Consultations
  * Generic consultation records for all modules
+ * Matches actual database structure
  */
 export const healthcareConsultations = sqliteTable('healthcare_consultations', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
-
-  consultationNumber: text('consultation_number').notNull(),
-  consultationDate: integer('consultation_date', { mode: 'timestamp' }).notNull(),
+  companyId: text('company_id').notNull(),
   module: text('module', { enum: ['cardiology', 'ophthalmology', 'dialyse', 'general'] }).notNull(),
 
+  // Date and time
+  consultationDate: text('consultation_date').notNull(),
+  consultationTime: text('consultation_time'),
+
   // Type
-  consultationType: text('consultation_type', { enum: ['initial', 'follow_up', 'emergency', 'pre_operative', 'post_operative'] }).notNull(),
+  consultationType: text('consultation_type', { enum: ['routine', 'urgent', 'follow_up', 'initial', 'emergency', 'pre_operative', 'post_operative'] }).notNull(),
 
   // Provider
-  providerId: text('provider_id').references(() => employees.id, { onDelete: 'set null' }),
-  providerSpecialty: text('provider_specialty'),
+  doctorId: text('doctor_id'),
+  doctorName: text('doctor_name'),
 
-  // Chief complaint
+  // Clinical
   chiefComplaint: text('chief_complaint'),
-  historyOfPresentIllness: text('history_of_present_illness'),
-
-  // Vitals
-  weightKg: real('weight_kg'),
-  heightCm: real('height_cm'),
-  systolicBp: integer('systolic_bp'),
-  diastolicBp: integer('diastolic_bp'),
-  heartRate: integer('heart_rate'),
-  respiratoryRate: integer('respiratory_rate'),
-  temperature: real('temperature'),
-  oxygenSaturation: real('oxygen_saturation'),
-
-  // Assessment
-  physicalExamination: text('physical_examination'),
-  assessment: text('assessment'),
-  diagnosis: text('diagnosis'), // JSON array of ICD codes
-  differentialDiagnosis: text('differential_diagnosis'), // JSON array
-
-  // Plan
+  diagnosis: text('diagnosis'),
   treatmentPlan: text('treatment_plan'),
-  prescriptions: text('prescriptions'), // JSON array
-  followUpDate: integer('follow_up_date', { mode: 'timestamp' }),
-  referrals: text('referrals'), // JSON array
+  notes: text('notes'),
+  followUpDate: text('follow_up_date'),
 
   // Status
   status: text('status', { enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'] }).default('scheduled'),
 
-  // Billing
-  billingCode: text('billing_code'),
-  billedAmount: real('billed_amount'),
-
-  notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').$defaultFn(() => new Date().toISOString()),
 });
 
 // ============================================================================
@@ -137,7 +95,7 @@ export const healthcareConsultations = sqliteTable('healthcare_consultations', {
  */
 export const healthcareExaminations = sqliteTable('healthcare_examinations', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -191,7 +149,7 @@ export const healthcareExaminations = sqliteTable('healthcare_examinations', {
  */
 export const healthcareImplantedDevices = sqliteTable('healthcare_implanted_devices', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   deviceNumber: text('device_number').notNull(),
@@ -250,7 +208,7 @@ export const healthcareImplantedDevices = sqliteTable('healthcare_implanted_devi
  */
 export const healthcareChronicConditions = sqliteTable('healthcare_chronic_conditions', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   // Condition details
@@ -302,7 +260,7 @@ export const healthcareChronicConditions = sqliteTable('healthcare_chronic_condi
  */
 export const healthcareAlerts = sqliteTable('healthcare_alerts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   module: text('module', { enum: ['cardiology', 'ophthalmology', 'dialyse', 'general'] }).notNull(),
@@ -351,7 +309,7 @@ export const healthcareAlerts = sqliteTable('healthcare_alerts', {
  */
 export const healthcareDocuments = sqliteTable('healthcare_documents', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   module: text('module', { enum: ['cardiology', 'ophthalmology', 'dialyse', 'general'] }).notNull(),
@@ -394,7 +352,7 @@ export const healthcareDocuments = sqliteTable('healthcare_documents', {
  */
 export const healthcareAppointments = sqliteTable('healthcare_appointments', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   appointmentNumber: text('appointment_number').notNull(),

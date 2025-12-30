@@ -6,8 +6,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Calendar, Plus, Settings } from 'lucide-react';
 import { api, type ApiResponse } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { PageHeader, SectionCard, Button } from '@/components/healthcare';
 
 interface DialysisSession {
   id: string;
@@ -35,7 +37,7 @@ interface SessionSlot {
 }
 
 export function DialysePlanningPage() {
-  const { t: _t } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -141,24 +143,24 @@ export function DialysePlanningPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'scheduled': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'checked_in': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'in_progress': return 'bg-green-100 text-green-800 border-green-200';
+      case 'scheduled': return 'bg-slate-200 text-slate-800 border-slate-200 dark:bg-slate-700 dark:text-slate-300';
+      case 'checked_in': return 'bg-slate-400 text-white border-slate-300 dark:bg-slate-500';
+      case 'in_progress': return 'bg-slate-600 text-white border-slate-500 dark:bg-slate-500';
       case 'completed': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      case 'no_show': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'cancelled': return 'bg-slate-500 text-white border-slate-400 dark:bg-slate-500';
+      case 'no_show': return 'bg-slate-400 text-white border-slate-300 dark:bg-slate-500';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      scheduled: 'Planifiée',
-      checked_in: 'Arrivé',
-      in_progress: 'En cours',
-      completed: 'Terminée',
-      cancelled: 'Annulée',
-      no_show: 'Absent',
+      scheduled: t('dialyse.statusScheduled'),
+      checked_in: t('dialyse.statusCheckedIn'),
+      in_progress: t('dialyse.statusInProgress'),
+      completed: t('dialyse.statusCompleted'),
+      cancelled: t('dialyse.statusCancelled'),
+      no_show: t('dialyse.statusNoShow'),
     };
     return labels[status] || status;
   };
@@ -184,83 +186,93 @@ export function DialysePlanningPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Planning des Séances</h1>
-          <p className="text-muted-foreground">
-            Planification et suivi des séances de dialyse
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate('/dialyse/sessions/new')}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Nouvelle Séance
-          </button>
-          <button
-            onClick={() => navigate('/dialyse/slots')}
-            className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Configurer Créneaux
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t('dialyse.planning')}
+        subtitle={t('dialyse.planningSubtitle')}
+        icon={Calendar}
+        module="dialyse"
+        actions={
+          <>
+            <Button
+              onClick={() => navigate('/dialyse/sessions/new')}
+              module="dialyse"
+              variant="primary"
+              icon={Plus}
+            >
+              {t('dialyse.newSession')}
+            </Button>
+            <Button
+              onClick={() => navigate('/dialyse/slots')}
+              variant="outline"
+              icon={Settings}
+            >
+              {t('dialyse.configureSlots')}
+            </Button>
+          </>
+        }
+      />
 
       {/* Navigation and View Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigateDate('prev')}
-              className="p-2 rounded-md border hover:bg-accent"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={goToToday}
-              className="px-3 py-1 rounded-md border text-sm font-medium hover:bg-accent"
-            >
-              Aujourd'hui
-            </button>
-            <button
-              onClick={() => navigateDate('next')}
-              className="p-2 rounded-md border hover:bg-accent"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+      <SectionCard className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigateDate('prev')}
+                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <Button
+                onClick={goToToday}
+                variant="outline"
+                size="sm"
+              >
+                {t('dialyse.today')}
+              </Button>
+              <button
+                onClick={() => navigateDate('next')}
+                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {viewMode === 'day' ? formatDate(selectedDate) : `${t('dialyse.weekOf')} ${formatShortDate(weekDates[0])}`}
+            </h2>
           </div>
-          <h2 className="text-xl font-semibold">
-            {viewMode === 'day' ? formatDate(selectedDate) : `Semaine du ${formatShortDate(weekDates[0])}`}
-          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setViewMode('day')}
+              variant={viewMode === 'day' ? 'primary' : 'outline'}
+              module={viewMode === 'day' ? 'dialyse' : undefined}
+              size="sm"
+            >
+              {t('dialyse.day')}
+            </Button>
+            <Button
+              onClick={() => setViewMode('week')}
+              variant={viewMode === 'week' ? 'primary' : 'outline'}
+              module={viewMode === 'week' ? 'dialyse' : undefined}
+              size="sm"
+            >
+              {t('dialyse.week')}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode('day')}
-            className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'day' ? 'bg-primary text-primary-foreground' : 'border hover:bg-accent'}`}
-          >
-            Jour
-          </button>
-          <button
-            onClick={() => setViewMode('week')}
-            className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'week' ? 'bg-primary text-primary-foreground' : 'border hover:bg-accent'}`}
-          >
-            Semaine
-          </button>
-        </div>
-      </div>
+      </SectionCard>
 
       {/* Calendar Grid */}
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <SectionCard className="overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center p-12">
             <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement du planning...</p>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-900 dark:border-gray-100 border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">{t('dialyse.loadingPlanning')}</p>
             </div>
           </div>
         ) : viewMode === 'day' ? (
@@ -280,13 +292,13 @@ export function DialysePlanningPage() {
                     <div key={slot.id} className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold">{slot.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {slot.startTime} - {slot.endTime} | Capacité: {slot.maxPatients} patients
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{slot.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {slot.startTime} - {slot.endTime} | {t('dialyse.capacity')}: {slot.maxPatients} {t('dialyse.patients')}
                           </p>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {slotSessions.length}/{slot.maxPatients} occupé(s)
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {slotSessions.length}/{slot.maxPatients} {t('dialyse.occupied')}
                         </span>
                       </div>
 
@@ -299,14 +311,14 @@ export function DialysePlanningPage() {
                               onClick={() => navigate(`/dialyse/sessions/${session.id}`)}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-mono text-sm">{session.sessionNumber}</span>
+                                <span className="font-mono text-sm font-medium">{session.sessionNumber}</span>
                                 <span className="text-xs font-medium">{getStatusLabel(session.status)}</span>
                               </div>
                               <div className="mt-2 flex gap-2">
                                 {session.status === 'scheduled' && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); checkInMutation.mutate(session.id); }}
-                                    className="text-xs px-2 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700"
+                                    className="text-xs px-2 py-1 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors font-medium"
                                   >
                                     Check-in
                                   </button>
@@ -314,17 +326,17 @@ export function DialysePlanningPage() {
                                 {session.status === 'checked_in' && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); startMutation.mutate({ sessionId: session.id }); }}
-                                    className="text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+                                    className="text-xs px-2 py-1 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors font-medium"
                                   >
-                                    Démarrer
+                                    {t('dialyse.start')}
                                   </button>
                                 )}
                                 {session.status === 'in_progress' && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); completeMutation.mutate(session.id); }}
-                                    className="text-xs px-2 py-1 rounded bg-gray-600 text-white hover:bg-gray-700"
+                                    className="text-xs px-2 py-1 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors font-medium"
                                   >
-                                    Terminer
+                                    {t('dialyse.complete')}
                                   </button>
                                 )}
                               </div>
@@ -332,8 +344,8 @@ export function DialysePlanningPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-4 text-muted-foreground text-sm">
-                          Aucune séance programmée pour ce créneau
+                        <div className="text-center py-4 text-gray-600 dark:text-gray-400 text-sm">
+                          {t('dialyse.noSessionsForSlot')}
                         </div>
                       )}
                     </div>
@@ -342,9 +354,12 @@ export function DialysePlanningPage() {
               </div>
             ) : (
               <div className="p-8 text-center">
-                <p className="text-muted-foreground">Aucun créneau configuré</p>
-                <button className="mt-2 text-primary hover:underline text-sm">
-                  Configurer les créneaux
+                <p className="text-gray-600 dark:text-gray-400">{t('dialyse.noSlotsConfigured')}</p>
+                <button
+                  onClick={() => navigate('/dialyse/slots')}
+                  className="mt-2 text-gray-900 dark:text-gray-100 hover:underline text-sm font-medium"
+                >
+                  {t('dialyse.configureSlots')}
                 </button>
               </div>
             )}
@@ -354,18 +369,18 @@ export function DialysePlanningPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left text-xs font-medium text-muted-foreground uppercase w-24">
-                    Créneau
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <th className="p-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase w-24">
+                    {t('dialyse.slot')}
                   </th>
                   {weekDates.map((date, i) => {
                     const isToday = date.toDateString() === new Date().toDateString();
                     return (
                       <th
                         key={i}
-                        className={`p-3 text-center text-xs font-medium uppercase ${isToday ? 'bg-primary/10' : ''}`}
+                        className={`p-3 text-center text-xs font-medium uppercase ${isToday ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
                       >
-                        <div className={isToday ? 'text-primary' : 'text-muted-foreground'}>
+                        <div className={isToday ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}>
                           {formatShortDate(date)}
                         </div>
                       </th>
@@ -373,12 +388,12 @@ export function DialysePlanningPage() {
                   })}
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {slots?.map((slot) => (
-                  <tr key={slot.id} className="divide-x">
-                    <td className="p-3 bg-muted/30">
-                      <div className="font-medium text-sm">{slot.name}</div>
-                      <div className="text-xs text-muted-foreground">{slot.startTime}</div>
+                  <tr key={slot.id} className="divide-x divide-gray-200 dark:divide-gray-700">
+                    <td className="p-3 bg-gray-50 dark:bg-gray-800/30">
+                      <div className="font-medium text-sm text-gray-900 dark:text-white">{slot.name}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">{slot.startTime}</div>
                     </td>
                     {weekDates.map((date, i) => {
                       const dayOfWeek = date.getDay();
@@ -389,7 +404,7 @@ export function DialysePlanningPage() {
                       return (
                         <td
                           key={i}
-                          className={`p-2 align-top min-h-[100px] ${isToday ? 'bg-primary/5' : ''} ${!isActiveDay ? 'bg-muted/20' : ''}`}
+                          className={`p-2 align-top min-h-[100px] ${isToday ? 'bg-gray-50 dark:bg-gray-800/30' : ''} ${!isActiveDay ? 'bg-gray-100 dark:bg-gray-800/20' : ''}`}
                         >
                           {isActiveDay && (
                             <div className="space-y-1">
@@ -403,7 +418,7 @@ export function DialysePlanningPage() {
                                 </div>
                               ))}
                               {daySessions.length === 0 && (
-                                <div className="text-xs text-muted-foreground text-center py-2">-</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400 text-center py-2">-</div>
                               )}
                             </div>
                           )}
@@ -416,32 +431,34 @@ export function DialysePlanningPage() {
             </table>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <span className="text-muted-foreground">Légende:</span>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-blue-200 border border-blue-300"></div>
-          <span>Planifiée</span>
+      <SectionCard className="p-4">
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <span className="text-gray-600 dark:text-gray-400 font-medium">{t('dialyse.legend')}:</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-slate-200 border border-slate-300"></div>
+            <span className="text-gray-900 dark:text-white">{t('dialyse.statusScheduled')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-slate-400 border border-slate-500"></div>
+            <span className="text-gray-900 dark:text-white">{t('dialyse.statusCheckedIn')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-slate-600 border border-slate-700"></div>
+            <span className="text-gray-900 dark:text-white">{t('dialyse.statusInProgress')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-gray-200 border border-gray-300"></div>
+            <span className="text-gray-900 dark:text-white">{t('dialyse.statusCompleted')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-slate-500 border border-slate-600"></div>
+            <span className="text-gray-900 dark:text-white">{t('dialyse.statusCancelled')}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-yellow-200 border border-yellow-300"></div>
-          <span>Arrivé</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-          <span>En cours</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-gray-200 border border-gray-300"></div>
-          <span>Terminée</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-red-200 border border-red-300"></div>
-          <span>Annulée</span>
-        </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }

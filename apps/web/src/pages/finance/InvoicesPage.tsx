@@ -94,15 +94,15 @@ export function InvoicesPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('finance.totalInvoiced')}</p>
-            <p className="text-2xl font-bold">€{totals.total.toFixed(2)}</p>
+            <p className="text-2xl font-bold">€{(totals.total ?? 0).toFixed(2)}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('finance.amountPaid')}</p>
-            <p className="text-2xl font-bold text-green-600">€{totals.paid.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-600">€{(totals.paid ?? 0).toFixed(2)}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('finance.amountDue')}</p>
-            <p className="text-2xl font-bold text-orange-600">€{totals.due.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-orange-600">€{(totals.due ?? 0).toFixed(2)}</p>
           </div>
         </div>
       )}

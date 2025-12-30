@@ -58,14 +58,6 @@ export function RiskAssessmentPage() {
     },
   });
 
-  const { data: _dashboard } = useQuery({
-    queryKey: ['risk-dashboard'],
-    queryFn: async () => {
-      const response = await api.get('/audit/risk/dashboard');
-      return response.data.data;
-    },
-  });
-
   const runAssessmentMutation = useMutation({
     mutationFn: async (type: string) => {
       setIsRunning(true);

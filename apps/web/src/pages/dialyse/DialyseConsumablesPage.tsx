@@ -4,8 +4,33 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { Pencil, Trash2, Plus, Package } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { PageHeader, Button, StatsCard, SectionCard, InlineLoading } from '@/components/healthcare';
+
+// API returns snake_case - we transform it
+interface ConsumableApi {
+  id: string;
+  name: string;
+  category: string;
+  code: string;
+  unit: string;
+  current_stock: number;
+  min_stock: number;
+  max_stock: number;
+  reorder_point: number;
+  unit_cost: number;
+  supplier: string | null;
+  expiry_date: string | null;
+  notes: string | null;
+  status: string;
+  created_at: number;
+  updated_at: number;
+}
 
 interface Consumable {
   id: string;
@@ -28,23 +53,6 @@ interface Consumable {
   updatedAt: string;
 }
 
-interface ConsumableFormData {
-  name: string;
-  category: string;
-  sku: string;
-  unit: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  reorderPoint: number;
-  unitCost: number;
-  supplier: string;
-  expiryDate: string;
-  location: string;
-  notes: string;
-  isActive: boolean;
-}
-
 interface StockMovement {
   consumableId: string;
   type: 'in' | 'out' | 'adjustment';
@@ -53,42 +61,42 @@ interface StockMovement {
   reference: string;
 }
 
-const defaultFormData: ConsumableFormData = {
-  name: '',
-  category: 'dialyzer',
-  sku: '',
-  unit: 'unité',
-  currentStock: 0,
-  minStock: 10,
-  maxStock: 100,
-  reorderPoint: 20,
-  unitCost: 0,
-  supplier: '',
-  expiryDate: '',
-  location: '',
-  notes: '',
-  isActive: true,
-};
+// Category labels will be translated dynamically using t() function
 
-const categoryLabels: Record<string, string> = {
-  dialyzer: 'Dialyseurs',
-  tubing: 'Lignes',
-  needle: 'Aiguilles',
-  solution: 'Solutions',
-  medication: 'Médicaments',
-  other: 'Autres',
+// Transform API response to frontend format
+const transformConsumable = (record: ConsumableApi): Consumable => {
+  return {
+    id: record.id,
+    name: record.name,
+    category: (record.category as Consumable['category']) || 'other',
+    sku: record.code || '',
+    unit: record.unit || '',
+    currentStock: record.current_stock || 0,
+    minStock: record.min_stock || 0,
+    maxStock: record.max_stock || 0,
+    reorderPoint: record.reorder_point || 0,
+    unitCost: record.unit_cost || 0,
+    supplier: record.supplier,
+    expiryDate: record.expiry_date,
+    location: null,
+    notes: record.notes,
+    isActive: record.status === 'active',
+    lastRestockDate: null,
+    createdAt: record.created_at ? new Date(record.created_at).toISOString() : '',
+    updatedAt: record.updated_at ? new Date(record.updated_at).toISOString() : '',
+  };
 };
 
 export function DialyseConsumablesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
-  const [editingConsumable, setEditingConsumable] = useState<Consumable | null>(null);
   const [selectedConsumable, setSelectedConsumable] = useState<Consumable | null>(null);
-  const [formData, setFormData] = useState<ConsumableFormData>(defaultFormData);
   const [stockMovement, setStockMovement] = useState<StockMovement>({
     consumableId: '',
     type: 'in',
@@ -101,8 +109,8 @@ export function DialyseConsumablesPage() {
   const { data: consumables, isLoading } = useQuery({
     queryKey: ['dialyse-consumables'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<Consumable[]>>('/dialyse/consumables');
-      return response.data.data;
+      const response = await api.get<{ success: boolean; data: ConsumableApi[] }>('/dialyse/consumables');
+      return (response.data.data || []).map(transformConsumable);
     },
   });
 
@@ -124,10 +132,10 @@ export function DialyseConsumablesPage() {
 
   // Get stock status
   const getStockStatus = (consumable: Consumable) => {
-    if (consumable.currentStock === 0) return { label: 'Rupture', color: 'bg-red-100 text-red-800' };
-    if (consumable.currentStock <= consumable.reorderPoint) return { label: 'Faible', color: 'bg-orange-100 text-orange-800' };
-    if (consumable.currentStock >= consumable.maxStock) return { label: 'Plein', color: 'bg-blue-100 text-blue-800' };
-    return { label: 'OK', color: 'bg-green-100 text-green-800' };
+    if (consumable.currentStock === 0) return { label: t('dialyse.stockStatusOutOfStock'), color: 'bg-muted text-muted-foreground' };
+    if (consumable.currentStock <= consumable.reorderPoint) return { label: t('dialyse.stockStatusLow'), color: 'bg-muted/80 text-foreground' };
+    if (consumable.currentStock >= consumable.maxStock) return { label: t('dialyse.stockStatusFull'), color: 'bg-muted/70 text-foreground' };
+    return { label: t('dialyse.stockStatusOk'), color: 'bg-muted/60 text-foreground' };
   };
 
   // Calculate stats
@@ -142,36 +150,6 @@ export function DialyseConsumablesPage() {
     }).length || 0,
   };
 
-  // Create/Update consumable mutation
-  const saveConsumable = useMutation({
-    mutationFn: async (data: ConsumableFormData) => {
-      const payload = {
-        ...data,
-        supplier: data.supplier || undefined,
-        expiryDate: data.expiryDate || undefined,
-        location: data.location || undefined,
-        notes: data.notes || undefined,
-      };
-
-      if (editingConsumable) {
-        const response = await api.put<ApiResponse<Consumable>>(`/dialyse/consumables/${editingConsumable.id}`, payload);
-        return response.data;
-      } else {
-        const response = await api.post<ApiResponse<Consumable>>('/dialyse/consumables', payload);
-        return response.data;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dialyse-consumables'] });
-      setShowModal(false);
-      resetForm();
-      window.alert(editingConsumable ? 'Consommable mis à jour' : 'Consommable créé');
-    },
-    onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
-    },
-  });
-
   // Stock movement mutation
   const addStockMovement = useMutation({
     mutationFn: async (movement: StockMovement) => {
@@ -183,10 +161,10 @@ export function DialyseConsumablesPage() {
       setShowStockModal(false);
       setSelectedConsumable(null);
       setStockMovement({ consumableId: '', type: 'in', quantity: 0, reason: '', reference: '' });
-      window.alert('Mouvement de stock enregistré');
+      toast.success(t('dialyse.stockMovementRecorded'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -197,42 +175,19 @@ export function DialyseConsumablesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-consumables'] });
-      window.alert('Consommable supprimé');
+      toast.success(t('dialyse.consumableDeleted'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
-  const resetForm = () => {
-    setFormData(defaultFormData);
-    setEditingConsumable(null);
-  };
-
   const openCreateModal = () => {
-    resetForm();
-    setShowModal(true);
+    navigate('/dialyse/consumables/new');
   };
 
   const openEditModal = (consumable: Consumable) => {
-    setEditingConsumable(consumable);
-    setFormData({
-      name: consumable.name,
-      category: consumable.category,
-      sku: consumable.sku,
-      unit: consumable.unit,
-      currentStock: consumable.currentStock,
-      minStock: consumable.minStock,
-      maxStock: consumable.maxStock,
-      reorderPoint: consumable.reorderPoint,
-      unitCost: consumable.unitCost,
-      supplier: consumable.supplier || '',
-      expiryDate: consumable.expiryDate ? new Date(consumable.expiryDate).toISOString().split('T')[0] : '',
-      location: consumable.location || '',
-      notes: consumable.notes || '',
-      isActive: consumable.isActive,
-    });
-    setShowModal(true);
+    navigate(`/dialyse/consumables/${consumable.id}/edit`);
   };
 
   const openStockModal = (consumable: Consumable) => {
@@ -247,26 +202,17 @@ export function DialyseConsumablesPage() {
     setShowStockModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.sku.trim()) {
-      window.alert('Veuillez remplir le nom et le code article');
-      return;
-    }
-    saveConsumable.mutate(formData);
-  };
-
   const handleStockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (stockMovement.quantity <= 0) {
-      window.alert('Veuillez saisir une quantité positive');
+      toast.warning(t('dialyse.enterPositiveQuantity'));
       return;
     }
     addStockMovement.mutate(stockMovement);
   };
 
   const handleDelete = (consumable: Consumable) => {
-    if (window.confirm(`Supprimer "${consumable.name}" ? Cette action est irréversible.`)) {
+    if (window.confirm(t('dialyse.confirmDeleteConsumable').replace('{name}', consumable.name))) {
       deleteConsumable.mutate(consumable.id);
     }
   };
@@ -283,40 +229,26 @@ export function DialyseConsumablesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Consommables</h1>
-          <p className="text-muted-foreground">
-            Gestion des stocks de consommables de dialyse
-          </p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nouveau Consommable
-        </button>
-      </div>
+      <PageHeader
+        title={t('dialyse.consumables')}
+        description={t('dialyse.consumablesSubtitle')}
+        module="dialyse"
+      >
+        <Button onClick={openCreateModal}>
+          <Plus className="h-4 w-4" />
+          {t('dialyse.newConsumable')}
+        </Button>
+      </PageHeader>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm font-medium text-muted-foreground">Total Articles</div>
-          <div className="mt-2 text-2xl font-bold">{stats.total}</div>
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatsCard title={t('dialyse.totalItems')} value={stats.total ?? 0} module="dialyse" />
+          <StatsCard title={t('dialyse.lowStock')} value={stats.lowStock ?? 0} module="dialyse" />
+          <StatsCard title={t('dialyse.outOfStock')} value={stats.outOfStock ?? 0} module="dialyse" />
+          <StatsCard title={t('dialyse.expiringSoon')} value={stats.expiringSoon ?? 0} module="dialyse" />
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm font-medium text-muted-foreground">Stock Faible</div>
-          <div className="mt-2 text-2xl font-bold text-orange-600">{stats.lowStock}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm font-medium text-muted-foreground">Rupture de Stock</div>
-          <div className="mt-2 text-2xl font-bold text-red-600">{stats.outOfStock}</div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-sm font-medium text-muted-foreground">Bientôt Périmés</div>
-          <div className="mt-2 text-2xl font-bold text-yellow-600">{stats.expiringSoon}</div>
-        </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
@@ -324,7 +256,7 @@ export function DialyseConsumablesPage() {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Rechercher par nom ou code..."
+          placeholder={t('dialyse.searchByNameOrCode')}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm w-64"
         />
 
@@ -333,10 +265,13 @@ export function DialyseConsumablesPage() {
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Toutes catégories</option>
-          {Object.entries(categoryLabels).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
+          <option value="all">{t('dialyse.allCategories')}</option>
+          <option value="dialyzer">{t('dialyse.categoryDialyzer')}</option>
+          <option value="tubing">{t('dialyse.categoryTubing')}</option>
+          <option value="needle">{t('dialyse.categoryNeedle')}</option>
+          <option value="solution">{t('dialyse.categorySolution')}</option>
+          <option value="medication">{t('dialyse.categoryMedication')}</option>
+          <option value="other">{t('dialyse.categoryOther')}</option>
         </select>
 
         <select
@@ -344,34 +279,29 @@ export function DialyseConsumablesPage() {
           onChange={(e) => setStockFilter(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Tous les stocks</option>
-          <option value="low">Stock faible</option>
-          <option value="out">Rupture</option>
-          <option value="expiring">Bientôt périmés</option>
+          <option value="all">{t('dialyse.allStocks')}</option>
+          <option value="low">{t('dialyse.lowStock')}</option>
+          <option value="out">{t('dialyse.outOfStock')}</option>
+          <option value="expiring">{t('dialyse.expiringSoon')}</option>
         </select>
       </div>
 
       {/* Consumables List */}
-      <div className="rounded-lg border bg-card">
+      <SectionCard module="dialyse">
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement...</p>
-            </div>
-          </div>
+          <InlineLoading message={t('dialyse.loadingConsumables')} />
         ) : filteredConsumables && filteredConsumables.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Article</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Catégorie</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Stock</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Péremption</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Prix Unit.</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.article')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.category')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t('dialyse.stock')}</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">{t('dialyse.status')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.expiry')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t('dialyse.unitPrice')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t('dialyse.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -387,7 +317,7 @@ export function DialyseConsumablesPage() {
                         <div className="text-xs text-muted-foreground font-mono">{consumable.sku}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm">{categoryLabels[consumable.category] || consumable.category}</span>
+                        <span className="text-sm">{t(`dialyse.category${consumable.category.charAt(0).toUpperCase() + consumable.category.slice(1)}`)}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="font-bold">{consumable.currentStock}</div>
@@ -407,24 +337,27 @@ export function DialyseConsumablesPage() {
                         {formatCurrency(consumable.unitCost)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openStockModal(consumable)}
-                            className="text-sm text-blue-600 hover:underline"
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.stock')}
                           >
-                            Stock
+                            <Package className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => openEditModal(consumable)}
-                            className="text-sm text-primary hover:underline"
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.edit')}
                           >
-                            Modifier
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(consumable)}
-                            className="text-sm text-destructive hover:underline"
+                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            title={t('dialyse.delete')}
                           >
-                            Supprimer
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -439,235 +372,45 @@ export function DialyseConsumablesPage() {
             <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
-            <h3 className="mt-4 text-lg font-medium">Aucun consommable</h3>
+            <h3 className="mt-4 text-lg font-medium">{t('dialyse.noConsumablesFound')}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Commencez par ajouter des consommables à votre inventaire
+              {t('dialyse.addConsumablesToInventory')}
             </p>
             <button
               onClick={openCreateModal}
               className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Ajouter un consommable
+              {t('dialyse.addConsumable')}
             </button>
           </div>
         )}
-      </div>
-
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-xl font-semibold mb-4">
-              {editingConsumable ? 'Modifier le Consommable' : 'Nouveau Consommable'}
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Nom *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    required
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Code Article *</label>
-                  <input
-                    type="text"
-                    value={formData.sku}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                    required
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Catégorie</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {Object.entries(categoryLabels).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Unité</label>
-                  <input
-                    type="text"
-                    value={formData.unit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                    placeholder="unité, boîte, flacon..."
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Stock actuel</label>
-                  <input
-                    type="number"
-                    value={formData.currentStock}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currentStock: parseInt(e.target.value) || 0 }))}
-                    min={0}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Stock minimum</label>
-                  <input
-                    type="number"
-                    value={formData.minStock}
-                    onChange={(e) => setFormData(prev => ({ ...prev, minStock: parseInt(e.target.value) || 0 }))}
-                    min={0}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Seuil de réappro</label>
-                  <input
-                    type="number"
-                    value={formData.reorderPoint}
-                    onChange={(e) => setFormData(prev => ({ ...prev, reorderPoint: parseInt(e.target.value) || 0 }))}
-                    min={0}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Stock maximum</label>
-                  <input
-                    type="number"
-                    value={formData.maxStock}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxStock: parseInt(e.target.value) || 0 }))}
-                    min={0}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Prix unitaire (€)</label>
-                  <input
-                    type="number"
-                    value={formData.unitCost}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unitCost: parseFloat(e.target.value) || 0 }))}
-                    min={0}
-                    step={0.01}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fournisseur</label>
-                  <input
-                    type="text"
-                    value={formData.supplier}
-                    onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Date de péremption</label>
-                  <input
-                    type="date"
-                    value={formData.expiryDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Emplacement</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Étagère A, Armoire 2..."
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="h-4 w-4 rounded border-input"
-                />
-                <label htmlFor="isActive" className="text-sm">Article actif</label>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => { setShowModal(false); resetForm(); }}
-                  className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={saveConsumable.isPending}
-                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {saveConsumable.isPending ? 'Enregistrement...' : editingConsumable ? 'Mettre à jour' : 'Créer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      </SectionCard>
 
       {/* Stock Movement Modal */}
       {showStockModal && selectedConsumable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
-            <h2 className="text-xl font-semibold mb-4">Mouvement de Stock</h2>
+            <h2 className="text-xl font-semibold mb-4">{t('dialyse.stockMovement')}</h2>
             <p className="text-sm text-muted-foreground mb-4">
-              {selectedConsumable.name} - Stock actuel: <span className="font-bold">{selectedConsumable.currentStock}</span>
+              {selectedConsumable.name} - {t('dialyse.currentStock')}: <span className="font-bold">{selectedConsumable.currentStock}</span>
             </p>
 
             <form onSubmit={handleStockSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Type de mouvement</label>
+                <label className="block text-sm font-medium mb-2">{t('dialyse.movementType')}</label>
                 <select
                   value={stockMovement.type}
                   onChange={(e) => setStockMovement(prev => ({ ...prev, type: e.target.value as 'in' | 'out' | 'adjustment' }))}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="in">Entrée (réception)</option>
-                  <option value="out">Sortie (utilisation)</option>
-                  <option value="adjustment">Ajustement (inventaire)</option>
+                  <option value="in">{t('dialyse.movementTypeIn')}</option>
+                  <option value="out">{t('dialyse.movementTypeOut')}</option>
+                  <option value="adjustment">{t('dialyse.movementTypeAdjustment')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Quantité</label>
+                <label className="block text-sm font-medium mb-2">{t('dialyse.quantity')}</label>
                 <input
                   type="number"
                   value={stockMovement.quantity}
@@ -677,30 +420,30 @@ export function DialyseConsumablesPage() {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stockMovement.type === 'in' && `Nouveau stock: ${selectedConsumable.currentStock + stockMovement.quantity}`}
-                  {stockMovement.type === 'out' && `Nouveau stock: ${selectedConsumable.currentStock - stockMovement.quantity}`}
-                  {stockMovement.type === 'adjustment' && `Stock ajusté à: ${stockMovement.quantity}`}
+                  {stockMovement.type === 'in' && t('dialyse.newStock').replace('{stock}', String(selectedConsumable.currentStock + stockMovement.quantity))}
+                  {stockMovement.type === 'out' && t('dialyse.newStock').replace('{stock}', String(selectedConsumable.currentStock - stockMovement.quantity))}
+                  {stockMovement.type === 'adjustment' && t('dialyse.adjustedStock').replace('{stock}', String(stockMovement.quantity))}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Raison</label>
+                <label className="block text-sm font-medium mb-2">{t('dialyse.reason')}</label>
                 <input
                   type="text"
                   value={stockMovement.reason}
                   onChange={(e) => setStockMovement(prev => ({ ...prev, reason: e.target.value }))}
-                  placeholder="Livraison, séance, péremption..."
+                  placeholder={t('dialyse.reasonPlaceholder')}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Référence</label>
+                <label className="block text-sm font-medium mb-2">{t('dialyse.reference')}</label>
                 <input
                   type="text"
                   value={stockMovement.reference}
                   onChange={(e) => setStockMovement(prev => ({ ...prev, reference: e.target.value }))}
-                  placeholder="N° bon de livraison, N° séance..."
+                  placeholder={t('dialyse.referencePlaceholder')}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -711,14 +454,14 @@ export function DialyseConsumablesPage() {
                   onClick={() => { setShowStockModal(false); setSelectedConsumable(null); }}
                   className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
                 >
-                  Annuler
+                  {t('dialyse.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={addStockMovement.isPending}
                   className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {addStockMovement.isPending ? 'Enregistrement...' : 'Valider'}
+                  {addStockMovement.isPending ? t('dialyse.saving') : t('dialyse.validate')}
                 </button>
               </div>
             </form>

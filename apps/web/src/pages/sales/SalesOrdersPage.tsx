@@ -11,6 +11,13 @@ import type { SalesOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
+interface SalesOrderStats {
+  totalOrders: number;
+  draftOrders: number;
+  confirmedOrders: number;
+  totalRevenue: number;
+}
+
 export function SalesOrdersPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -36,7 +43,7 @@ export function SalesOrdersPage() {
   const { data: stats } = useQuery({
     queryKey: ['sales-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/sales/orders/stats');
+      const response = await api.get<ApiResponse<SalesOrderStats>>('/sales/orders/stats');
       return response.data.data;
     },
   });

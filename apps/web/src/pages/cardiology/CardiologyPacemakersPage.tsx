@@ -9,16 +9,23 @@ import { useNavigate } from 'react-router-dom';
 import {
   Radio,
   Plus,
-  Search,
-  ChevronRight,
   Battery,
   AlertTriangle,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  FilterBar,
+  SectionCard,
+  Button,
+  EmptyState,
+  InlineLoading,
+  getStatusColor,
+} from '../../components/healthcare';
 
 export default function CardiologyPacemakersPage() {
-  useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -34,150 +41,186 @@ export default function CardiologyPacemakersPage() {
     },
   });
 
-  const getStatusColor = (status: string) => {
+  const getDeviceStatus = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return 'completed';
       case 'monitoring':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'in-progress';
       case 'replaced':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'pending';
       case 'explanted':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+        return 'critical';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'pending';
     }
   };
 
-  const getBatteryColor = (percentage: number) => {
-    if (percentage > 50) return 'text-green-500';
-    if (percentage > 20) return 'text-yellow-500';
-    return 'text-red-500';
+  const getBatteryColor = (status: string | undefined | null) => {
+    if (!status) return 'text-gray-500 dark:text-gray-400';
+    switch (status) {
+      case 'good':
+        return 'text-slate-600 dark:text-slate-400';
+      case 'monitoring':
+        return 'text-slate-500 dark:text-slate-400';
+      case 'low':
+      case 'critical':
+        return 'text-slate-700 dark:text-slate-500';
+      default:
+        return 'text-gray-500 dark:text-gray-400';
+    }
+  };
+
+  const getBatteryLabel = (status: string | undefined | null) => {
+    if (!status) return '-';
+    switch (status) {
+      case 'good':
+        return t('cardiology.batteryGood');
+      case 'monitoring':
+        return t('cardiology.monitoring');
+      case 'low':
+        return t('cardiology.batteryLow');
+      case 'critical':
+        return t('common.critical');
+      default:
+        return status;
+    }
+  };
+
+  const getDeviceTypeLabel = (type: string | undefined | null) => {
+    if (!type) return '-';
+    switch (type) {
+      case 'single_chamber':
+        return t('cardiology.singleChamber');
+      case 'dual_chamber':
+        return t('cardiology.dualChamber');
+      case 'biventricular':
+        return t('cardiology.biventricular');
+      case 'icd':
+        return t('cardiology.icd');
+      default:
+        return type;
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Radio className="h-7 w-7 text-purple-500" />
-            Pacemakers
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Gestion des pacemakers et défibrillateurs implantés
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/cardiology/pacemakers/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Nouveau Pacemaker
-        </button>
-      </div>
+      <PageHeader
+        title={t('cardiology.pacemakers')}
+        subtitle={t('cardiology.pacemakersSubtitle')}
+        icon={Radio}
+        module="cardiology"
+        actions={
+          <Button
+            module="cardiology"
+            icon={Plus}
+            onClick={() => navigate('/cardiology/pacemakers/new')}
+          >
+            {t('cardiology.newPacemaker')}
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher un patient..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="active">Actif</option>
-            <option value="monitoring">Surveillance</option>
-            <option value="replaced">Remplacé</option>
-            <option value="explanted">Explanté</option>
-          </select>
-        </div>
-      </div>
+      <FilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder={t('common.searchPatient')}
+        module="cardiology"
+        filters={[
+          {
+            name: 'status',
+            value: statusFilter,
+            options: [
+              { value: 'all', label: t('common.allStatuses') },
+              { value: 'active', label: t('common.active') },
+              { value: 'monitoring', label: t('cardiology.monitoring') },
+              { value: 'replaced', label: t('cardiology.replaced') },
+              { value: 'explanted', label: t('cardiology.explanted') },
+            ],
+            onChange: setStatusFilter,
+          },
+        ]}
+      />
 
       {/* Pacemakers List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <SectionCard>
         {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
-          </div>
+          <InlineLoading rows={5} />
         ) : pacemakers?.length === 0 ? (
-          <div className="p-8 text-center">
-            <Radio className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Aucun pacemaker trouvé</p>
-          </div>
+          <EmptyState
+            icon={Radio}
+            title={t('cardiology.noPacemakerFound')}
+            module="cardiology"
+            action={{
+              label: t('cardiology.newPacemaker'),
+              icon: Plus,
+              onClick: () => navigate('/cardiology/pacemakers/new'),
+            }}
+          />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {pacemakers?.map((pm: any) => (
               <div
                 key={pm.id}
-                onClick={() => navigate(`/cardiology/pacemakers/${pm.id}`)}
+                onClick={() => navigate(`/cardiology/pacemakers/${pm.id}/edit`)}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                      <Radio className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center flex-shrink-0">
+                      <Radio className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
-                          {pm.patientName}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                          {pm.patientName || `Patient ${pm.patientId}`}
                         </h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(pm.status)}`}>
-                          {pm.status === 'active' ? 'Actif' :
-                           pm.status === 'monitoring' ? 'Surveillance' :
-                           pm.status === 'replaced' ? 'Remplacé' : 'Explanté'}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(getDeviceStatus(pm.status))}`}>
+                          {pm.status === 'active' ? t('common.active') :
+                           pm.status === 'monitoring' ? t('cardiology.monitoring') :
+                           pm.status === 'replaced' ? t('cardiology.replaced') : t('cardiology.explanted')}
                         </span>
-                        {pm.batteryPercentage < 20 && (
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                        {(pm.batteryStatus === 'low' || pm.batteryStatus === 'critical') && (
+                          <AlertTriangle className="h-4 w-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {pm.manufacturer} {pm.model} • {pm.type}
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {pm.manufacturer} {pm.model} • {getDeviceTypeLabel(pm.deviceType)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-6 ml-4">
                     {/* Battery & Info */}
                     <div className="hidden md:flex items-center gap-6 text-sm">
                       <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">Batterie</p>
-                        <p className={`font-medium flex items-center gap-1 ${getBatteryColor(pm.batteryPercentage)}`}>
+                        <p className="text-gray-500 dark:text-gray-400">{t('cardiology.battery')}</p>
+                        <p className={`font-medium flex items-center gap-1 ${getBatteryColor(pm.batteryStatus)}`}>
                           <Battery className="h-4 w-4" />
-                          {pm.batteryPercentage}%
+                          {getBatteryLabel(pm.batteryStatus)}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">Implanté</p>
+                        <p className="text-gray-500 dark:text-gray-400">{t('cardiology.implanted')}</p>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {new Date(pm.implantDate).toLocaleDateString('fr-FR')}
+                          {pm.implantDate ? new Date(pm.implantDate).toLocaleDateString('fr-FR') : '-'}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">Dernier contrôle</p>
+                        <p className="text-gray-500 dark:text-gray-400">{t('cardiology.lastCheckup')}</p>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {pm.lastInterrogation ? new Date(pm.lastInterrogation).toLocaleDateString('fr-FR') : '-'}
+                          {pm.lastInterrogationDate ? new Date(pm.lastInterrogationDate).toLocaleDateString('fr-FR') : '-'}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

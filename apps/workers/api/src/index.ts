@@ -5,9 +5,12 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import { logger as honoLogger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import { logger } from './utils/logger';
 import { initializeDb } from './db';
+import { csrfMiddleware, setCsrfToken } from './middleware/csrf';
+import { apiRateLimitMiddleware, RATE_LIMITS } from './utils/rate-limit';
 import authRoutes from './routes/auth';
 import organizationsRoutes from './routes/organizations';
 import rolesRoutes from './routes/roles';
@@ -55,7 +58,7 @@ const app = new Hono<{ Bindings: Env }>();
  */
 
 // Logging
-app.use('*', logger());
+app.use('*', honoLogger());
 
 // Database initialization middleware
 app.use('*', async (c, next) => {
@@ -63,19 +66,31 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// CORS
+// CORS - Strict origin validation
 app.use(
   '*',
   cors({
     origin: (origin) => {
+      // Reject requests without origin (except for same-origin requests)
+      if (!origin) {
+        return null;
+      }
+
       // In development, allow localhost
       if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
         return origin;
       }
-      // Allow Cloudflare Pages deployments
-      if (origin.includes('.pages.dev')) {
+
+      // Allow specific Cloudflare Pages deployments (strict pattern matching)
+      const allowedPagesPatterns = [
+        /^https:\/\/[a-z0-9-]+\.perfex-web(-dev|-staging)?\.pages\.dev$/,
+        /^https:\/\/perfex-web(-dev|-staging)?\.pages\.dev$/,
+      ];
+
+      if (allowedPagesPatterns.some(pattern => pattern.test(origin))) {
         return origin;
       }
+
       // In production, only allow specific domains
       const allowedOrigins = [
         'https://app.perfex.com',
@@ -84,17 +99,30 @@ app.use(
         'https://staging.perfex-web-staging.pages.dev',
         'https://perfex-web.pages.dev',
       ];
-      return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
+      // SECURITY: Reject unknown origins instead of returning fallback
+      return allowedOrigins.includes(origin) ? origin : null;
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'x-organization-id'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Organization-Id', 'X-CSRF-Token'],
     maxAge: 86400,
   })
 );
 
 // Pretty JSON in development (disabled - causes issues with body parsing)
 // app.use('*', prettyJSON());
+
+// CSRF Protection - Protects against Cross-Site Request Forgery
+// Excludes: login, register, refresh, forgot-password, reset-password, health, test
+app.use('/api/v1/*', csrfMiddleware());
+
+// Set CSRF token after authentication
+app.use('/api/v1/*', setCsrfToken());
+
+// Global API Rate Limiting - 100 requests per minute per user/IP
+// Excludes: auth routes (have their own stricter limits), health check, test endpoint
+app.use('/api/v1/*', apiRateLimitMiddleware(RATE_LIMITS.API_AUTH));
 
 /**
  * Health check endpoint
@@ -239,22 +267,61 @@ app.notFound((c) => {
 });
 
 /**
- * Error handler
+ * Error handler with proper error classification
  */
 app.onError((err, c) => {
-  console.error('Error:', err);
+  const isProduction = c.env.ENVIRONMENT === 'production';
+
+  // Determine error type and status code
+  let statusCode = 500;
+  let errorCode = 'INTERNAL_SERVER_ERROR';
+  let message = 'An unexpected error occurred';
+
+  const errorMessage = err.message.toLowerCase();
+
+  // Map common error patterns to appropriate HTTP status codes
+  if (errorMessage.includes('not found') || errorMessage.includes('no such')) {
+    statusCode = 404;
+    errorCode = 'NOT_FOUND';
+    message = isProduction ? 'Resource not found' : err.message;
+  } else if (errorMessage.includes('unauthorized') || errorMessage.includes('invalid token') || errorMessage.includes('authentication')) {
+    statusCode = 401;
+    errorCode = 'UNAUTHORIZED';
+    message = isProduction ? 'Authentication required' : err.message;
+  } else if (errorMessage.includes('forbidden') || errorMessage.includes('permission') || errorMessage.includes('access denied')) {
+    statusCode = 403;
+    errorCode = 'FORBIDDEN';
+    message = isProduction ? 'Access denied' : err.message;
+  } else if (errorMessage.includes('validation') || errorMessage.includes('invalid') || errorMessage.includes('required')) {
+    statusCode = 400;
+    errorCode = 'VALIDATION_ERROR';
+    message = isProduction ? 'Invalid request' : err.message;
+  } else if (errorMessage.includes('conflict') || errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
+    statusCode = 409;
+    errorCode = 'CONFLICT';
+    message = isProduction ? 'Resource conflict' : err.message;
+  } else {
+    message = isProduction ? 'An unexpected error occurred' : err.message;
+  }
+
+  // Log error with context
+  logger.error('Request error', {
+    error: err,
+    path: c.req.path,
+    method: c.req.method,
+    statusCode,
+    errorCode,
+  });
 
   return c.json(
     {
       error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: c.env.ENVIRONMENT === 'production'
-          ? 'An unexpected error occurred'
-          : err.message,
-        ...(c.env.ENVIRONMENT !== 'production' && { stack: err.stack }),
+        code: errorCode,
+        message,
+        ...(!isProduction && { stack: err.stack }),
       },
     },
-    500
+    statusCode
   );
 });
 

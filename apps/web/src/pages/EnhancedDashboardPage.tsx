@@ -8,6 +8,62 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { api, type ApiResponse } from '@/lib/api';
 
+// Type definitions for dashboard data
+interface Invoice {
+  id: string;
+  status: string;
+  amount: number;
+}
+
+interface Payment {
+  id: string;
+  amount: number;
+}
+
+interface Company {
+  id: string;
+  status: string;
+}
+
+interface Opportunity {
+  id: string;
+  value: number;
+}
+
+interface Project {
+  id: string;
+  status: string;
+}
+
+interface Employee {
+  id: string;
+  status: string;
+}
+
+interface InventoryStats {
+  totalItems: number;
+  totalValue: number;
+}
+
+interface SalesStats {
+  totalOrders: number;
+  totalRevenue: number;
+}
+
+interface ManufacturingStats {
+  totalWorkOrders: number;
+  inProgressOrders: number;
+}
+
+interface AssetStats {
+  totalAssets: number;
+  totalValue: number;
+}
+
+interface NotificationCount {
+  count: number;
+}
+
 export function EnhancedDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -16,11 +72,13 @@ export function EnhancedDashboardPage() {
   const { data: financeStats } = useQuery({
     queryKey: ['finance-stats'],
     queryFn: async () => {
-      const invoices = await api.get<ApiResponse<any[]>>('/invoices');
-      const payments = await api.get<ApiResponse<any[]>>('/payments');
+      const invoices = await api.get<ApiResponse<Invoice[]>>('/invoices');
+      const payments = await api.get<ApiResponse<Payment[]>>('/payments');
+      const invoicesData = invoices.data.data || [];
+      const paymentsData = payments.data.data || [];
       return {
-        totalRevenue: payments.data.data?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0,
-        pendingInvoices: invoices.data.data?.filter((i: any) => i.status === 'sent').length || 0,
+        totalRevenue: paymentsData.reduce((sum, p) => sum + (p.amount || 0), 0),
+        pendingInvoices: invoicesData.filter((i) => i.status === 'sent').length,
       };
     },
   });
@@ -28,12 +86,14 @@ export function EnhancedDashboardPage() {
   const { data: crmStats } = useQuery({
     queryKey: ['crm-stats'],
     queryFn: async () => {
-      const companies = await api.get<ApiResponse<any[]>>('/companies');
-      const opportunities = await api.get<ApiResponse<any[]>>('/opportunities?status=open');
+      const companies = await api.get<ApiResponse<Company[]>>('/companies');
+      const opportunities = await api.get<ApiResponse<Opportunity[]>>('/opportunities?status=open');
+      const companiesData = companies.data.data || [];
+      const opportunitiesData = opportunities.data.data || [];
       return {
-        activeCompanies: companies.data.data?.filter((c: any) => c.status === 'active').length || 0,
-        openOpportunities: opportunities.data.data?.length || 0,
-        pipelineValue: opportunities.data.data?.reduce((sum: number, o: any) => sum + o.value, 0) || 0,
+        activeCompanies: companiesData.filter((c) => c.status === 'active').length,
+        openOpportunities: opportunitiesData.length,
+        pipelineValue: opportunitiesData.reduce((sum, o) => sum + (o.value || 0), 0),
       };
     },
   });
@@ -41,10 +101,11 @@ export function EnhancedDashboardPage() {
   const { data: projectStats } = useQuery({
     queryKey: ['project-stats'],
     queryFn: async () => {
-      const projects = await api.get<ApiResponse<any[]>>('/projects');
+      const projects = await api.get<ApiResponse<Project[]>>('/projects');
+      const projectsData = projects.data.data || [];
       return {
-        activeProjects: projects.data.data?.filter((p: any) => p.status === 'active').length || 0,
-        totalProjects: projects.data.data?.length || 0,
+        activeProjects: projectsData.filter((p) => p.status === 'active').length,
+        totalProjects: projectsData.length,
       };
     },
   });
@@ -52,7 +113,7 @@ export function EnhancedDashboardPage() {
   const { data: inventoryStats } = useQuery({
     queryKey: ['inventory-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/inventory/stats');
+      const response = await api.get<ApiResponse<InventoryStats>>('/inventory/stats');
       return response.data.data || { totalItems: 0, totalValue: 0 };
     },
   });
@@ -60,9 +121,10 @@ export function EnhancedDashboardPage() {
   const { data: hrStats } = useQuery({
     queryKey: ['hr-stats'],
     queryFn: async () => {
-      const employees = await api.get<ApiResponse<any[]>>('/hr/employees');
+      const employees = await api.get<ApiResponse<Employee[]>>('/hr/employees');
+      const employeesData = employees.data.data || [];
       return {
-        totalEmployees: employees.data.data?.filter((e: any) => e.status === 'active').length || 0,
+        totalEmployees: employeesData.filter((e) => e.status === 'active').length,
       };
     },
   });
@@ -70,7 +132,7 @@ export function EnhancedDashboardPage() {
   const { data: salesStats } = useQuery({
     queryKey: ['sales-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/sales/orders/stats');
+      const response = await api.get<ApiResponse<SalesStats>>('/sales/orders/stats');
       return response.data.data || { totalOrders: 0, totalRevenue: 0 };
     },
   });
@@ -78,7 +140,7 @@ export function EnhancedDashboardPage() {
   const { data: manufacturingStats } = useQuery({
     queryKey: ['manufacturing-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/manufacturing/boms/stats');
+      const response = await api.get<ApiResponse<ManufacturingStats>>('/manufacturing/boms/stats');
       return response.data.data || { totalWorkOrders: 0, inProgressOrders: 0 };
     },
   });
@@ -86,7 +148,7 @@ export function EnhancedDashboardPage() {
   const { data: assetStats } = useQuery({
     queryKey: ['asset-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/assets/assets/stats');
+      const response = await api.get<ApiResponse<AssetStats>>('/assets/assets/stats');
       return response.data.data || { totalAssets: 0, totalValue: 0 };
     },
   });
@@ -94,8 +156,8 @@ export function EnhancedDashboardPage() {
   const { data: notificationsCount } = useQuery({
     queryKey: ['notifications-count'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<{ count: number }>>('/notifications/unread-count');
-      return response.data.data.count;
+      const response = await api.get<ApiResponse<NotificationCount>>('/notifications/unread-count');
+      return response.data.data?.count ?? 0;
     },
   });
 

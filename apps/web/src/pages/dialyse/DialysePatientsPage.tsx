@@ -7,9 +7,11 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { Users, Eye, Pencil, Trash2, Plus } from 'lucide-react';
+import { PageHeader, Button, StatsCard, SectionCard, FilterBar, EmptyState, InlineLoading } from '@/components/healthcare';
 
 interface DialysePatient {
   id: string;
@@ -37,28 +39,39 @@ interface PatientStats {
   recentlyAdded: number;
 }
 
+interface PaginatedResponse<T> {
+  data: T;
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
 export function DialysePatientsPage() {
-  const { t: _t } = useLanguage();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isolationFilter, setIsolationFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // Fetch patients
-  const { data: patientsData, isLoading, error } = useQuery({
-    queryKey: ['dialyse-patients', searchTerm, statusFilter, isolationFilter],
+  // Fetch patients with server-side pagination
+  const { data: patientsResponse, isLoading, error } = useQuery({
+    queryKey: ['dialyse-patients', searchTerm, statusFilter, isolationFilter, currentPage, itemsPerPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (isolationFilter !== 'all') params.append('requiresIsolation', isolationFilter);
-      params.append('limit', '100');
+      params.append('limit', itemsPerPage.toString());
+      params.append('offset', ((currentPage - 1) * itemsPerPage).toString());
 
       const url = `/dialyse/patients${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await api.get<ApiResponse<DialysePatient[]>>(url);
+      const response = await api.get<PaginatedResponse<DialysePatient[]>>(url);
       return response.data;
     },
   });
@@ -80,12 +93,43 @@ export function DialysePatientsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-patients'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-patients-stats'] });
-      alert('Patient supprimé avec succès');
+      toast.success(t('dialyse.patientDeleted'));
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
+
+  // Update patient status mutation
+  const updatePatientStatus = useMutation({
+    mutationFn: async ({ patientId, status }: { patientId: string; status: string }) => {
+      await api.put(`/dialyse/patients/${patientId}`, { patientStatus: status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dialyse-patients'] });
+      queryClient.invalidateQueries({ queryKey: ['dialyse-patients-stats'] });
+      toast.success(t('dialyse.statusUpdated'));
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
+    },
+  });
+
+  const handleStatusChange = (patientId: string, patientName: string, newStatus: string, currentStatus: string) => {
+    if (newStatus === currentStatus) return;
+
+    const statusLabels: Record<string, string> = {
+      active: t('dialyse.statusActive'),
+      transferred: t('dialyse.statusTransferred'),
+      deceased: t('dialyse.statusDeceased'),
+      transplanted: t('dialyse.statusTransplanted'),
+      recovered: t('dialyse.statusRecovered'),
+    };
+
+    if (confirm(`${t('dialyse.confirmStatusChange')} "${patientName}" (${statusLabels[currentStatus]} → ${statusLabels[newStatus]})?`)) {
+      updatePatientStatus.mutate({ patientId, status: newStatus });
+    }
+  };
 
   const handleAddPatient = () => {
     navigate('/dialyse/patients/new');
@@ -100,54 +144,29 @@ export function DialysePatientsPage() {
   };
 
   const handleDelete = (patientId: string, patientName: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer "${patientName}" ? Cette action est irréversible.`)) {
+    if (confirm(`${t('dialyse.confirmDelete')} "${patientName}"?`)) {
       deletePatient.mutate(patientId);
     }
   };
 
-  // Calculate paginated data
+  // Get paginated data from server response
   const paginatedPatients = useMemo(() => {
-    const patients = patientsData?.data || [];
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const data = patients.slice(startIndex, endIndex);
-    const total = patients.length;
+    const data = patientsResponse?.data || [];
+    const total = patientsResponse?.meta?.total || 0;
     const totalPages = Math.ceil(total / itemsPerPage);
 
     return { data, total, totalPages };
-  }, [patientsData, currentPage, itemsPerPage]);
+  }, [patientsResponse, itemsPerPage]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      active: 'bg-green-100 text-green-800',
-      transferred: 'bg-blue-100 text-blue-800',
-      deceased: 'bg-gray-100 text-gray-800',
-      transplanted: 'bg-purple-100 text-purple-800',
-      recovered: 'bg-teal-100 text-teal-800',
-    };
-    const labels: Record<string, string> = {
-      active: 'Actif',
-      transferred: 'Transféré',
-      deceased: 'Décédé',
-      transplanted: 'Transplanté',
-      recovered: 'Guéri',
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status] || status}
-      </span>
-    );
-  };
-
   const getSerologyBadge = (status: string) => {
-    if (status === 'positive') return <span className="text-red-600 font-medium">+</span>;
-    if (status === 'negative') return <span className="text-green-600">-</span>;
-    return <span className="text-gray-400">?</span>;
+    if (status === 'positive') return <span className="text-slate-900 dark:text-white font-bold">+</span>;
+    if (status === 'negative') return <span className="text-slate-500 dark:text-slate-400">-</span>;
+    return <span className="text-slate-300 dark:text-slate-600">?</span>;
   };
 
   const formatDate = (date: Date | null): string => {
@@ -158,91 +177,92 @@ export function DialysePatientsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Patients Dialysés</h1>
-          <p className="text-muted-foreground">
-            Gestion des patients du centre de dialyse
-          </p>
-        </div>
-        <button
-          onClick={handleAddPatient}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nouveau Patient
-        </button>
-      </div>
+      <PageHeader
+        title={t('dialyse.dialysisPatients')}
+        subtitle={t('dialyse.dialysisPatientsSubtitle')}
+        icon={Users}
+        module="dialyse"
+        actions={
+          <Button
+            module="dialyse"
+            icon={Plus}
+            onClick={handleAddPatient}
+          >
+            {t('dialyse.newPatient')}
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Patients</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalPatients}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Patients Actifs</div>
-            <div className="mt-2 text-2xl font-bold text-green-600">{stats.activePatients}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">En Isolation</div>
-            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.isolationPatients}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Ajoutés Récemment</div>
-            <div className="mt-2 text-2xl font-bold text-blue-600">{stats.recentlyAdded}</div>
-          </div>
+          <StatsCard
+            label={t('dialyse.totalPatients')}
+            value={stats.totalPatients ?? 0}
+            icon={Users}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.activePatients')}
+            value={stats.activePatients ?? 0}
+            icon={Users}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.inIsolation')}
+            value={stats.isolationPatients ?? 0}
+            icon={Users}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.recentlyAdded')}
+            value={stats.recentlyAdded ?? 0}
+            icon={Users}
+            module="dialyse"
+          />
         </div>
       )}
 
       {/* Filters and Search */}
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Rechercher un patient (nom, prénom, ID médical)..."
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="active">Actif</option>
-            <option value="transferred">Transféré</option>
-            <option value="transplanted">Transplanté</option>
-            <option value="recovered">Guéri</option>
-            <option value="deceased">Décédé</option>
-          </select>
-          <select
-            value={isolationFilter}
-            onChange={(e) => { setIsolationFilter(e.target.value); setCurrentPage(1); }}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">Tous</option>
-            <option value="true">Isolation</option>
-            <option value="false">Non isolation</option>
-          </select>
-        </div>
-      </div>
+      <FilterBar
+        searchTerm={searchTerm}
+        onSearchChange={handleSearchChange}
+        searchPlaceholder={t('dialyse.searchPatientPlaceholder')}
+        module="dialyse"
+        filters={[
+          {
+            name: 'status',
+            value: statusFilter,
+            options: [
+              { value: 'all', label: t('dialyse.allStatuses') },
+              { value: 'active', label: t('dialyse.statusActive') },
+              { value: 'transferred', label: t('dialyse.statusTransferred') },
+              { value: 'transplanted', label: t('dialyse.statusTransplanted') },
+              { value: 'recovered', label: t('dialyse.statusRecovered') },
+              { value: 'deceased', label: t('dialyse.statusDeceased') },
+            ],
+            onChange: (v) => { setStatusFilter(v); setCurrentPage(1); },
+          },
+          {
+            name: 'isolation',
+            value: isolationFilter,
+            options: [
+              { value: 'all', label: t('dialyse.all') },
+              { value: 'true', label: t('dialyse.isolation') },
+              { value: 'false', label: t('dialyse.nonIsolation') },
+            ],
+            onChange: (v) => { setIsolationFilter(v); setCurrentPage(1); },
+          },
+        ]}
+      />
 
       {/* Patients List */}
-      <div className="rounded-lg border bg-card">
+      <SectionCard>
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement des patients...</p>
-            </div>
-          </div>
+          <InlineLoading message={t('dialyse.loadingPatients')} />
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Erreur: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('dialyse.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedPatients.data.length > 0 ? (
           <>
@@ -250,14 +270,14 @@ export function DialysePatientsPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Médical</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Patient</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Groupe Sanguin</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Sérologie</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Isolation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Début Dialyse</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statut</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.medicalId')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.patient')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.bloodType')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.serology')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.isolation')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.dialysisStart')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.status')}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('dialyse.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -287,38 +307,66 @@ export function DialysePatientsPage() {
                       </td>
                       <td className="px-6 py-4">
                         {patient.requiresIsolation ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            Oui
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-800 text-white dark:bg-slate-600">
+                            {t('dialyse.yes')}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">Non</span>
+                          <span className="text-muted-foreground text-sm">{t('dialyse.no')}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {formatDate(patient.dialysisStartDate)}
                       </td>
                       <td className="px-6 py-4">
-                        {getStatusBadge(patient.patientStatus)}
+                        <select
+                          value={patient.patientStatus}
+                          onChange={(e) => handleStatusChange(
+                            patient.id,
+                            `${patient.contact.firstName} ${patient.contact.lastName}`,
+                            e.target.value,
+                            patient.patientStatus
+                          )}
+                          disabled={updatePatientStatus.isPending}
+                          className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${
+                            patient.patientStatus === 'active' ? 'bg-slate-800 text-white dark:bg-slate-600' :
+                            patient.patientStatus === 'transferred' ? 'bg-slate-500 text-white dark:bg-slate-500' :
+                            patient.patientStatus === 'deceased' ? 'bg-slate-300 text-slate-800 dark:bg-slate-700 dark:text-slate-300' :
+                            patient.patientStatus === 'transplanted' ? 'bg-slate-600 text-white dark:bg-slate-500' :
+                            patient.patientStatus === 'recovered' ? 'bg-slate-400 text-white dark:bg-slate-500' :
+                            'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <option value="active">{t('dialyse.statusActive')}</option>
+                          <option value="transferred">{t('dialyse.statusTransferred')}</option>
+                          <option value="transplanted">{t('dialyse.statusTransplanted')}</option>
+                          <option value="recovered">{t('dialyse.statusRecovered')}</option>
+                          <option value="deceased">{t('dialyse.statusDeceased')}</option>
+                        </select>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
-                        <button
-                          onClick={() => handleViewPatient(patient.id)}
-                          className="text-primary hover:text-primary/80 font-medium"
-                        >
-                          Voir
-                        </button>
-                        <button
-                          onClick={() => handleEditPatient(patient.id)}
-                          className="text-primary hover:text-primary/80 font-medium"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDelete(patient.id, `${patient.contact.firstName} ${patient.contact.lastName}`)}
-                          className="text-destructive hover:text-destructive/80 font-medium"
-                        >
-                          Supprimer
-                        </button>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleViewPatient(patient.id)}
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.view')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditPatient(patient.id)}
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.edit')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(patient.id, `${patient.contact.firstName} ${patient.contact.lastName}`)}
+                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            title={t('dialyse.delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -337,16 +385,17 @@ export function DialysePatientsPage() {
           </>
         ) : (
           <EmptyState
-            title="Aucun patient trouvé"
-            description="Ajoutez votre premier patient dialysé"
-            icon="users"
+            title={t('dialyse.noPatientsFound')}
+            message={t('dialyse.addFirstPatient')}
+            icon={Users}
+            module="dialyse"
             action={{
-              label: 'Nouveau Patient',
+              label: t('dialyse.newPatient'),
               onClick: handleAddPatient,
             }}
           />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

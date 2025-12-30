@@ -67,6 +67,26 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('/pages/audit/')) {
             return 'feature-audit';
           }
+          // Healthcare modules - large modules that should be split
+          if (id.includes('/pages/dialyse/') || id.includes('/components/healthcare/')) {
+            return 'feature-dialyse';
+          }
+          if (id.includes('/pages/cardiology/')) {
+            return 'feature-cardiology';
+          }
+          if (id.includes('/pages/ophthalmology/')) {
+            return 'feature-ophthalmology';
+          }
+          // Sales and procurement
+          if (id.includes('/pages/sales/')) {
+            return 'feature-sales';
+          }
+          if (id.includes('/pages/procurement/')) {
+            return 'feature-procurement';
+          }
+          if (id.includes('/pages/manufacturing/')) {
+            return 'feature-manufacturing';
+          }
         },
       },
     },

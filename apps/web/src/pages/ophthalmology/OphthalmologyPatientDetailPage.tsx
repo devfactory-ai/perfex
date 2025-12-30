@@ -5,11 +5,11 @@
 
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Eye,
-  ArrowLeft,
   Edit,
+  Trash2,
   User,
   Phone,
   Activity,
@@ -23,15 +23,24 @@ import {
   Glasses,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useToast } from '../../contexts/ToastContext';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  Button,
+  SectionCard,
+} from '../../components/healthcare';
 
 type TabType = 'overview' | 'consultations' | 'oct' | 'visualField' | 'surgeries' | 'injections' | 'refraction';
 
 export default function OphthalmologyPatientDetailPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: patient, isLoading } = useQuery({
     queryKey: ['ophthalmology-patient', id],
@@ -77,6 +86,25 @@ export default function OphthalmologyPatientDetailPage() {
     enabled: activeTab === 'injections' || activeTab === 'overview',
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/ophthalmology/patients/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ophthalmology-patients'] });
+      toast.success(t('patientDeleted') || 'Patient supprimé avec succès');
+      navigate('/ophthalmology/patients');
+    },
+    onError: () => {
+      toast.error(t('deleteError') || 'Erreur lors de la suppression');
+    },
+  });
+
+  const handleDelete = () => {
+    deleteMutation.mutate();
+    setShowDeleteConfirm(false);
+  };
+
   const calculateAge = (dateOfBirth: string) => {
     const today = new Date();
     const birth = new Date(dateOfBirth);
@@ -92,10 +120,10 @@ export default function OphthalmologyPatientDetailPage() {
     { id: 'overview', label: t('overview') || 'Vue d\'ensemble', icon: Activity },
     { id: 'consultations', label: t('consultations') || 'Consultations', icon: Stethoscope },
     { id: 'oct', label: 'OCT', icon: Scan },
-    { id: 'visualField', label: 'Champ visuel', icon: Target },
-    { id: 'surgeries', label: 'Chirurgies', icon: Eye },
+    { id: 'visualField', label: t('ophthalmology.visualField'), icon: Target },
+    { id: 'surgeries', label: t('ophthalmology.surgeries'), icon: Eye },
     { id: 'injections', label: 'IVT', icon: Syringe },
-    { id: 'refraction', label: 'Réfraction', icon: Glasses },
+    { id: 'refraction', label: t('ophthalmology.refraction'), icon: Glasses },
   ];
 
   if (isLoading) {
@@ -118,42 +146,66 @@ export default function OphthalmologyPatientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/ophthalmology/patients')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {patient.lastName} {patient.firstName}
-              </h1>
-              <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400 mt-1">
-                <span>{calculateAge(patient.dateOfBirth)} ans</span>
-                <span>•</span>
-                <span>{patient.gender === 'male' ? 'Homme' : 'Femme'}</span>
-              </div>
+      <PageHeader
+        title={`${patient.lastName} ${patient.firstName}`}
+        subtitle={`${calculateAge(patient.dateOfBirth)} ${t('common.years')} • ${patient.gender === 'male' ? t('common.male') : t('common.female')}`}
+        icon={User}
+        module="ophthalmology"
+        onBack={() => navigate('/ophthalmology/patients')}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              icon={Edit}
+              onClick={() => navigate(`/ophthalmology/patients/${id}/edit`)}
+              module="ophthalmology"
+            >
+              {t('edit') || 'Modifier'}
+            </Button>
+            <Button
+              variant="outline"
+              icon={Trash2}
+              onClick={() => setShowDeleteConfirm(true)}
+              module="ophthalmology"
+            >
+              {t('delete') || 'Supprimer'}
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {t('confirmDelete') || 'Confirmer la suppression'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              {t('deletePatientConfirmation') || 'Êtes-vous sûr de vouloir supprimer ce patient ? Cette action est irréversible.'}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                {t('cancel') || 'Annuler'}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50 transition-colors"
+              >
+                {deleteMutation.isPending ? (t('deleting') || 'Suppression...') : (t('delete') || 'Supprimer')}
+              </button>
             </div>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/ophthalmology/patients/${id}/edit`)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Edit className="h-5 w-5" />
-          {t('edit') || 'Modifier'}
-        </button>
-      </div>
+      )}
 
       {/* Quick Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <SectionCard>
           <div className="flex items-center gap-3">
             <Phone className="h-5 w-5 text-gray-400" />
             <div>
@@ -161,8 +213,8 @@ export default function OphthalmologyPatientDetailPage() {
               <p className="font-medium text-gray-900 dark:text-white">{patient.phone || '-'}</p>
             </div>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        </SectionCard>
+        <SectionCard>
           <div className="flex items-center gap-3">
             <Eye className="h-5 w-5 text-gray-400" />
             <div>
@@ -170,8 +222,8 @@ export default function OphthalmologyPatientDetailPage() {
               <p className="font-medium text-gray-900 dark:text-white">{patient.primaryDiagnosis || '-'}</p>
             </div>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        </SectionCard>
+        <SectionCard>
           <div className="flex items-center gap-3">
             <Calendar className="h-5 w-5 text-gray-400" />
             <div>
@@ -181,8 +233,8 @@ export default function OphthalmologyPatientDetailPage() {
               </p>
             </div>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        </SectionCard>
+        <SectionCard>
           <div className="flex items-center gap-3">
             <Syringe className="h-5 w-5 text-gray-400" />
             <div>
@@ -190,13 +242,13 @@ export default function OphthalmologyPatientDetailPage() {
               <p className="font-medium text-gray-900 dark:text-white">{ivtInjections?.length || 0}</p>
             </div>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       {/* Alerts */}
       {patient.allergies && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-orange-800 dark:text-orange-400">
+        <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-slate-400">
             <AlertTriangle className="h-5 w-5" />
             <span className="font-medium">{t('allergies') || 'Allergies'}:</span>
             <span>{patient.allergies}</span>
@@ -213,7 +265,7 @@ export default function OphthalmologyPatientDetailPage() {
               onClick={() => setActiveTab(tab.id as TabType)}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  ? 'border-slate-500 text-slate-600 dark:text-slate-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
@@ -225,25 +277,25 @@ export default function OphthalmologyPatientDetailPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <SectionCard>
         {activeTab === 'overview' && (
           <div className="p-6 space-y-6">
             {/* Visual Acuity Summary */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-                <Eye className="h-5 w-5 text-blue-500" />
-                Acuité visuelle
+                <Eye className="h-5 w-5 text-slate-500" />
+                {t('ophthalmology.visualAcuity')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Œil Droit (OD)</p>
-                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/20 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('ophthalmology.rightEyeOD')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-300">
                     {patient.lastAcuityOD || '-'}
                   </p>
                 </div>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Œil Gauche (OG)</p>
-                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/20 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('ophthalmology.leftEyeOG')}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-300">
                     {patient.lastAcuityOG || '-'}
                   </p>
                 </div>
@@ -254,12 +306,12 @@ export default function OphthalmologyPatientDetailPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Stethoscope className="h-5 w-5 text-blue-500" />
+                  <Stethoscope className="h-5 w-5 text-slate-500" />
                   {t('recentConsultations') || 'Consultations récentes'}
                 </h3>
                 <button
                   onClick={() => navigate(`/ophthalmology/consultations/new?patientId=${id}`)}
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-sm text-slate-600 hover:text-slate-700 flex items-center gap-1"
                 >
                   <Plus className="h-4 w-4" />
                   {t('newConsultation') || 'Nouvelle'}
@@ -271,7 +323,7 @@ export default function OphthalmologyPatientDetailPage() {
                     <div
                       key={consultation.id}
                       className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => navigate(`/ophthalmology/consultations/${consultation.id}`)}
+                      onClick={() => navigate(`/ophthalmology/consultations/${consultation.id}/edit`)}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-900 dark:text-white">
@@ -294,15 +346,15 @@ export default function OphthalmologyPatientDetailPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Scan className="h-5 w-5 text-blue-500" />
-                  OCT récents
+                  <Scan className="h-5 w-5 text-slate-500" />
+                  {t('ophthalmology.recentOct')}
                 </h3>
                 <button
                   onClick={() => navigate(`/ophthalmology/oct/new?patientId=${id}`)}
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-sm text-slate-600 hover:text-slate-700 flex items-center gap-1"
                 >
                   <Plus className="h-4 w-4" />
-                  Nouveau
+                  {t('ophthalmology.newOct')}
                 </button>
               </div>
               {octScans?.length > 0 ? (
@@ -311,11 +363,11 @@ export default function OphthalmologyPatientDetailPage() {
                     <div
                       key={oct.id}
                       className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => navigate(`/ophthalmology/oct/${oct.id}`)}
+                      onClick={() => navigate(`/ophthalmology/oct/${oct.id}/edit`)}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-900 dark:text-white">
-                          {oct.eye === 'OD' ? 'Œil Droit' : 'Œil Gauche'}
+                          {oct.eye === 'OD' ? t('ophthalmology.rightEye') : t('ophthalmology.leftEye')}
                         </span>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
                           {new Date(oct.scanDate).toLocaleDateString('fr-FR')}
@@ -328,7 +380,7 @@ export default function OphthalmologyPatientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Aucun OCT enregistré</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{t('ophthalmology.noOctRegistered')}</p>
               )}
             </div>
 
@@ -336,15 +388,15 @@ export default function OphthalmologyPatientDetailPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Syringe className="h-5 w-5 text-blue-500" />
-                  Injections IVT
+                  <Syringe className="h-5 w-5 text-slate-500" />
+                  {t('ophthalmology.ivtInjections')}
                 </h3>
                 <button
                   onClick={() => navigate(`/ophthalmology/ivt-injections/new?patientId=${id}`)}
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-sm text-slate-600 hover:text-slate-700 flex items-center gap-1"
                 >
                   <Plus className="h-4 w-4" />
-                  Nouvelle
+                  {t('ophthalmology.newIvt')}
                 </button>
               </div>
               {ivtInjections?.length > 0 ? (
@@ -366,7 +418,7 @@ export default function OphthalmologyPatientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Aucune injection IVT</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{t('ophthalmology.noIvtInjection')}</p>
               )}
             </div>
           </div>
@@ -380,7 +432,7 @@ export default function OphthalmologyPatientDetailPage() {
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/consultations/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
                 {t('newConsultation') || 'Nouvelle consultation'}
@@ -391,18 +443,18 @@ export default function OphthalmologyPatientDetailPage() {
                 {consultations.map((consultation: any) => (
                   <div
                     key={consultation.id}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-300 dark:hover:border-blue-700"
-                    onClick={() => navigate(`/ophthalmology/consultations/${consultation.id}`)}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-slate-300 dark:hover:border-slate-700"
+                    onClick={() => navigate(`/ophthalmology/consultations/${consultation.id}/edit`)}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {new Date(consultation.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          {consultation.consultationDate ? new Date(consultation.consultationDate).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{consultation.type}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{consultation.consultationType}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{consultation.doctor}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{consultation.doctorName}</p>
                       </div>
                     </div>
                     {consultation.diagnosis && (
@@ -424,14 +476,14 @@ export default function OphthalmologyPatientDetailPage() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Examens OCT
+                {t('ophthalmology.octExams')}
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/oct/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
-                Nouvel OCT
+                {t('ophthalmology.newOct')}
               </button>
             </div>
             {octScans?.length > 0 ? (
@@ -439,12 +491,12 @@ export default function OphthalmologyPatientDetailPage() {
                 {octScans.map((oct: any) => (
                   <div
                     key={oct.id}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-300"
-                    onClick={() => navigate(`/ophthalmology/oct/${oct.id}`)}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-slate-300"
+                    onClick={() => navigate(`/ophthalmology/oct/${oct.id}/edit`)}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {oct.eye === 'OD' ? 'Œil Droit (OD)' : 'Œil Gauche (OG)'}
+                        {oct.eye === 'OD' ? t('ophthalmology.rightEyeOD') : t('ophthalmology.leftEyeOG')}
                       </span>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {new Date(oct.scanDate).toLocaleDateString('fr-FR')}
@@ -469,7 +521,7 @@ export default function OphthalmologyPatientDetailPage() {
             ) : (
               <div className="text-center py-8">
                 <Scan className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Aucun OCT enregistré</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('ophthalmology.noOctRegistered')}</p>
               </div>
             )}
           </div>
@@ -479,14 +531,14 @@ export default function OphthalmologyPatientDetailPage() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Champs visuels
+                {t('ophthalmology.visualFieldsTitle')}
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/visual-fields/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
-                Nouveau CV
+                {t('ophthalmology.newVisualField')}
               </button>
             </div>
             {visualFields?.length > 0 ? (
@@ -494,12 +546,12 @@ export default function OphthalmologyPatientDetailPage() {
                 {visualFields.map((vf: any) => (
                   <div
                     key={vf.id}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-300"
-                    onClick={() => navigate(`/ophthalmology/visual-fields/${vf.id}`)}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-slate-300"
+                    onClick={() => navigate(`/ophthalmology/visual-fields/${vf.id}/edit`)}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {vf.eye === 'OD' ? 'Œil Droit (OD)' : 'Œil Gauche (OG)'}
+                        {vf.eye === 'OD' ? t('ophthalmology.rightEyeOD') : t('ophthalmology.leftEyeOG')}
                       </span>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {new Date(vf.testDate).toLocaleDateString('fr-FR')}
@@ -521,7 +573,7 @@ export default function OphthalmologyPatientDetailPage() {
             ) : (
               <div className="text-center py-8">
                 <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Aucun champ visuel enregistré</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('ophthalmology.noVisualFieldRegistered')}</p>
               </div>
             )}
           </div>
@@ -531,19 +583,19 @@ export default function OphthalmologyPatientDetailPage() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Chirurgies
+                {t('ophthalmology.surgeries')}
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/surgeries/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
-                Nouvelle chirurgie
+                {t('ophthalmology.newSurgery')}
               </button>
             </div>
             <div className="text-center py-8">
               <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Aucune chirurgie enregistrée</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('ophthalmology.noSurgeryRegistered')}</p>
             </div>
           </div>
         )}
@@ -552,14 +604,14 @@ export default function OphthalmologyPatientDetailPage() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Injections Intravitréennes (IVT)
+                {t('ophthalmology.ivtInjectionsTitle')}
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/ivt-injections/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
-                Nouvelle IVT
+                {t('ophthalmology.newIvt')}
               </button>
             </div>
             {ivtInjections?.length > 0 ? (
@@ -567,8 +619,8 @@ export default function OphthalmologyPatientDetailPage() {
                 {ivtInjections.map((injection: any) => (
                   <div
                     key={injection.id}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-300"
-                    onClick={() => navigate(`/ophthalmology/ivt-injections/${injection.id}`)}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-slate-300"
+                    onClick={() => navigate(`/ophthalmology/ivt-injections/${injection.id}/edit`)}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -576,7 +628,7 @@ export default function OphthalmologyPatientDetailPage() {
                           {injection.drug}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {injection.eye === 'OD' ? 'Œil Droit' : 'Œil Gauche'} • {injection.indication}
+                          {injection.eye === 'OD' ? t('ophthalmology.rightEyeFull') : t('ophthalmology.leftEyeFull')} • {injection.indication}
                         </p>
                       </div>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -589,7 +641,7 @@ export default function OphthalmologyPatientDetailPage() {
             ) : (
               <div className="text-center py-8">
                 <Syringe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Aucune injection IVT enregistrée</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('ophthalmology.noIvtRegistered')}</p>
               </div>
             )}
           </div>
@@ -599,23 +651,23 @@ export default function OphthalmologyPatientDetailPage() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Mesures de réfraction
+                {t('ophthalmology.refractionMeasures')}
               </h3>
               <button
                 onClick={() => navigate(`/ophthalmology/refraction/new?patientId=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
               >
                 <Plus className="h-4 w-4" />
-                Nouvelle mesure
+                {t('ophthalmology.newMeasure')}
               </button>
             </div>
             <div className="text-center py-8">
               <Glasses className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Aucune mesure de réfraction enregistrée</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('ophthalmology.noRefractionRegistered')}</p>
             </div>
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

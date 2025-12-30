@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { CreatePaymentInput, Account, Company } from '@perfex/shared';
+import type { CreatePaymentInput, Account, Company, Payment } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { z } from 'zod';
 
@@ -70,7 +70,7 @@ export function PaymentFormPage() {
   // Create payment mutation
   const createPayment = useMutation({
     mutationFn: async (data: CreatePaymentInput) => {
-      const response = await api.post<ApiResponse<any>>('/payments', data);
+      const response = await api.post<ApiResponse<Payment>>('/payments', data);
       return response.data.data;
     },
     onSuccess: () => {

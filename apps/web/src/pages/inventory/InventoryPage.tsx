@@ -165,19 +165,19 @@ export function InventoryPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('inventory.totalItems')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalItems}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalItems ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('inventory.activeItems')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.activeItems}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.activeItems ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('inventory.warehouses')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalWarehouses}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalWarehouses ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('inventory.lowStock')}</div>
-            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.lowStockItems}</div>
+            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.lowStockItems ?? 0}</div>
           </div>
         </div>
       )}

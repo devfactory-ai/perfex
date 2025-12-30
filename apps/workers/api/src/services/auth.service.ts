@@ -13,6 +13,7 @@ import {
   type User,
   type Organization,
 } from '@perfex/database';
+import { logger } from '../utils/logger';
 import type {
   SafeUser,
   AuthResponse,
@@ -28,6 +29,7 @@ import {
   generateRefreshToken,
   verifyToken,
   generateRandomToken,
+  hashToken,
 } from '../utils/crypto';
 import {
   checkRateLimit,
@@ -160,7 +162,7 @@ export class AuthService {
       await this.emailService.sendWelcomeEmail(user.email, user.firstName || 'User');
     } catch (error) {
       // Don't fail registration if email fails
-      console.error('Failed to send welcome email:', error);
+      logger.error('Failed to send welcome email', { error });
     }
 
     // Generate tokens
@@ -318,7 +320,7 @@ export class AuthService {
         .where(eq(sessions.id, payload.sessionId));
     } catch (error) {
       // Ignore errors on logout
-      console.error('Logout error:', error);
+      logger.error('Logout error', { error });
     }
   }
 
@@ -408,15 +410,18 @@ export class AuthService {
     // Generate reset token
     const resetToken = generateRandomToken(32);
 
-    // Store token in KV (expires in 1 hour)
-    const tokenKey = `password-reset:${resetToken}`;
+    // Hash token before storage (security: prevents token theft from KV)
+    const tokenHash = await hashToken(resetToken);
+
+    // Store hashed token in KV (expires in 1 hour)
+    const tokenKey = `password-reset:${tokenHash}`;
     await this.cache.put(tokenKey, user.id, { expirationTtl: 3600 });
 
     // Send password reset email
     try {
       await this.emailService.sendPasswordResetEmail(email, resetToken);
     } catch (error) {
-      console.error('Failed to send password reset email:', error);
+      logger.error('Failed to send password reset email', { error });
     }
   }
 
@@ -460,15 +465,18 @@ export class AuthService {
     // Generate login token
     const loginToken = generateRandomToken(32);
 
-    // Store token in KV (expires in 15 minutes)
-    const tokenKey = `passwordless-login:${loginToken}`;
+    // Hash token before storage (security: prevents token theft from KV)
+    const tokenHash = await hashToken(loginToken);
+
+    // Store hashed token in KV (expires in 15 minutes)
+    const tokenKey = `passwordless-login:${tokenHash}`;
     await this.cache.put(tokenKey, user.id, { expirationTtl: 900 }); // 15 minutes
 
     // Send passwordless login email
     try {
       await this.emailService.sendPasswordlessLoginEmail(email, loginToken);
     } catch (error) {
-      console.error('Failed to send passwordless login email:', error);
+      logger.error('Failed to send passwordless login email', { error });
       throw new Error('Failed to send login link');
     }
   }
@@ -482,8 +490,11 @@ export class AuthService {
     ipAddress: string,
     userAgent?: string
   ): Promise<AuthResponse> {
-    // Get user ID from token
-    const tokenKey = `passwordless-login:${token}`;
+    // Hash the provided token to look up in KV
+    const tokenHash = await hashToken(token);
+
+    // Get user ID from hashed token
+    const tokenKey = `passwordless-login:${tokenHash}`;
     const userId = await this.cache.get(tokenKey);
 
     if (!userId) {
@@ -530,8 +541,11 @@ export class AuthService {
    * AUTH-048
    */
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    // Get user ID from token
-    const tokenKey = `password-reset:${token}`;
+    // Hash the provided token to look up in KV
+    const tokenHash = await hashToken(token);
+
+    // Get user ID from hashed token
+    const tokenKey = `password-reset:${tokenHash}`;
     const userId = await this.cache.get(tokenKey);
 
     if (!userId) {
@@ -555,7 +569,51 @@ export class AuthService {
     await this.cache.delete(tokenKey);
 
     // Invalidate all sessions for this user
-    // TODO: Implement session invalidation
+    await this.invalidateAllUserSessions(userId);
+
+    logger.info('Password reset completed, all sessions invalidated', { userId });
+  }
+
+  /**
+   * Invalidate all sessions for a user
+   * AUTH-048b - Security: Force logout on password change
+   */
+  private async invalidateAllUserSessions(userId: string): Promise<void> {
+    const drizzleDb = drizzle(this.db);
+
+    try {
+      // Get all active sessions from D1 database
+      const userSessions = await drizzleDb
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(eq(sessions.userId, userId));
+
+      // Delete each session from KV store
+      const kvDeletePromises = userSessions.map(async (session) => {
+        const sessionKey = `session:${session.id}`;
+        try {
+          await this.sessions.delete(sessionKey);
+        } catch (error) {
+          // Log but don't fail - session may already be expired in KV
+          logger.warn('Failed to delete session from KV', { sessionId: session.id, error });
+        }
+      });
+
+      await Promise.all(kvDeletePromises);
+
+      // Delete all sessions from D1 database
+      await drizzleDb
+        .delete(sessions)
+        .where(eq(sessions.userId, userId));
+
+      logger.info('All user sessions invalidated', {
+        userId,
+        sessionCount: userSessions.length
+      });
+    } catch (error) {
+      logger.error('Failed to invalidate user sessions', { userId, error });
+      // Don't throw - password was already changed successfully
+    }
   }
 
   /**

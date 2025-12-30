@@ -90,3 +90,36 @@ export function generateRandomToken(length: number = 32): string {
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+
+/**
+ * Hash a token using SHA-256 for fast, secure token storage
+ * Used for password reset tokens, email verification tokens, etc.
+ * Unlike bcrypt, SHA-256 is fast enough for token lookup
+ */
+export async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Verify a token against its hash
+ * Uses constant-time comparison to prevent timing attacks
+ */
+export async function verifyTokenHash(token: string, hash: string): Promise<boolean> {
+  const tokenHash = await hashToken(token);
+
+  // Constant-time comparison to prevent timing attacks
+  if (tokenHash.length !== hash.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < tokenHash.length; i++) {
+    result |= tokenHash.charCodeAt(i) ^ hash.charCodeAt(i);
+  }
+
+  return result === 0;
+}

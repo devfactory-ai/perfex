@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { logger } from '../utils/logger';
 import {
   createPatientSchema,
   updatePatientSchema,
@@ -51,6 +52,7 @@ import {
 import { requireAuth, requirePermission } from '../middleware/auth';
 import type { Env } from '../types';
 import { z } from 'zod';
+import { validatePagination, parseMonths, validateOrganizationId } from '../utils/validation';
 
 const dialyse = new Hono<{ Bindings: Env }>();
 
@@ -70,20 +72,31 @@ dialyse.get(
   requirePermission('dialyse:patients:read'),
   zValidator('query', listPatientsQuerySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const query = c.req.valid('query');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const query = c.req.valid('query');
 
-    const result = await patientService.list(organizationId, query);
+      const result = await patientService.list(organizationId, query);
 
-    return c.json({
-      success: true,
-      data: result.data,
-      meta: {
-        total: result.total,
-        limit: query.limit,
-        offset: query.offset,
-      },
-    });
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: {
+          total: result.total,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -95,14 +108,25 @@ dialyse.get(
   '/patients/stats',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    try {
+      const organizationId = c.get('realOrganizationId');
 
-    const stats = await patientService.getStats(organizationId);
+      const stats = await patientService.getStats(organizationId);
 
-    return c.json({
-      success: true,
-      data: stats,
-    });
+      return c.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -114,14 +138,25 @@ dialyse.get(
   '/patients/isolation',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    try {
+      const organizationId = c.get('realOrganizationId');
 
-    const patients = await patientService.getIsolationPatients(organizationId);
+      const patients = await patientService.getIsolationPatients(organizationId);
 
-    return c.json({
-      success: true,
-      data: patients,
-    });
+      return c.json({
+        success: true,
+        data: patients,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -133,22 +168,33 @@ dialyse.get(
   '/patients/:id',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('id');
-    const full = c.req.query('full') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('id');
+      const full = c.req.query('full') === 'true';
 
-    const patient = full
-      ? await patientService.getByIdFull(organizationId, patientId)
-      : await patientService.getByIdWithContact(organizationId, patientId);
+      const patient = full
+        ? await patientService.getByIdFull(organizationId, patientId)
+        : await patientService.getByIdWithContact(organizationId, patientId);
 
-    if (!patient) {
-      return c.json({ success: false, error: 'Patient not found' }, 404);
+      if (!patient) {
+        return c.json({ success: false, error: 'Patient not found' }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: patient,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({
-      success: true,
-      data: patient,
-    });
   }
 );
 
@@ -161,7 +207,7 @@ dialyse.post(
   requirePermission('dialyse:patients:create'),
   zValidator('json', createPatientSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -190,7 +236,7 @@ dialyse.put(
   requirePermission('dialyse:patients:update'),
   zValidator('json', updatePatientSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const patientId = c.req.param('id');
     const data = c.req.valid('json');
@@ -223,7 +269,7 @@ dialyse.put(
   requirePermission('dialyse:patients:update'),
   zValidator('json', updateSerologySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const patientId = c.req.param('id');
     const data = c.req.valid('json');
@@ -255,7 +301,7 @@ dialyse.delete(
   '/patients/:id',
   requirePermission('dialyse:patients:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const patientId = c.req.param('id');
 
     try {
@@ -289,15 +335,26 @@ dialyse.get(
   '/patients/:patientId/accesses',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const accesses = await vascularAccessService.listByPatient(organizationId, patientId);
+      const accesses = await vascularAccessService.listByPatient(organizationId, patientId);
 
-    return c.json({
-      success: true,
-      data: accesses,
-    });
+      return c.json({
+        success: true,
+        data: accesses,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -309,19 +366,30 @@ dialyse.get(
   '/patients/:patientId/accesses/active',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const access = await vascularAccessService.getActiveByPatient(organizationId, patientId);
+      const access = await vascularAccessService.getActiveByPatient(organizationId, patientId);
 
-    if (!access) {
-      return c.json({ success: false, error: 'No active vascular access found' }, 404);
+      if (!access) {
+        return c.json({ success: false, error: 'No active vascular access found' }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: access,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({
-      success: true,
-      data: access,
-    });
   }
 );
 
@@ -334,7 +402,7 @@ dialyse.post(
   requirePermission('dialyse:patients:update'),
   zValidator('json', createVascularAccessSchema.omit({ patientId: true })),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const patientId = c.req.param('patientId');
     const data = c.req.valid('json');
@@ -366,19 +434,30 @@ dialyse.get(
   '/accesses/:id',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const accessId = c.req.param('id');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const accessId = c.req.param('id');
 
-    const access = await vascularAccessService.getById(organizationId, accessId);
+      const access = await vascularAccessService.getById(organizationId, accessId);
 
-    if (!access) {
-      return c.json({ success: false, error: 'Vascular access not found' }, 404);
+      if (!access) {
+        return c.json({ success: false, error: 'Vascular access not found' }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: access,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({
-      success: true,
-      data: access,
-    });
   }
 );
 
@@ -391,7 +470,7 @@ dialyse.put(
   requirePermission('dialyse:patients:update'),
   zValidator('json', updateVascularAccessSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const accessId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -422,7 +501,7 @@ dialyse.delete(
   '/accesses/:id',
   requirePermission('dialyse:patients:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const accessId = c.req.param('id');
 
     try {
@@ -456,19 +535,29 @@ dialyse.get(
   '/prescriptions',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const status = c.req.query('status');
-    const patientId = c.req.query('patientId');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const status = c.req.query('status');
+      const patientId = c.req.query('patientId');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await prescriptionService.list(organizationId, { status, patientId, limit, offset });
+      const result = await prescriptionService.list(organizationId, { status, patientId, limit, offset });
 
-    return c.json({
-      success: true,
-      data: result.data,
-      meta: { total: result.total, limit, offset },
-    });
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: { total: result.total, limit, offset },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -480,19 +569,30 @@ dialyse.get(
   '/prescriptions/:id',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const prescriptionId = c.req.param('id');
-    const withPatient = c.req.query('withPatient') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const prescriptionId = c.req.param('id');
+      const withPatient = c.req.query('withPatient') === 'true';
 
-    const prescription = withPatient
-      ? await prescriptionService.getByIdWithPatient(organizationId, prescriptionId)
-      : await prescriptionService.getById(organizationId, prescriptionId);
+      const prescription = withPatient
+        ? await prescriptionService.getByIdWithPatient(organizationId, prescriptionId)
+        : await prescriptionService.getById(organizationId, prescriptionId);
 
-    if (!prescription) {
-      return c.json({ success: false, error: 'Prescription not found' }, 404);
+      if (!prescription) {
+        return c.json({ success: false, error: 'Prescription not found' }, 404);
+      }
+
+      return c.json({ success: true, data: prescription });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: prescription });
   }
 );
 
@@ -504,12 +604,23 @@ dialyse.get(
   '/patients/:patientId/prescriptions',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const prescriptions = await prescriptionService.listByPatient(organizationId, patientId);
+      const prescriptions = await prescriptionService.listByPatient(organizationId, patientId);
 
-    return c.json({ success: true, data: prescriptions });
+      return c.json({ success: true, data: prescriptions });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -521,16 +632,27 @@ dialyse.get(
   '/patients/:patientId/prescriptions/active',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const prescription = await prescriptionService.getActiveByPatient(organizationId, patientId);
+      const prescription = await prescriptionService.getActiveByPatient(organizationId, patientId);
 
-    if (!prescription) {
-      return c.json({ success: false, error: 'No active prescription found' }, 404);
+      if (!prescription) {
+        return c.json({ success: false, error: 'No active prescription found' }, 404);
+      }
+
+      return c.json({ success: true, data: prescription });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: prescription });
   }
 );
 
@@ -543,7 +665,7 @@ dialyse.post(
   requirePermission('dialyse:prescriptions:create'),
   zValidator('json', createPrescriptionSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -565,7 +687,7 @@ dialyse.put(
   requirePermission('dialyse:prescriptions:update'),
   zValidator('json', updatePrescriptionSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const prescriptionId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -589,7 +711,7 @@ dialyse.post(
   '/prescriptions/:id/renew',
   requirePermission('dialyse:prescriptions:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const prescriptionId = c.req.param('id');
 
@@ -610,7 +732,7 @@ dialyse.post(
   '/prescriptions/:id/cancel',
   requirePermission('dialyse:prescriptions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const prescriptionId = c.req.param('id');
 
     try {
@@ -634,19 +756,29 @@ dialyse.get(
   '/machines',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const status = c.req.query('status');
-    const isolationOnly = c.req.query('isolationOnly') === 'true' ? true : c.req.query('isolationOnly') === 'false' ? false : undefined;
-    const limit = parseInt(c.req.query('limit') || '50');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const status = c.req.query('status');
+      const isolationOnly = c.req.query('isolationOnly') === 'true' ? true : c.req.query('isolationOnly') === 'false' ? false : undefined;
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'), { defaultLimit: 50 });
 
-    const result = await machineService.list(organizationId, { status, isolationOnly, limit, offset });
+      const result = await machineService.list(organizationId, { status, isolationOnly, limit, offset });
 
-    return c.json({
-      success: true,
-      data: result.data,
-      meta: { total: result.total, limit, offset },
-    });
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: { total: result.total, limit, offset },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -658,9 +790,20 @@ dialyse.get(
   '/machines/stats',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await machineService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await machineService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -672,12 +815,23 @@ dialyse.get(
   '/machines/available',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const requiresIsolation = c.req.query('requiresIsolation') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const requiresIsolation = c.req.query('requiresIsolation') === 'true';
 
-    const machines = await machineService.getAvailable(organizationId, requiresIsolation);
+      const machines = await machineService.getAvailable(organizationId, requiresIsolation);
 
-    return c.json({ success: true, data: machines });
+      return c.json({ success: true, data: machines });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -689,19 +843,30 @@ dialyse.get(
   '/machines/:id',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const machineId = c.req.param('id');
-    const withMaintenance = c.req.query('withMaintenance') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const machineId = c.req.param('id');
+      const withMaintenance = c.req.query('withMaintenance') === 'true';
 
-    const machine = withMaintenance
-      ? await machineService.getByIdWithMaintenance(organizationId, machineId)
-      : await machineService.getById(organizationId, machineId);
+      const machine = withMaintenance
+        ? await machineService.getByIdWithMaintenance(organizationId, machineId)
+        : await machineService.getById(organizationId, machineId);
 
-    if (!machine) {
-      return c.json({ success: false, error: 'Machine not found' }, 404);
+      if (!machine) {
+        return c.json({ success: false, error: 'Machine not found' }, 404);
+      }
+
+      return c.json({ success: true, data: machine });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: machine });
   }
 );
 
@@ -714,7 +879,7 @@ dialyse.post(
   requirePermission('dialyse:machines:create'),
   zValidator('json', createMachineSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -736,7 +901,7 @@ dialyse.put(
   requirePermission('dialyse:machines:update'),
   zValidator('json', updateMachineSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const machineId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -760,7 +925,7 @@ dialyse.delete(
   '/machines/:id',
   requirePermission('dialyse:machines:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const machineId = c.req.param('id');
 
     try {
@@ -777,6 +942,76 @@ dialyse.delete(
 // ============================================================================
 
 /**
+ * GET /dialyse/maintenance/stats
+ * Get maintenance statistics
+ */
+dialyse.get(
+  '/maintenance/stats',
+  requirePermission('dialyse:machines:read'),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId');
+
+      const stats = await machineService.getMaintenanceStats(organizationId);
+
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /dialyse/maintenance
+ * List all maintenance records
+ */
+dialyse.get(
+  '/maintenance',
+  requirePermission('dialyse:machines:read'),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const { status, type, priority, limit: limitStr, offset: offsetStr } = c.req.query();
+      const { limit, offset } = validatePagination(limitStr, offsetStr);
+
+      const result = await machineService.listAllMaintenance(organizationId, {
+        status: status || undefined,
+        type: type || undefined,
+        priority: priority || undefined,
+        limit,
+        offset,
+      });
+
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: {
+          total: result.total,
+          limit,
+          offset,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
  * GET /dialyse/machines/:machineId/maintenance
  * List maintenance records for a machine
  */
@@ -784,12 +1019,23 @@ dialyse.get(
   '/machines/:machineId/maintenance',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const machineId = c.req.param('machineId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const machineId = c.req.param('machineId');
 
-    const records = await machineService.listMaintenanceByMachine(organizationId, machineId);
+      const records = await machineService.listMaintenanceByMachine(organizationId, machineId);
 
-    return c.json({ success: true, data: records });
+      return c.json({ success: true, data: records });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -802,7 +1048,7 @@ dialyse.post(
   requirePermission('dialyse:machines:update'),
   zValidator('json', createMaintenanceRecordSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -824,7 +1070,7 @@ dialyse.put(
   requirePermission('dialyse:machines:update'),
   zValidator('json', updateMaintenanceRecordSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const maintenanceId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -845,7 +1091,7 @@ dialyse.post(
   '/maintenance/:id/start',
   requirePermission('dialyse:machines:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const maintenanceId = c.req.param('id');
 
     try {
@@ -856,6 +1102,26 @@ dialyse.post(
 
       await machineService.startMaintenance(organizationId, record.machineId, maintenanceId);
       return c.json({ success: true, data: { message: 'Maintenance started' } });
+    } catch (error: any) {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+  }
+);
+
+/**
+ * DELETE /dialyse/maintenance/:id
+ * Delete maintenance record
+ */
+dialyse.delete(
+  '/maintenance/:id',
+  requirePermission('dialyse:machines:update'),
+  async (c) => {
+    const organizationId = c.get('realOrganizationId');
+    const maintenanceId = c.req.param('id');
+
+    try {
+      await machineService.deleteMaintenance(organizationId, maintenanceId);
+      return c.json({ success: true, data: { message: 'Maintenance record deleted' } });
     } catch (error: any) {
       return c.json({ success: false, error: error.message }, 400);
     }
@@ -874,12 +1140,23 @@ dialyse.get(
   '/slots',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const activeOnly = c.req.query('activeOnly') !== 'false';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const activeOnly = c.req.query('activeOnly') !== 'false';
 
-    const slots = await sessionService.listSlots(organizationId, activeOnly);
+      const slots = await sessionService.listSlots(organizationId, activeOnly);
 
-    return c.json({ success: true, data: slots });
+      return c.json({ success: true, data: slots });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -892,7 +1169,7 @@ dialyse.post(
   requirePermission('dialyse:sessions:create'),
   zValidator('json', createSessionSlotSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const data = c.req.valid('json');
 
     try {
@@ -913,7 +1190,7 @@ dialyse.put(
   requirePermission('dialyse:sessions:update'),
   zValidator('json', updateSessionSlotSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const slotId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -939,20 +1216,31 @@ dialyse.get(
   requirePermission('dialyse:sessions:read'),
   zValidator('query', listSessionsQuerySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const query = c.req.valid('query');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const query = c.req.valid('query');
 
-    const startDate = query.dateFrom ? new Date(query.dateFrom) : new Date();
-    const endDate = query.dateTo ? new Date(query.dateTo) : new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const startDate = query.dateFrom ? new Date(query.dateFrom) : new Date();
+      const endDate = query.dateTo ? new Date(query.dateTo) : new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const sessions = await sessionService.listByDateRange(organizationId, startDate, endDate, {
-      patientId: query.patientId,
-      machineId: query.machineId,
-      slotId: query.slotId,
-      status: query.status,
-    });
+      const sessions = await sessionService.listByDateRange(organizationId, startDate, endDate, {
+        patientId: query.patientId,
+        machineId: query.machineId,
+        slotId: query.slotId,
+        status: query.status,
+      });
 
-    return c.json({ success: true, data: sessions });
+      return c.json({ success: true, data: sessions });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -964,9 +1252,20 @@ dialyse.get(
   '/sessions/today',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const sessions = await sessionService.getTodaySessions(organizationId);
-    return c.json({ success: true, data: sessions });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const sessions = await sessionService.getTodaySessions(organizationId);
+      return c.json({ success: true, data: sessions });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -978,17 +1277,28 @@ dialyse.get(
   '/sessions/stats',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const dateFrom = c.req.query('dateFrom');
-    const dateTo = c.req.query('dateTo');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const dateFrom = c.req.query('dateFrom');
+      const dateTo = c.req.query('dateTo');
 
-    const stats = await sessionService.getStats(
-      organizationId,
-      dateFrom ? new Date(dateFrom) : undefined,
-      dateTo ? new Date(dateTo) : undefined
-    );
+      const stats = await sessionService.getStats(
+        organizationId,
+        dateFrom ? new Date(dateFrom) : undefined,
+        dateTo ? new Date(dateTo) : undefined
+      );
 
-    return c.json({ success: true, data: stats });
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1000,19 +1310,30 @@ dialyse.get(
   '/sessions/:id',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const sessionId = c.req.param('id');
-    const withDetails = c.req.query('withDetails') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const sessionId = c.req.param('id');
+      const withDetails = c.req.query('withDetails') === 'true';
 
-    const session = withDetails
-      ? await sessionService.getByIdWithDetails(organizationId, sessionId)
-      : await sessionService.getById(organizationId, sessionId);
+      const session = withDetails
+        ? await sessionService.getByIdWithDetails(organizationId, sessionId)
+        : await sessionService.getById(organizationId, sessionId);
 
-    if (!session) {
-      return c.json({ success: false, error: 'Session not found' }, 404);
+      if (!session) {
+        return c.json({ success: false, error: 'Session not found' }, 404);
+      }
+
+      return c.json({ success: true, data: session });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: session });
   }
 );
 
@@ -1024,12 +1345,23 @@ dialyse.get(
   '/patients/:patientId/sessions',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const sessions = await sessionService.listByPatient(organizationId, patientId);
+      const sessions = await sessionService.listByPatient(organizationId, patientId);
 
-    return c.json({ success: true, data: sessions });
+      return c.json({ success: true, data: sessions });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1042,7 +1374,7 @@ dialyse.post(
   requirePermission('dialyse:sessions:create'),
   zValidator('json', createSessionSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -1064,7 +1396,7 @@ dialyse.post(
   requirePermission('dialyse:sessions:create'),
   zValidator('json', createSessionSchema.extend({ weeks: z.number().int().min(1).max(12).default(4) })),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const { weeks, ...data } = c.req.valid('json');
 
@@ -1086,7 +1418,7 @@ dialyse.put(
   requirePermission('dialyse:sessions:update'),
   zValidator('json', updateSessionSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const sessionId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -1107,7 +1439,7 @@ dialyse.post(
   '/sessions/:id/check-in',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const sessionId = c.req.param('id');
 
     try {
@@ -1127,7 +1459,7 @@ dialyse.post(
   '/sessions/:id/start',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const sessionId = c.req.param('id');
     const machineId = c.req.query('machineId');
 
@@ -1148,7 +1480,7 @@ dialyse.post(
   '/sessions/:id/complete',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const sessionId = c.req.param('id');
 
     try {
@@ -1169,7 +1501,7 @@ dialyse.post(
   requirePermission('dialyse:sessions:update'),
   zValidator('json', z.object({ reason: z.string().min(1) })),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const sessionId = c.req.param('id');
     const { reason } = c.req.valid('json');
@@ -1195,9 +1527,20 @@ dialyse.get(
   '/sessions/:sessionId/records',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const sessionId = c.req.param('sessionId');
-    const records = await sessionService.listRecords(sessionId);
-    return c.json({ success: true, data: records });
+    try {
+      const sessionId = c.req.param('sessionId');
+      const records = await sessionService.listRecords(sessionId);
+      return c.json({ success: true, data: records });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1325,25 +1668,35 @@ dialyse.get(
   '/patients/:patientId/labs',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
-    const startDate = c.req.query('startDate');
-    const endDate = c.req.query('endDate');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
+      const startDate = c.req.query('startDate');
+      const endDate = c.req.query('endDate');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await labService.listByPatient(organizationId, patientId, {
-      startDate,
-      endDate,
-      limit,
-      offset,
-    });
+      const result = await labService.listByPatient(organizationId, patientId, {
+        startDate,
+        endDate,
+        limit,
+        offset,
+      });
 
-    return c.json({
-      success: true,
-      data: result.data,
-      meta: { total: result.total, limit, offset },
-    });
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: { total: result.total, limit, offset },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1355,16 +1708,27 @@ dialyse.get(
   '/patients/:patientId/labs/latest',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const result = await labService.getLatestByPatient(organizationId, patientId);
+      const result = await labService.getLatestByPatient(organizationId, patientId);
 
-    if (!result) {
-      return c.json({ success: false, error: 'No lab results found' }, 404);
+      if (!result) {
+        return c.json({ success: false, error: 'No lab results found' }, 404);
+      }
+
+      return c.json({ success: true, data: result });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: result });
   }
 );
 
@@ -1376,14 +1740,25 @@ dialyse.get(
   '/patients/:patientId/labs/trend',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
-    const marker = c.req.query('marker') || 'hemoglobin';
-    const months = parseInt(c.req.query('months') || '12');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
+      const marker = c.req.query('marker') || 'hemoglobin';
+      const months = parseMonths(c.req.query('months'));
 
-    const trend = await labService.getTrend(organizationId, patientId, marker, months);
+      const trend = await labService.getTrend(organizationId, patientId, marker, months);
 
-    return c.json({ success: true, data: trend });
+      return c.json({ success: true, data: trend });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1395,16 +1770,27 @@ dialyse.get(
   '/labs/:id',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const labId = c.req.param('id');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const labId = c.req.param('id');
 
-    const result = await labService.getById(organizationId, labId);
+      const result = await labService.getById(organizationId, labId);
 
-    if (!result) {
-      return c.json({ success: false, error: 'Lab result not found' }, 404);
+      if (!result) {
+        return c.json({ success: false, error: 'Lab result not found' }, 404);
+      }
+
+      return c.json({ success: true, data: result });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: result });
   }
 );
 
@@ -1416,17 +1802,28 @@ dialyse.get(
   '/labs/stats',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const dateFrom = c.req.query('dateFrom');
-    const dateTo = c.req.query('dateTo');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const dateFrom = c.req.query('dateFrom');
+      const dateTo = c.req.query('dateTo');
 
-    const stats = await labService.getStats(
-      organizationId,
-      dateFrom ? new Date(dateFrom) : undefined,
-      dateTo ? new Date(dateTo) : undefined
-    );
+      const stats = await labService.getStats(
+        organizationId,
+        dateFrom ? new Date(dateFrom) : undefined,
+        dateTo ? new Date(dateTo) : undefined
+      );
 
-    return c.json({ success: true, data: stats });
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1438,9 +1835,20 @@ dialyse.get(
   '/labs/out-of-range',
   requirePermission('dialyse:labs:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const results = await labService.getPatientsWithOutOfRangeValues(organizationId);
-    return c.json({ success: true, data: results });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const results = await labService.getPatientsWithOutOfRangeValues(organizationId);
+      return c.json({ success: true, data: results });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1453,7 +1861,7 @@ dialyse.post(
   requirePermission('dialyse:labs:create'),
   zValidator('json', createLabResultSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = c.req.valid('json');
 
@@ -1475,7 +1883,7 @@ dialyse.put(
   requirePermission('dialyse:labs:update'),
   zValidator('json', updateLabResultSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const labId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -1496,7 +1904,7 @@ dialyse.post(
   '/labs/:id/review',
   requirePermission('dialyse:labs:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const labId = c.req.param('id');
 
@@ -1517,7 +1925,7 @@ dialyse.delete(
   '/labs/:id',
   requirePermission('dialyse:labs:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const labId = c.req.param('id');
 
     try {
@@ -1542,16 +1950,27 @@ dialyse.get(
   requirePermission('dialyse:alerts:read'),
   zValidator('query', listAlertsQuerySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const query = c.req.valid('query');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const query = c.req.valid('query');
 
-    const result = await alertService.list(organizationId, query);
+      const result = await alertService.list(organizationId, query);
 
-    return c.json({
-      success: true,
-      data: result.data,
-      meta: { total: result.total, limit: query.limit, offset: query.offset },
-    });
+      return c.json({
+        success: true,
+        data: result.data,
+        meta: { total: result.total, limit: query.limit, offset: query.offset },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1563,9 +1982,20 @@ dialyse.get(
   '/alerts/critical',
   requirePermission('dialyse:alerts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const alerts = await alertService.getCriticalAlerts(organizationId);
-    return c.json({ success: true, data: alerts });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const alerts = await alertService.getCriticalAlerts(organizationId);
+      return c.json({ success: true, data: alerts });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1577,9 +2007,20 @@ dialyse.get(
   '/alerts/stats',
   requirePermission('dialyse:alerts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await alertService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await alertService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1591,12 +2032,23 @@ dialyse.get(
   '/patients/:patientId/alerts',
   requirePermission('dialyse:alerts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const patientId = c.req.param('patientId');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const patientId = c.req.param('patientId');
 
-    const alerts = await alertService.getActiveByPatient(organizationId, patientId);
+      const alerts = await alertService.getActiveByPatient(organizationId, patientId);
 
-    return c.json({ success: true, data: alerts });
+      return c.json({ success: true, data: alerts });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1608,19 +2060,30 @@ dialyse.get(
   '/alerts/:id',
   requirePermission('dialyse:alerts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const alertId = c.req.param('id');
-    const withPatient = c.req.query('withPatient') === 'true';
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const alertId = c.req.param('id');
+      const withPatient = c.req.query('withPatient') === 'true';
 
-    const alert = withPatient
-      ? await alertService.getByIdWithPatient(organizationId, alertId)
-      : await alertService.getById(organizationId, alertId);
+      const alert = withPatient
+        ? await alertService.getByIdWithPatient(organizationId, alertId)
+        : await alertService.getById(organizationId, alertId);
 
-    if (!alert) {
-      return c.json({ success: false, error: 'Alert not found' }, 404);
+      if (!alert) {
+        return c.json({ success: false, error: 'Alert not found' }, 404);
+      }
+
+      return c.json({ success: true, data: alert });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({ success: true, data: alert });
   }
 );
 
@@ -1633,7 +2096,7 @@ dialyse.post(
   requirePermission('dialyse:alerts:create'),
   zValidator('json', createClinicalAlertSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const data = c.req.valid('json');
 
     try {
@@ -1654,7 +2117,7 @@ dialyse.put(
   requirePermission('dialyse:alerts:update'),
   zValidator('json', updateClinicalAlertSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const alertId = c.req.param('id');
     const data = c.req.valid('json');
 
@@ -1675,7 +2138,7 @@ dialyse.post(
   '/alerts/:id/acknowledge',
   requirePermission('dialyse:alerts:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const alertId = c.req.param('id');
 
@@ -1697,7 +2160,7 @@ dialyse.post(
   requirePermission('dialyse:alerts:update'),
   zValidator('json', z.object({ notes: z.string().optional() })),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const alertId = c.req.param('id');
     const { notes } = c.req.valid('json');
@@ -1719,7 +2182,7 @@ dialyse.post(
   '/alerts/:id/dismiss',
   requirePermission('dialyse:alerts:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const alertId = c.req.param('id');
 
     try {
@@ -1739,7 +2202,7 @@ dialyse.post(
   '/alerts/generate',
   requirePermission('dialyse:alerts:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
 
     try {
       const result = await alertService.runAutomatedAlertGeneration(organizationId);
@@ -1762,28 +2225,39 @@ dialyse.get(
   '/dashboard',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    try {
+      const organizationId = c.get('realOrganizationId');
 
-    const [patientStats, machineStats, sessionStats, alertStats, todaySessions, criticalAlerts] = await Promise.all([
-      patientService.getStats(organizationId),
-      machineService.getStats(organizationId),
-      sessionService.getStats(organizationId),
-      alertService.getStats(organizationId),
-      sessionService.getTodaySessions(organizationId),
-      alertService.getCriticalAlerts(organizationId),
-    ]);
+      const [patientStats, machineStats, sessionStats, alertStats, todaySessions, criticalAlerts] = await Promise.all([
+        patientService.getStats(organizationId),
+        machineService.getStats(organizationId),
+        sessionService.getStats(organizationId),
+        alertService.getStats(organizationId),
+        sessionService.getTodaySessions(organizationId),
+        alertService.getCriticalAlerts(organizationId),
+      ]);
 
-    return c.json({
-      success: true,
-      data: {
-        patients: patientStats,
-        machines: machineStats,
-        sessions: sessionStats,
-        alerts: alertStats,
-        todaySessions,
-        criticalAlerts,
-      },
-    });
+      return c.json({
+        success: true,
+        data: {
+          patients: patientStats,
+          machines: machineStats,
+          sessions: sessionStats,
+          alerts: alertStats,
+          todaySessions,
+          criticalAlerts,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1799,14 +2273,24 @@ dialyse.get(
   '/protocols',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const status = c.req.query('status');
-    const type = c.req.query('type');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const status = c.req.query('status');
+      const type = c.req.query('type');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await protocolService.list(organizationId, { status, type, limit, offset });
-    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+      const result = await protocolService.list(organizationId, { status, type, limit, offset });
+      return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1817,9 +2301,20 @@ dialyse.get(
   '/protocols/stats',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await protocolService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await protocolService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1830,11 +2325,22 @@ dialyse.get(
   '/protocols/:id',
   requirePermission('dialyse:prescriptions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const id = c.req.param('id');
-    const protocol = await protocolService.getById(organizationId, id);
-    if (!protocol) return c.json({ success: false, error: 'Protocol not found' }, 404);
-    return c.json({ success: true, data: protocol });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const id = c.req.param('id');
+      const protocol = await protocolService.getById(organizationId, id);
+      if (!protocol) return c.json({ success: false, error: 'Protocol not found' }, 404);
+      return c.json({ success: true, data: protocol });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1845,7 +2351,7 @@ dialyse.post(
   '/protocols',
   requirePermission('dialyse:prescriptions:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = await c.req.json();
     try {
@@ -1864,7 +2370,7 @@ dialyse.put(
   '/protocols/:id',
   requirePermission('dialyse:prescriptions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const data = await c.req.json();
     try {
@@ -1883,7 +2389,7 @@ dialyse.post(
   '/protocols/:id/duplicate',
   requirePermission('dialyse:prescriptions:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const id = c.req.param('id');
     try {
@@ -1902,7 +2408,7 @@ dialyse.delete(
   '/protocols/:id',
   requirePermission('dialyse:prescriptions:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     try {
       await protocolService.delete(organizationId, id);
@@ -1922,16 +2428,26 @@ dialyse.delete(
  */
 dialyse.get(
   '/staff',
-  requirePermission('dialyse:patients:read'),
+  requirePermission('dialyse:staff:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const role = c.req.query('role');
-    const status = c.req.query('status');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const role = c.req.query('role');
+      const status = c.req.query('status');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await staffService.list(organizationId, { role, status, limit, offset });
-    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+      const result = await staffService.list(organizationId, { role, status, limit, offset });
+      return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1940,11 +2456,22 @@ dialyse.get(
  */
 dialyse.get(
   '/staff/stats',
-  requirePermission('dialyse:patients:read'),
+  requirePermission('dialyse:staff:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await staffService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await staffService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1953,13 +2480,24 @@ dialyse.get(
  */
 dialyse.get(
   '/staff/:id',
-  requirePermission('dialyse:patients:read'),
+  requirePermission('dialyse:staff:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const id = c.req.param('id');
-    const staff = await staffService.getById(organizationId, id);
-    if (!staff) return c.json({ success: false, error: 'Staff not found' }, 404);
-    return c.json({ success: true, data: staff });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const id = c.req.param('id');
+      const staff = await staffService.getById(organizationId, id);
+      if (!staff) return c.json({ success: false, error: 'Staff not found' }, 404);
+      return c.json({ success: true, data: staff });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -1968,9 +2506,9 @@ dialyse.get(
  */
 dialyse.post(
   '/staff',
-  requirePermission('dialyse:patients:create'),
+  requirePermission('dialyse:staff:write'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = await c.req.json();
     try {
@@ -1987,9 +2525,9 @@ dialyse.post(
  */
 dialyse.put(
   '/staff/:id',
-  requirePermission('dialyse:patients:update'),
+  requirePermission('dialyse:staff:write'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const data = await c.req.json();
     try {
@@ -2006,9 +2544,9 @@ dialyse.put(
  */
 dialyse.put(
   '/staff/:id/schedule',
-  requirePermission('dialyse:patients:update'),
+  requirePermission('dialyse:staff:write'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const { schedule } = await c.req.json();
     try {
@@ -2025,9 +2563,9 @@ dialyse.put(
  */
 dialyse.delete(
   '/staff/:id',
-  requirePermission('dialyse:patients:delete'),
+  requirePermission('dialyse:staff:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     try {
       await staffService.delete(organizationId, id);
@@ -2049,16 +2587,26 @@ dialyse.get(
   '/billing',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const status = c.req.query('status');
-    const patientId = c.req.query('patientId');
-    const startDate = c.req.query('startDate');
-    const endDate = c.req.query('endDate');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const status = c.req.query('status');
+      const patientId = c.req.query('patientId');
+      const startDate = c.req.query('startDate');
+      const endDate = c.req.query('endDate');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await billingService.list(organizationId, { status, patientId, startDate, endDate, limit, offset });
-    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+      const result = await billingService.list(organizationId, { status, patientId, startDate, endDate, limit, offset });
+      return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2069,9 +2617,20 @@ dialyse.get(
   '/billing/stats',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await billingService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await billingService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2082,11 +2641,22 @@ dialyse.get(
   '/billing/:id',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const id = c.req.param('id');
-    const billing = await billingService.getById(organizationId, id);
-    if (!billing) return c.json({ success: false, error: 'Billing not found' }, 404);
-    return c.json({ success: true, data: billing });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const id = c.req.param('id');
+      const billing = await billingService.getById(organizationId, id);
+      if (!billing) return c.json({ success: false, error: 'Billing not found' }, 404);
+      return c.json({ success: true, data: billing });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2097,7 +2667,7 @@ dialyse.post(
   '/billing',
   requirePermission('dialyse:sessions:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = await c.req.json();
     try {
@@ -2116,7 +2686,7 @@ dialyse.put(
   '/billing/:id',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const data = await c.req.json();
     try {
@@ -2135,7 +2705,7 @@ dialyse.post(
   '/billing/:id/pay',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const { paidAmount, paidDate } = await c.req.json();
     try {
@@ -2154,7 +2724,7 @@ dialyse.delete(
   '/billing/:id',
   requirePermission('dialyse:sessions:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     try {
       await billingService.delete(organizationId, id);
@@ -2176,16 +2746,26 @@ dialyse.get(
   '/transport',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const status = c.req.query('status');
-    const date = c.req.query('date');
-    const patientId = c.req.query('patientId');
-    const direction = c.req.query('direction');
-    const limit = parseInt(c.req.query('limit') || '25');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const status = c.req.query('status');
+      const date = c.req.query('date');
+      const patientId = c.req.query('patientId');
+      const direction = c.req.query('direction');
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'));
 
-    const result = await transportService.list(organizationId, { status, date, patientId, direction, limit, offset });
-    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+      const result = await transportService.list(organizationId, { status, date, patientId, direction, limit, offset });
+      return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2196,9 +2776,20 @@ dialyse.get(
   '/transport/stats',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await transportService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await transportService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2209,11 +2800,22 @@ dialyse.get(
   '/transport/:id',
   requirePermission('dialyse:sessions:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const id = c.req.param('id');
-    const transport = await transportService.getById(organizationId, id);
-    if (!transport) return c.json({ success: false, error: 'Transport not found' }, 404);
-    return c.json({ success: true, data: transport });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const id = c.req.param('id');
+      const transport = await transportService.getById(organizationId, id);
+      if (!transport) return c.json({ success: false, error: 'Transport not found' }, 404);
+      return c.json({ success: true, data: transport });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2224,7 +2826,7 @@ dialyse.post(
   '/transport',
   requirePermission('dialyse:sessions:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = await c.req.json();
     try {
@@ -2243,7 +2845,7 @@ dialyse.put(
   '/transport/:id',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const data = await c.req.json();
     try {
@@ -2262,7 +2864,7 @@ dialyse.patch(
   '/transport/:id/status',
   requirePermission('dialyse:sessions:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const { status, actualTime } = await c.req.json();
     try {
@@ -2281,7 +2883,7 @@ dialyse.delete(
   '/transport/:id',
   requirePermission('dialyse:sessions:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     try {
       await transportService.delete(organizationId, id);
@@ -2303,15 +2905,25 @@ dialyse.get(
   '/consumables',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const category = c.req.query('category');
-    const status = c.req.query('status');
-    const lowStock = c.req.query('lowStock') === 'true';
-    const limit = parseInt(c.req.query('limit') || '50');
-    const offset = parseInt(c.req.query('offset') || '0');
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const category = c.req.query('category');
+      const status = c.req.query('status');
+      const lowStock = c.req.query('lowStock') === 'true';
+      const { limit, offset } = validatePagination(c.req.query('limit'), c.req.query('offset'), { defaultLimit: 50 });
 
-    const result = await consumablesService.list(organizationId, { category, status, lowStock, limit, offset });
-    return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+      const result = await consumablesService.list(organizationId, { category, status, lowStock, limit, offset });
+      return c.json({ success: true, data: result.data, meta: { total: result.total, limit, offset } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2322,9 +2934,20 @@ dialyse.get(
   '/consumables/stats',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await consumablesService.getStats(organizationId);
-    return c.json({ success: true, data: stats });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const stats = await consumablesService.getStats(organizationId);
+      return c.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2335,11 +2958,22 @@ dialyse.get(
   '/consumables/:id',
   requirePermission('dialyse:machines:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const id = c.req.param('id');
-    const consumable = await consumablesService.getById(organizationId, id);
-    if (!consumable) return c.json({ success: false, error: 'Consumable not found' }, 404);
-    return c.json({ success: true, data: consumable });
+    try {
+      const organizationId = c.get('realOrganizationId');
+      const id = c.req.param('id');
+      const consumable = await consumablesService.getById(organizationId, id);
+      if (!consumable) return c.json({ success: false, error: 'Consumable not found' }, 404);
+      return c.json({ success: true, data: consumable });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'dialyse' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -2350,7 +2984,7 @@ dialyse.post(
   '/consumables',
   requirePermission('dialyse:machines:create'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const data = await c.req.json();
     try {
@@ -2369,7 +3003,7 @@ dialyse.put(
   '/consumables/:id',
   requirePermission('dialyse:machines:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     const data = await c.req.json();
     try {
@@ -2388,7 +3022,7 @@ dialyse.post(
   '/consumables/:id/stock',
   requirePermission('dialyse:machines:update'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const userId = c.get('userId');
     const id = c.req.param('id');
     const movement = await c.req.json();
@@ -2408,7 +3042,7 @@ dialyse.delete(
   '/consumables/:id',
   requirePermission('dialyse:machines:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const id = c.req.param('id');
     try {
       await consumablesService.delete(organizationId, id);
@@ -2430,7 +3064,7 @@ dialyse.get(
   '/reports',
   requirePermission('dialyse:patients:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
+    const organizationId = c.get('realOrganizationId');
     const period = c.req.query('period') || 'month';
     try {
       const report = await reportsService.getReport(organizationId, period);

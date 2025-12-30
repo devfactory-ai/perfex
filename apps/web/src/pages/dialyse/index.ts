@@ -24,3 +24,12 @@ export { DialyseProtocolsPage } from './DialyseProtocolsPage';
 export { DialyseStaffPage } from './DialyseStaffPage';
 export { DialyseBillingPage } from './DialyseBillingPage';
 export { DialyseTransportPage } from './DialyseTransportPage';
+
+// Form Pages
+export { DialyseMaintenanceFormPage } from './DialyseMaintenanceFormPage';
+export { DialyseBillingFormPage } from './DialyseBillingFormPage';
+export { DialyseTransportFormPage } from './DialyseTransportFormPage';
+export { DialyseStaffFormPage } from './DialyseStaffFormPage';
+export { DialyseProtocolFormPage } from './DialyseProtocolFormPage';
+export { DialyseConsumableFormPage } from './DialyseConsumableFormPage';
+export { DialyseMachineFormPage } from './DialyseMachineFormPage';

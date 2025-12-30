@@ -11,6 +11,7 @@ import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
 import { JournalEntryService } from '../services/journal-entry.service';
+import { logger } from '../utils/logger';
 
 const journalEntries = new Hono<{ Bindings: Env }>();
 
@@ -25,33 +26,44 @@ journalEntries.get(
   '/',
   checkPermission('finance:journal_entries:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const journalId = c.req.query('journalId');
+      const status = c.req.query('status');
+      const startDateStr = c.req.query('startDate');
+      const endDateStr = c.req.query('endDate');
+      const limitStr = c.req.query('limit');
+      const offsetStr = c.req.query('offset');
+
+      const options: any = {};
+      if (journalId) options.journalId = journalId;
+      if (status) options.status = status;
+      if (startDateStr) options.startDate = new Date(startDateStr);
+      if (endDateStr) options.endDate = new Date(endDateStr);
+      if (limitStr) options.limit = parseInt(limitStr, 10);
+      if (offsetStr) options.offset = parseInt(offsetStr, 10);
+
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const entries = await journalEntryService.list(organizationId, options);
+
+      return c.json({ data: entries });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const journalId = c.req.query('journalId');
-    const status = c.req.query('status');
-    const startDateStr = c.req.query('startDate');
-    const endDateStr = c.req.query('endDate');
-    const limitStr = c.req.query('limit');
-    const offsetStr = c.req.query('offset');
-
-    const options: any = {};
-    if (journalId) options.journalId = journalId;
-    if (status) options.status = status;
-    if (startDateStr) options.startDate = new Date(startDateStr);
-    if (endDateStr) options.endDate = new Date(endDateStr);
-    if (limitStr) options.limit = parseInt(limitStr, 10);
-    if (offsetStr) options.offset = parseInt(offsetStr, 10);
-
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const entries = await journalEntryService.list(organizationId, options);
-
-    return c.json({ data: entries });
   }
 );
 
@@ -63,19 +75,30 @@ journalEntries.get(
   '/:id',
   checkPermission('finance:journal_entries:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const entryId = c.req.param('id');
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const entry = await journalEntryService.getById(entryId, organizationId);
+
+      return c.json({ data: entry });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const entryId = c.req.param('id');
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const entry = await journalEntryService.getById(entryId, organizationId);
-
-    return c.json({ data: entry });
   }
 );
 
@@ -88,20 +111,31 @@ journalEntries.post(
   checkPermission('finance:journal_entries:create'),
   zValidator('json', createJournalEntrySchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const entry = await journalEntryService.create(organizationId, userId, data);
+
+      return c.json({ data: entry }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const entry = await journalEntryService.create(organizationId, userId, data);
-
-    return c.json({ data: entry }, 201);
   }
 );
 
@@ -114,21 +148,32 @@ journalEntries.post(
   checkPermission('finance:journal_entries:post'),
   zValidator('json', postJournalEntrySchema.optional()),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const entryId = c.req.param('id');
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const entry = await journalEntryService.post(entryId, organizationId, userId, data);
+
+      return c.json({ data: entry });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const entryId = c.req.param('id');
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const entry = await journalEntryService.post(entryId, organizationId, userId, data);
-
-    return c.json({ data: entry });
   }
 );
 
@@ -140,19 +185,30 @@ journalEntries.post(
   '/:id/cancel',
   checkPermission('finance:journal_entries:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const entryId = c.req.param('id');
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const entry = await journalEntryService.cancel(entryId, organizationId);
+
+      return c.json({ data: entry });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const entryId = c.req.param('id');
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const entry = await journalEntryService.cancel(entryId, organizationId);
-
-    return c.json({ data: entry });
   }
 );
 
@@ -164,19 +220,30 @@ journalEntries.delete(
   '/:id',
   checkPermission('finance:journal_entries:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const entryId = c.req.param('id');
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      await journalEntryService.delete(entryId, organizationId);
+
+      return c.json({ data: { message: 'Journal entry deleted successfully' } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const entryId = c.req.param('id');
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    await journalEntryService.delete(entryId, organizationId);
-
-    return c.json({ data: { message: 'Journal entry deleted successfully' } });
   }
 );
 
@@ -191,30 +258,41 @@ journalEntries.post(
     reversalDate: z.string().datetime().or(z.date()).optional(),
   }).optional()),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const entryId = c.req.param('id');
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
+      const reversalDate = data?.reversalDate
+        ? typeof data.reversalDate === 'string' ? new Date(data.reversalDate) : data.reversalDate
+        : undefined;
+
+      const journalEntryService = new JournalEntryService(c.env.DB);
+      const reversalEntry = await journalEntryService.reverse(
+        entryId,
+        organizationId,
+        userId,
+        reversalDate
       );
+
+      return c.json({ data: reversalEntry }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'journal-entries' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const entryId = c.req.param('id');
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
-    const reversalDate = data?.reversalDate
-      ? typeof data.reversalDate === 'string' ? new Date(data.reversalDate) : data.reversalDate
-      : undefined;
-
-    const journalEntryService = new JournalEntryService(c.env.DB);
-    const reversalEntry = await journalEntryService.reverse(
-      entryId,
-      organizationId,
-      userId,
-      reversalDate
-    );
-
-    return c.json({ data: reversalEntry }, 201);
   }
 );
 

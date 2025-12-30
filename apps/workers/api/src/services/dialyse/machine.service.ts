@@ -342,6 +342,142 @@ export class MachineService {
   }
 
   /**
+   * List all maintenance records with filters
+   */
+  async listAllMaintenance(
+    organizationId: string,
+    filters?: {
+      status?: string;
+      type?: string;
+      priority?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{ data: any[]; total: number }> {
+    const { status, type, limit = 25, offset = 0 } = filters || {};
+
+    // Build conditions
+    const conditions = [eq(machineMaintenanceRecords.organizationId, organizationId)];
+    if (status) {
+      conditions.push(eq(machineMaintenanceRecords.status, status as any));
+    }
+    if (type) {
+      conditions.push(eq(machineMaintenanceRecords.type, type as any));
+    }
+
+    // Get data with machine info
+    const records = await drizzleDb
+      .select({
+        id: machineMaintenanceRecords.id,
+        machineId: machineMaintenanceRecords.machineId,
+        type: machineMaintenanceRecords.type,
+        status: machineMaintenanceRecords.status,
+        scheduledDate: machineMaintenanceRecords.scheduledDate,
+        completedDate: machineMaintenanceRecords.completedDate,
+        performedBy: machineMaintenanceRecords.performedBy,
+        description: machineMaintenanceRecords.description,
+        workPerformed: machineMaintenanceRecords.workPerformed,
+        partsReplaced: machineMaintenanceRecords.partsReplaced,
+        downtime: machineMaintenanceRecords.downtime,
+        cost: machineMaintenanceRecords.cost,
+        notes: machineMaintenanceRecords.notes,
+        createdAt: machineMaintenanceRecords.createdAt,
+        machineNumber: dialysisMachines.machineNumber,
+        machineModel: dialysisMachines.model,
+      })
+      .from(machineMaintenanceRecords)
+      .leftJoin(dialysisMachines, eq(machineMaintenanceRecords.machineId, dialysisMachines.id))
+      .where(and(...conditions))
+      .orderBy(desc(machineMaintenanceRecords.scheduledDate))
+      .limit(limit)
+      .offset(offset)
+      .all();
+
+    // Get count
+    const countResult = await drizzleDb
+      .select({ count: sql<number>`count(*)` })
+      .from(machineMaintenanceRecords)
+      .where(and(...conditions))
+      .get();
+
+    const data = records.map((row) => ({
+      id: row.id,
+      machineId: row.machineId,
+      machine: {
+        machineNumber: row.machineNumber,
+        model: row.machineModel,
+      },
+      type: row.type,
+      status: row.status,
+      priority: 'medium',
+      scheduledDate: row.scheduledDate,
+      completedDate: row.completedDate,
+      technician: row.performedBy,
+      description: row.description,
+      findings: row.workPerformed,
+      partsReplaced: row.partsReplaced,
+      laborHours: row.downtime,
+      cost: row.cost,
+      nextMaintenanceDate: null,
+      notes: row.notes,
+      createdAt: row.createdAt,
+    }));
+
+    return { data, total: countResult?.count || 0 };
+  }
+
+  /**
+   * Get maintenance statistics
+   */
+  async getMaintenanceStats(organizationId: string): Promise<{
+    total: number;
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    overdue: number;
+    thisMonth: number;
+  }> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    const result = await drizzleDb.run(sql.raw(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled,
+        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'scheduled' AND scheduled_date < ${Date.now()} THEN 1 ELSE 0 END) as overdue,
+        SUM(CASE WHEN created_at >= ${startOfMonth} THEN 1 ELSE 0 END) as thisMonth
+      FROM dialyse_machine_maintenance
+      WHERE organization_id = '${organizationId}'
+    `));
+
+    const row = result.rows?.[0] as any || {};
+    return {
+      total: Number(row.total) || 0,
+      scheduled: Number(row.scheduled) || 0,
+      inProgress: Number(row.inProgress) || 0,
+      completed: Number(row.completed) || 0,
+      overdue: Number(row.overdue) || 0,
+      thisMonth: Number(row.thisMonth) || 0,
+    };
+  }
+
+  /**
+   * Delete maintenance record
+   */
+  async deleteMaintenance(organizationId: string, maintenanceId: string): Promise<void> {
+    await drizzleDb
+      .delete(machineMaintenanceRecords)
+      .where(
+        and(
+          eq(machineMaintenanceRecords.id, maintenanceId),
+          eq(machineMaintenanceRecords.organizationId, organizationId)
+        )
+      );
+  }
+
+  /**
    * Update maintenance record
    */
   async updateMaintenance(organizationId: string, maintenanceId: string, data: UpdateMaintenanceRecordInput): Promise<MachineMaintenanceRecord> {

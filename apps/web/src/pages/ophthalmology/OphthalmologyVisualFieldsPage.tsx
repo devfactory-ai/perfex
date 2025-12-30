@@ -9,16 +9,23 @@ import { useNavigate } from 'react-router-dom';
 import {
   Target,
   Plus,
-  Search,
   Calendar,
-  ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  FilterBar,
+  SectionCard,
+  Button,
+  EmptyState,
+  InlineLoading,
+  getStatusColor,
+} from '../../components/healthcare';
 
 export default function OphthalmologyVisualFieldsPage() {
-  useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [eyeFilter, setEyeFilter] = useState<string>('all');
@@ -37,107 +44,111 @@ export default function OphthalmologyVisualFieldsPage() {
   const getReliabilityColor = (reliability: string) => {
     switch (reliability) {
       case 'reliable':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return getStatusColor('completed');
       case 'borderline':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return getStatusColor('pending');
       case 'unreliable':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+        return getStatusColor('cancelled');
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
   };
 
+  const getReliabilityLabel = (reliability: string) => {
+    switch (reliability) {
+      case 'reliable': return t('ophthalmology.reliable');
+      case 'borderline': return t('ophthalmology.borderlineReliability');
+      case 'unreliable': return t('ophthalmology.unreliable');
+      default: return reliability;
+    }
+  };
+
   const getMdColor = (md: number) => {
-    if (md > -6) return 'text-green-600 dark:text-green-400';
-    if (md > -12) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (md > -6) return 'text-slate-600 dark:text-slate-400';
+    if (md > -12) return 'text-slate-700 dark:text-slate-500';
+    return 'text-slate-800 dark:text-slate-600';
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Target className="h-7 w-7 text-blue-500" />
-            Champs Visuels
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Périmétrie automatisée et suivi du glaucome
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/ophthalmology/visual-fields/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Nouveau CV
-        </button>
-      </div>
+      <PageHeader
+        title={t('ophthalmology.visualFieldsTitle')}
+        subtitle={t('ophthalmology.visualFieldsSubtitle')}
+        icon={Target}
+        module="ophthalmology"
+        actions={
+          <Button
+            module="ophthalmology"
+            icon={Plus}
+            onClick={() => navigate('/ophthalmology/visual-fields/new')}
+          >
+            {t('ophthalmology.newVisualField')}
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher un patient..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <select
-            value={eyeFilter}
-            onChange={(e) => setEyeFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">Tous les yeux</option>
-            <option value="OD">Œil Droit (OD)</option>
-            <option value="OG">Œil Gauche (OG)</option>
-          </select>
-        </div>
-      </div>
+      <FilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder={t('common.searchPatient')}
+        module="ophthalmology"
+        filters={[
+          {
+            name: 'eye',
+            value: eyeFilter,
+            options: [
+              { value: 'all', label: t('ophthalmology.allEyes') },
+              { value: 'OD', label: t('ophthalmology.rightEyeOD') },
+              { value: 'OG', label: t('ophthalmology.leftEyeOG') },
+            ],
+            onChange: setEyeFilter,
+          },
+        ]}
+      />
 
       {/* Visual Fields List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <SectionCard>
         {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          </div>
+          <InlineLoading rows={5} />
         ) : visualFields?.length === 0 ? (
-          <div className="p-8 text-center">
-            <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Aucun champ visuel trouvé</p>
-          </div>
+          <EmptyState
+            icon={Target}
+            title={t('ophthalmology.noVisualFieldFound')}
+            module="ophthalmology"
+            action={{
+              label: t('ophthalmology.newVisualField'),
+              icon: Plus,
+              onClick: () => navigate('/ophthalmology/visual-fields/new'),
+            }}
+          />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {visualFields?.map((vf: any) => (
               <div
                 key={vf.id}
-                onClick={() => navigate(`/ophthalmology/visual-fields/${vf.id}`)}
+                onClick={() => navigate(`/ophthalmology/visual-fields/${vf.id}/edit`)}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                      <Target className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                      <Target className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
                           {vf.patientName}
                         </h3>
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
-                          {vf.eye === 'OD' ? 'Œil Droit' : 'Œil Gauche'}
+                          {vf.eye === 'OD' ? t('ophthalmology.rightEye') : t('ophthalmology.leftEye')}
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getReliabilityColor(vf.reliability)}`}>
-                          {vf.reliability === 'reliable' ? 'Fiable' :
-                           vf.reliability === 'borderline' ? 'Limite' : 'Non fiable'}
+                          {getReliabilityLabel(vf.reliability)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 mt-1">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {new Date(vf.testDate).toLocaleDateString('fr-FR')}
@@ -146,34 +157,31 @@ export default function OphthalmologyVisualFieldsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-6 text-sm">
-                      <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">MD</p>
-                        <p className={`font-medium ${getMdColor(vf.meanDeviation)}`}>
-                          {vf.meanDeviation > 0 ? '+' : ''}{vf.meanDeviation} dB
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">PSD</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{vf.patternStandardDeviation} dB</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">VFI</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{vf.visualFieldIndex}%</p>
-                      </div>
-                      {vf.ghtStatus && vf.ghtStatus !== 'Within Normal Limits' && (
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      )}
+                  <div className="hidden md:flex items-center gap-6 text-sm ml-4">
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400">MD</p>
+                      <p className={`font-medium ${getMdColor(vf.meanDeviation)}`}>
+                        {vf.meanDeviation > 0 ? '+' : ''}{vf.meanDeviation} dB
+                      </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400">PSD</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{vf.patternStandardDeviation} dB</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400">VFI</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{vf.visualFieldIndex}%</p>
+                    </div>
+                    {vf.ghtStatus && vf.ghtStatus !== 'Within Normal Limits' && (
+                      <AlertTriangle className="h-5 w-5 text-slate-500" />
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

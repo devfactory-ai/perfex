@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import type { Env } from '../types';
 import { getDb } from '../db';
@@ -210,6 +211,35 @@ const createMedicationSchema = z.object({
   notes: z.string().optional(),
 });
 
+const createHolterSchema = z.object({
+  patientId: z.string().uuid(),
+  indication: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  durationHours: z.number().optional(),
+  monitorType: z.enum(['standard', 'extended', 'event_recorder', 'loop_recorder']).optional(),
+  deviceModel: z.string().optional(),
+  minHeartRate: z.number().optional(),
+  maxHeartRate: z.number().optional(),
+  avgHeartRate: z.number().optional(),
+  totalQrsComplexes: z.number().optional(),
+  svePrematureBeats: z.number().optional(),
+  pvePrematureBeats: z.number().optional(),
+  afibEpisodes: z.number().optional(),
+  afibBurden: z.number().optional(),
+  vtEpisodes: z.number().optional(),
+  pausesOver2s: z.number().optional(),
+  pausesOver3s: z.number().optional(),
+  longestPause: z.number().optional(),
+  interpretation: z.string().optional(),
+  conclusion: z.string().optional(),
+  recommendations: z.string().optional(),
+  analyzedById: z.string().uuid().optional(),
+  interpretedById: z.string().uuid().optional(),
+  reportUrl: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 // ============================================================================
 // DASHBOARD & STATS
 // ============================================================================
@@ -226,85 +256,80 @@ cardiology.get(
       const db = getDb();
       const organizationId = c.get('organizationId');
 
-      // Get patient counts
-      const [totalPatients] = await db
-        .select({ count: count() })
-        .from(healthcarePatients)
-        .where(and(
-          eq(healthcarePatients.organizationId, organizationId),
-          sql`JSON_EXTRACT(${healthcarePatients.enrolledModules}, '$') LIKE '%cardiology%'`
-        ));
+      // Get patient counts from cardiology_patients table using raw SQL
+      const totalPatientsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_patients WHERE company_id = ${organizationId}
+      `);
+      const totalPatients = (totalPatientsResult.results?.[0] as any)?.count ?? 0;
 
-      // Get today's appointments
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const [todayAppointments] = await db
-        .select({ count: count() })
-        .from(healthcareAppointments)
-        .where(and(
-          eq(healthcareAppointments.organizationId, organizationId),
-          eq(healthcareAppointments.module, 'cardiology'),
-          sql`${healthcareAppointments.scheduledDate} >= ${today.getTime()}`,
-          sql`${healthcareAppointments.scheduledDate} < ${tomorrow.getTime()}`
-        ));
-
-      // Get pending ECGs
-      const [pendingEcgs] = await db
-        .select({ count: count() })
-        .from(cardiologyEcgRecords)
-        .where(and(
-          eq(cardiologyEcgRecords.organizationId, organizationId),
-          eq(cardiologyEcgRecords.status, 'pending')
-        ));
+      // Get pending ECGs from cardiology_ecg_records table
+      const pendingEcgsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_ecg_records
+        WHERE company_id = ${organizationId} AND status = 'pending'
+      `);
+      const pendingEcgs = (pendingEcgsResult.results?.[0] as any)?.count ?? 0;
 
       // Get active pacemakers
-      const [activePacemakers] = await db
-        .select({ count: count() })
-        .from(cardiologyPacemakers)
-        .where(and(
-          eq(cardiologyPacemakers.organizationId, organizationId),
-          eq(cardiologyPacemakers.status, 'active')
-        ));
+      const activePacemakersResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_pacemakers
+        WHERE company_id = ${organizationId} AND status = 'active'
+      `);
+      const activePacemakers = (activePacemakersResult.results?.[0] as any)?.count ?? 0;
 
-      // Get critical alerts
-      const [criticalAlerts] = await db
-        .select({ count: count() })
-        .from(healthcareAlerts)
-        .where(and(
-          eq(healthcareAlerts.organizationId, organizationId),
-          eq(healthcareAlerts.module, 'cardiology'),
-          eq(healthcareAlerts.status, 'active'),
-          eq(healthcareAlerts.severity, 'critical')
-        ));
+      // Get critical alerts from healthcare_alerts
+      const criticalAlertsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM healthcare_alerts
+        WHERE company_id = ${organizationId}
+        AND module = 'cardiology'
+        AND status = 'active'
+        AND severity = 'critical'
+      `);
+      const criticalAlerts = (criticalAlertsResult.results?.[0] as any)?.count ?? 0;
+
+      // Get stent count as a metric
+      const stentsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_stents WHERE company_id = ${organizationId}
+      `);
+      const totalStents = (stentsResult.results?.[0] as any)?.count ?? 0;
+
+      // Get today's appointments from healthcare_appointments
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStart = Math.floor(today.getTime() / 1000);
+      const todayEnd = todayStart + 86400; // +24 hours
+      const todayAppointmentsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM healthcare_appointments
+        WHERE company_id = ${organizationId}
+        AND module = 'cardiology'
+        AND scheduled_date >= ${todayStart}
+        AND scheduled_date < ${todayEnd}
+        AND status NOT IN ('cancelled', 'no_show')
+      `);
+      const todayAppointments = (todayAppointmentsResult.results?.[0] as any)?.count ?? 0;
 
       // Get recent cardiac events (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const [recentEvents] = await db
-        .select({ count: count() })
-        .from(cardiologyCardiacEvents)
-        .where(and(
-          eq(cardiologyCardiacEvents.organizationId, organizationId),
-          sql`${cardiologyCardiacEvents.eventDate} >= ${thirtyDaysAgo.getTime()}`
-        ));
+      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      const recentEventsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_cardiac_events
+        WHERE company_id = ${organizationId}
+        AND event_date >= ${thirtyDaysAgo}
+      `);
+      const recentEvents = (recentEventsResult.results?.[0] as any)?.count ?? 0;
 
       return c.json({
         success: true,
         data: {
-          totalPatients: totalPatients?.count || 0,
-          todayAppointments: todayAppointments?.count || 0,
-          pendingEcgs: pendingEcgs?.count || 0,
-          activePacemakers: activePacemakers?.count || 0,
-          criticalAlerts: criticalAlerts?.count || 0,
-          recentEvents: recentEvents?.count || 0,
+          totalPatients,
+          todayAppointments,
+          pendingEcgs,
+          activePacemakers,
+          criticalAlerts,
+          totalStents,
+          recentEvents,
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -322,7 +347,7 @@ cardiology.get(
 
 /**
  * GET /cardiology/patients
- * List cardiology patients
+ * List cardiology patients (joined with cardiology_patients extension)
  */
 cardiology.get(
   '/patients',
@@ -334,55 +359,80 @@ cardiology.get(
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [
-        eq(healthcarePatients.organizationId, organizationId),
-        sql`JSON_EXTRACT(${healthcarePatients.enrolledModules}, '$') LIKE '%cardiology%'`
-      ];
+      // Get patients with cardiology extension joined
+      const patientsResult = await db.run(sql`
+        SELECT
+          hp.id, hp.first_name, hp.last_name, hp.date_of_birth, hp.gender,
+          hp.national_id, hp.phone, hp.email, hp.address, hp.city,
+          hp.blood_type, hp.allergies, hp.medical_history, hp.status,
+          hp.insurance_provider, hp.insurance_number, hp.notes,
+          hp.created_at, hp.updated_at,
+          cp.id as cardiology_id, cp.cardiac_risk_level, cp.has_pacemaker,
+          cp.has_stent, cp.has_bypass, cp.ejection_fraction,
+          cp.nyha_class, cp.smoking_status, cp.diabetes_status
+        FROM cardiology_patients cp
+        INNER JOIN healthcare_patients hp ON cp.healthcare_patient_id = hp.id
+        WHERE cp.company_id = ${organizationId}
+        ${query.patientStatus ? sql`AND hp.status = ${query.patientStatus}` : sql``}
+        ${query.search ? sql`AND (hp.first_name LIKE ${'%' + query.search + '%'} OR hp.last_name LIKE ${'%' + query.search + '%'} OR hp.national_id LIKE ${'%' + query.search + '%'})` : sql``}
+        ORDER BY hp.created_at DESC
+        LIMIT ${query.limit} OFFSET ${query.offset}
+      `);
 
-      if (query.patientStatus) {
-        conditions.push(eq(healthcarePatients.patientStatus, query.patientStatus));
-      }
+      // Get total count
+      const totalResult = await db.run(sql`
+        SELECT COUNT(*) as count
+        FROM cardiology_patients cp
+        INNER JOIN healthcare_patients hp ON cp.healthcare_patient_id = hp.id
+        WHERE cp.company_id = ${organizationId}
+        ${query.patientStatus ? sql`AND hp.status = ${query.patientStatus}` : sql``}
+        ${query.search ? sql`AND (hp.first_name LIKE ${'%' + query.search + '%'} OR hp.last_name LIKE ${'%' + query.search + '%'} OR hp.national_id LIKE ${'%' + query.search + '%'})` : sql``}
+      `);
 
-      if (query.search) {
-        conditions.push(
-          or(
-            like(healthcarePatients.medicalId, `%${query.search}%`),
-            like(healthcarePatients.nationalId, `%${query.search}%`)
-          )!
-        );
-      }
-
-      const patients = await db
-        .select({
-          patient: healthcarePatients,
-          contact: contacts,
-        })
-        .from(healthcarePatients)
-        .leftJoin(contacts, eq(healthcarePatients.contactId, contacts.id))
-        .where(and(...conditions))
-        .orderBy(desc(healthcarePatients.createdAt))
-        .limit(query.limit)
-        .offset(query.offset);
-
-      const [totalResult] = await db
-        .select({ count: count() })
-        .from(healthcarePatients)
-        .where(and(...conditions));
+      const patients = (patientsResult.results || []).map((row: any) => ({
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        dateOfBirth: row.date_of_birth,
+        gender: row.gender,
+        nationalId: row.national_id,
+        phone: row.phone,
+        email: row.email,
+        address: row.address,
+        city: row.city,
+        bloodType: row.blood_type,
+        allergies: row.allergies,
+        medicalHistory: row.medical_history,
+        status: row.status,
+        insuranceProvider: row.insurance_provider,
+        insuranceNumber: row.insurance_number,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        cardiology: {
+          id: row.cardiology_id,
+          cardiacRiskLevel: row.cardiac_risk_level,
+          hasPacemaker: !!row.has_pacemaker,
+          hasStent: !!row.has_stent,
+          hasBypass: !!row.has_bypass,
+          ejectionFraction: row.ejection_fraction,
+          nyhaClass: row.nyha_class,
+          smokingStatus: row.smoking_status,
+          diabetesStatus: row.diabetes_status,
+        },
+      }));
 
       return c.json({
         success: true,
-        data: patients.map(p => ({
-          ...p.patient,
-          contact: p.contact,
-        })),
+        data: patients,
         meta: {
-          total: totalResult?.count || 0,
+          total: (totalResult.results?.[0] as any)?.count || 0,
           limit: query.limit,
           offset: query.offset,
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -407,72 +457,95 @@ cardiology.get(
       const organizationId = c.get('organizationId');
       const patientId = c.req.param('id');
 
-      const [result] = await db
-        .select({
-          patient: healthcarePatients,
-          contact: contacts,
-        })
-        .from(healthcarePatients)
-        .leftJoin(contacts, eq(healthcarePatients.contactId, contacts.id))
-        .where(and(
-          eq(healthcarePatients.id, patientId),
-          eq(healthcarePatients.organizationId, organizationId)
-        ))
-        .limit(1);
+      // Get patient from cardiology_patients joined with healthcare_patients
+      const patientResult = await db.run(sql`
+        SELECT
+          hp.id, hp.first_name, hp.last_name, hp.date_of_birth, hp.gender,
+          hp.national_id, hp.phone, hp.email, hp.address, hp.city,
+          hp.blood_type, hp.allergies, hp.medical_history, hp.status,
+          hp.insurance_provider, hp.insurance_number, hp.notes,
+          hp.created_at, hp.updated_at,
+          cp.id as cardiology_id, cp.cardiac_risk_level, cp.has_pacemaker,
+          cp.has_stent, cp.has_bypass, cp.ejection_fraction,
+          cp.nyha_class, cp.smoking_status, cp.diabetes_status
+        FROM cardiology_patients cp
+        INNER JOIN healthcare_patients hp ON cp.healthcare_patient_id = hp.id
+        WHERE cp.company_id = ${organizationId} AND hp.id = ${patientId}
+        LIMIT 1
+      `);
 
-      if (!result) {
+      const patientRow = patientResult.results?.[0] as any;
+      if (!patientRow) {
         return c.json({ success: false, error: 'Patient not found' }, 404);
       }
 
-      // Get chronic conditions
-      const chronicConditions = await db
-        .select()
-        .from(healthcareChronicConditions)
-        .where(and(
-          eq(healthcareChronicConditions.patientId, patientId),
-          eq(healthcareChronicConditions.module, 'cardiology')
-        ));
+      const patient = {
+        id: patientRow.id,
+        firstName: patientRow.first_name,
+        lastName: patientRow.last_name,
+        dateOfBirth: patientRow.date_of_birth,
+        gender: patientRow.gender,
+        nationalId: patientRow.national_id,
+        phone: patientRow.phone,
+        email: patientRow.email,
+        address: patientRow.address,
+        city: patientRow.city,
+        bloodType: patientRow.blood_type,
+        allergies: patientRow.allergies,
+        medicalHistory: patientRow.medical_history,
+        status: patientRow.status,
+        insuranceProvider: patientRow.insurance_provider,
+        insuranceNumber: patientRow.insurance_number,
+        notes: patientRow.notes,
+        createdAt: patientRow.created_at,
+        updatedAt: patientRow.updated_at,
+        cardiology: {
+          id: patientRow.cardiology_id,
+          cardiacRiskLevel: patientRow.cardiac_risk_level,
+          hasPacemaker: !!patientRow.has_pacemaker,
+          hasStent: !!patientRow.has_stent,
+          hasBypass: !!patientRow.has_bypass,
+          ejectionFraction: patientRow.ejection_fraction,
+          nyhaClass: patientRow.nyha_class,
+          smokingStatus: patientRow.smoking_status,
+          diabetesStatus: patientRow.diabetes_status,
+        },
+      };
 
-      // Get implanted devices (pacemakers, stents)
-      const pacemakers = await db
-        .select()
-        .from(cardiologyPacemakers)
-        .where(and(
-          eq(cardiologyPacemakers.patientId, patientId),
-          eq(cardiologyPacemakers.status, 'active')
-        ));
+      // Get pacemakers for this patient
+      const pacemakersResult = await db.run(sql`
+        SELECT * FROM cardiology_pacemakers
+        WHERE patient_id = ${patientId} AND status = 'active'
+      `);
+      const pacemakers = pacemakersResult.results || [];
 
-      const stents = await db
-        .select()
-        .from(cardiologyStents)
-        .where(eq(cardiologyStents.patientId, patientId));
+      // Get stents for this patient
+      const stentsResult = await db.run(sql`
+        SELECT * FROM cardiology_stents
+        WHERE patient_id = ${patientId}
+      `);
+      const stents = stentsResult.results || [];
 
       // Get recent consultations
-      const recentConsultations = await db
-        .select()
-        .from(healthcareConsultations)
-        .where(and(
-          eq(healthcareConsultations.patientId, patientId),
-          eq(healthcareConsultations.module, 'cardiology')
-        ))
-        .orderBy(desc(healthcareConsultations.consultationDate))
-        .limit(5);
+      const consultationsResult = await db.run(sql`
+        SELECT * FROM healthcare_consultations
+        WHERE patient_id = ${patientId} AND module = 'cardiology'
+        ORDER BY consultation_date DESC
+        LIMIT 5
+      `);
+      const recentConsultations = consultationsResult.results || [];
 
       // Get active medications
-      const medications = await db
-        .select()
-        .from(cardiologyMedications)
-        .where(and(
-          eq(cardiologyMedications.patientId, patientId),
-          eq(cardiologyMedications.status, 'active')
-        ));
+      const medicationsResult = await db.run(sql`
+        SELECT * FROM cardiology_medications
+        WHERE patient_id = ${patientId} AND status = 'active'
+      `);
+      const medications = medicationsResult.results || [];
 
       return c.json({
         success: true,
         data: {
-          ...result.patient,
-          contact: result.contact,
-          chronicConditions,
+          ...patient,
           pacemakers,
           stents,
           recentConsultations,
@@ -480,7 +553,7 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -512,7 +585,7 @@ cardiology.post(
 
       await db.insert(healthcarePatients).values({
         id: patientId,
-        organizationId,
+        companyId: organizationId,
         contactId: data.contactId,
         medicalId: data.medicalId,
         nationalId: data.nationalId,
@@ -549,7 +622,7 @@ cardiology.post(
         data: patient,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -582,7 +655,7 @@ cardiology.put(
         .from(healthcarePatients)
         .where(and(
           eq(healthcarePatients.id, patientId),
-          eq(healthcarePatients.organizationId, organizationId)
+          eq(healthcarePatients.companyId, organizationId)
         ))
         .limit(1);
 
@@ -628,7 +701,56 @@ cardiology.put(
         data: updated,
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * DELETE /cardiology/patients/:id
+ * Delete a cardiology patient
+ */
+cardiology.delete(
+  '/patients/:id',
+  requirePermission('cardiology:patients:delete'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const patientId = c.req.param('id');
+
+      // Check if patient exists in cardiology_patients
+      const patientResult = await db.run(sql`
+        SELECT cp.id as cardiology_id, hp.id as healthcare_id
+        FROM cardiology_patients cp
+        INNER JOIN healthcare_patients hp ON cp.healthcare_patient_id = hp.id
+        WHERE cp.company_id = ${organizationId} AND hp.id = ${patientId}
+        LIMIT 1
+      `);
+
+      const patientRow = patientResult.results?.[0] as any;
+      if (!patientRow) {
+        return c.json({ success: false, error: 'Patient not found' }, 404);
+      }
+
+      // Delete from cardiology_patients (keeps healthcare_patients record)
+      await db.run(sql`
+        DELETE FROM cardiology_patients WHERE id = ${patientRow.cardiology_id}
+      `);
+
+      return c.json({
+        success: true,
+        message: 'Patient removed from cardiology module',
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -651,7 +773,7 @@ cardiology.put(
 cardiology.get(
   '/consultations',
   requirePermission('cardiology:consultations:read'),
-  zValidator('query', listQuerySchema.extend({ patientId: z.string().uuid().optional() })),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
   async (c) => {
     try {
       const db = getDb();
@@ -659,7 +781,7 @@ cardiology.get(
       const query = c.req.valid('query');
 
       const conditions = [
-        eq(healthcareConsultations.organizationId, organizationId),
+        eq(healthcareConsultations.companyId, organizationId),
         eq(healthcareConsultations.module, 'cardiology'),
       ];
 
@@ -690,7 +812,51 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/consultations/:id
+ * Get a single consultation
+ */
+cardiology.get(
+  '/consultations/:id',
+  requirePermission('cardiology:consultations:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const consultationId = c.req.param('id');
+
+      const [consultation] = await db
+        .select()
+        .from(healthcareConsultations)
+        .where(and(
+          eq(healthcareConsultations.id, consultationId),
+          eq(healthcareConsultations.companyId, organizationId),
+          eq(healthcareConsultations.module, 'cardiology')
+        ))
+        .limit(1);
+
+      if (!consultation) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Consultation not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: consultation });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -724,12 +890,12 @@ cardiology.post(
       const [countResult] = await db
         .select({ count: count() })
         .from(healthcareConsultations)
-        .where(eq(healthcareConsultations.organizationId, organizationId));
+        .where(eq(healthcareConsultations.companyId, organizationId));
       const consultationNumber = `CARDIO-C-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
 
       await db.insert(healthcareConsultations).values({
         id: consultationId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         consultationNumber,
         consultationDate: new Date(data.consultationDate),
@@ -770,7 +936,7 @@ cardiology.post(
         data: consultation,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -793,47 +959,117 @@ cardiology.post(
 cardiology.get(
   '/ecg',
   requirePermission('cardiology:ecg:read'),
-  zValidator('query', listQuerySchema.extend({ patientId: z.string().uuid().optional() })),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
   async (c) => {
     try {
       const db = getDb();
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyEcgRecords.organizationId, organizationId)];
+      // Get ECG records with parameterized SQL
+      const ecgsResult = await db.run(sql`
+        SELECT
+          e.id, e.patient_id, e.company_id, e.recording_date,
+          e.heart_rate, e.pr_interval, e.qrs_duration, e.qt_interval, e.qtc_interval,
+          e.rhythm, e.axis, e.interpretation, e.performed_by as technician,
+          e.interpreted_by as reviewing_doctor, e.ecg_image_url as file_path, e.status, e.created_at, e.updated_at,
+          hp.first_name as patient_first_name, hp.last_name as patient_last_name
+        FROM cardiology_ecg_records e
+        LEFT JOIN healthcare_patients hp ON e.patient_id = hp.id
+        WHERE e.company_id = ${organizationId}
+        ${query.patientId ? sql`AND e.patient_id = ${query.patientId}` : sql``}
+        ${query.status ? sql`AND e.status = ${query.status}` : sql``}
+        ORDER BY e.recording_date DESC
+        LIMIT ${query.limit} OFFSET ${query.offset}
+      `);
 
-      if (query.patientId) {
-        conditions.push(eq(cardiologyEcgRecords.patientId, query.patientId));
-      }
+      // Get total count
+      const totalResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_ecg_records e
+        WHERE e.company_id = ${organizationId}
+        ${query.patientId ? sql`AND e.patient_id = ${query.patientId}` : sql``}
+        ${query.status ? sql`AND e.status = ${query.status}` : sql``}
+      `);
 
-      if (query.status) {
-        conditions.push(eq(cardiologyEcgRecords.status, query.status as 'pending' | 'interpreted' | 'reviewed' | 'verified'));
-      }
-
-      const ecgs = await db
-        .select()
-        .from(cardiologyEcgRecords)
-        .where(and(...conditions))
-        .orderBy(desc(cardiologyEcgRecords.recordingDate))
-        .limit(query.limit)
-        .offset(query.offset);
-
-      const [totalResult] = await db
-        .select({ count: count() })
-        .from(cardiologyEcgRecords)
-        .where(and(...conditions));
+      const ecgs = (ecgsResult.results || []).map((row: any) => ({
+        id: row.id,
+        patientId: row.patient_id,
+        patientName: row.patient_first_name && row.patient_last_name
+          ? `${row.patient_first_name} ${row.patient_last_name}`
+          : null,
+        recordingDate: row.recording_date,
+        recordingTime: row.recording_time,
+        heartRate: row.heart_rate,
+        prInterval: row.pr_interval,
+        qrsDuration: row.qrs_duration,
+        qtInterval: row.qt_interval,
+        qtcInterval: row.qtc_interval,
+        rhythm: row.rhythm,
+        axis: row.axis,
+        interpretation: row.interpretation,
+        findings: row.findings,
+        technician: row.technician,
+        reviewingDoctor: row.reviewing_doctor,
+        filePath: row.file_path,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
 
       return c.json({
         success: true,
         data: ecgs,
         meta: {
-          total: totalResult?.count || 0,
+          total: (totalResult.results?.[0] as any)?.count || 0,
           limit: query.limit,
           offset: query.offset,
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/ecg/:id
+ * Get a single ECG record
+ */
+cardiology.get(
+  '/ecg/:id',
+  requirePermission('cardiology:ecg:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const ecgId = c.req.param('id');
+
+      const [ecg] = await db
+        .select()
+        .from(cardiologyEcgRecords)
+        .where(and(
+          eq(cardiologyEcgRecords.id, ecgId),
+          eq(cardiologyEcgRecords.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!ecg) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'ECG record not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: ecg });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -867,12 +1103,12 @@ cardiology.post(
       const [countResult] = await db
         .select({ count: count() })
         .from(cardiologyEcgRecords)
-        .where(eq(cardiologyEcgRecords.organizationId, organizationId));
+        .where(eq(cardiologyEcgRecords.companyId, organizationId));
       const ecgNumber = `ECG-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
 
       await db.insert(cardiologyEcgRecords).values({
         id: ecgId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
         ecgNumber,
@@ -909,7 +1145,7 @@ cardiology.post(
         data: ecg,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -932,14 +1168,14 @@ cardiology.post(
 cardiology.get(
   '/echo',
   requirePermission('cardiology:echo:read'),
-  zValidator('query', listQuerySchema.extend({ patientId: z.string().uuid().optional() })),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
   async (c) => {
     try {
       const db = getDb();
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyEchocardiograms.organizationId, organizationId)];
+      const conditions = [eq(cardiologyEchocardiograms.companyId, organizationId)];
 
       if (query.patientId) {
         conditions.push(eq(cardiologyEchocardiograms.patientId, query.patientId));
@@ -968,7 +1204,50 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/echo/:id
+ * Get a single echocardiogram
+ */
+cardiology.get(
+  '/echo/:id',
+  requirePermission('cardiology:echo:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const echoId = c.req.param('id');
+
+      const [echo] = await db
+        .select()
+        .from(cardiologyEchocardiograms)
+        .where(and(
+          eq(cardiologyEchocardiograms.id, echoId),
+          eq(cardiologyEchocardiograms.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!echo) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Echocardiogram not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: echo });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1002,12 +1281,12 @@ cardiology.post(
       const [countResult] = await db
         .select({ count: count() })
         .from(cardiologyEchocardiograms)
-        .where(eq(cardiologyEchocardiograms.organizationId, organizationId));
+        .where(eq(cardiologyEchocardiograms.companyId, organizationId));
       const echoNumber = `ECHO-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
 
       await db.insert(cardiologyEchocardiograms).values({
         id: echoId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
         echoNumber,
@@ -1049,7 +1328,7 @@ cardiology.post(
         data: echo,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1072,14 +1351,14 @@ cardiology.post(
 cardiology.get(
   '/pacemakers',
   requirePermission('cardiology:pacemakers:read'),
-  zValidator('query', listQuerySchema.extend({ patientId: z.string().uuid().optional() })),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
   async (c) => {
     try {
       const db = getDb();
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyPacemakers.organizationId, organizationId)];
+      const conditions = [eq(cardiologyPacemakers.companyId, organizationId)];
 
       if (query.patientId) {
         conditions.push(eq(cardiologyPacemakers.patientId, query.patientId));
@@ -1112,7 +1391,50 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/pacemakers/:id
+ * Get a single pacemaker
+ */
+cardiology.get(
+  '/pacemakers/:id',
+  requirePermission('cardiology:pacemakers:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const pacemakerId = c.req.param('id');
+
+      const [pacemaker] = await db
+        .select()
+        .from(cardiologyPacemakers)
+        .where(and(
+          eq(cardiologyPacemakers.id, pacemakerId),
+          eq(cardiologyPacemakers.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!pacemaker) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Pacemaker not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: pacemaker });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1146,12 +1468,12 @@ cardiology.post(
       const [countResult] = await db
         .select({ count: count() })
         .from(cardiologyPacemakers)
-        .where(eq(cardiologyPacemakers.organizationId, organizationId));
+        .where(eq(cardiologyPacemakers.companyId, organizationId));
       const deviceNumber = `PM-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
 
       await db.insert(cardiologyPacemakers).values({
         id: pacemakerId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         deviceNumber,
         deviceType: data.deviceType,
@@ -1186,7 +1508,7 @@ cardiology.post(
         data: pacemaker,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1209,43 +1531,117 @@ cardiology.post(
 cardiology.get(
   '/stents',
   requirePermission('cardiology:stents:read'),
-  zValidator('query', listQuerySchema.extend({ patientId: z.string().uuid().optional() })),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
   async (c) => {
     try {
       const db = getDb();
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyStents.organizationId, organizationId)];
+      // Get stents with parameterized SQL (migration uses implant_date, not procedure_date)
+      const stentsResult = await db.run(sql`
+        SELECT
+          s.id, s.patient_id, s.company_id, s.implant_date, s.implanting_doctor,
+          s.implanting_hospital, s.stent_type, s.manufacturer, s.model,
+          s.diameter, s.length, s.location, s.lesion_type,
+          s.pre_stenosis, s.post_stenosis, s.timi_flow_pre, s.timi_flow_post,
+          s.dual_antiplatelet_end_date, s.notes, s.created_at, s.updated_at,
+          hp.first_name as patient_first_name, hp.last_name as patient_last_name
+        FROM cardiology_stents s
+        LEFT JOIN healthcare_patients hp ON s.patient_id = hp.id
+        WHERE s.company_id = ${organizationId}
+        ${query.patientId ? sql`AND s.patient_id = ${query.patientId}` : sql``}
+        ORDER BY s.implant_date DESC
+        LIMIT ${query.limit} OFFSET ${query.offset}
+      `);
 
-      if (query.patientId) {
-        conditions.push(eq(cardiologyStents.patientId, query.patientId));
-      }
+      // Get total count
+      const totalResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_stents s
+        WHERE s.company_id = ${organizationId}
+        ${query.patientId ? sql`AND s.patient_id = ${query.patientId}` : sql``}
+      `);
 
-      const stents = await db
-        .select()
-        .from(cardiologyStents)
-        .where(and(...conditions))
-        .orderBy(desc(cardiologyStents.procedureDate))
-        .limit(query.limit)
-        .offset(query.offset);
-
-      const [totalResult] = await db
-        .select({ count: count() })
-        .from(cardiologyStents)
-        .where(and(...conditions));
+      const stents = (stentsResult.results || []).map((row: any) => ({
+        id: row.id,
+        patientId: row.patient_id,
+        patientName: row.patient_first_name && row.patient_last_name
+          ? `${row.patient_first_name} ${row.patient_last_name}`
+          : null,
+        implantDate: row.implant_date,
+        implantingDoctor: row.implanting_doctor,
+        implantingHospital: row.implanting_hospital,
+        stentType: row.stent_type,
+        manufacturer: row.manufacturer,
+        model: row.model,
+        diameter: row.diameter,
+        length: row.length,
+        location: row.location,
+        lesionType: row.lesion_type,
+        preStenosis: row.pre_stenosis,
+        postStenosis: row.post_stenosis,
+        timiFlowPre: row.timi_flow_pre,
+        timiFlowPost: row.timi_flow_post,
+        dualAntiplateletEndDate: row.dual_antiplatelet_end_date,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
 
       return c.json({
         success: true,
         data: stents,
         meta: {
-          total: totalResult?.count || 0,
+          total: (totalResult.results?.[0] as any)?.count || 0,
           limit: query.limit,
           offset: query.offset,
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/stents/:id
+ * Get a single stent
+ */
+cardiology.get(
+  '/stents/:id',
+  requirePermission('cardiology:stents:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const stentId = c.req.param('id');
+
+      const [stent] = await db
+        .select()
+        .from(cardiologyStents)
+        .where(and(
+          eq(cardiologyStents.id, stentId),
+          eq(cardiologyStents.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!stent) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Stent not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: stent });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1279,12 +1675,12 @@ cardiology.post(
       const [countResult] = await db
         .select({ count: count() })
         .from(cardiologyStents)
-        .where(eq(cardiologyStents.organizationId, organizationId));
+        .where(eq(cardiologyStents.companyId, organizationId));
       const stentNumber = `STENT-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
 
       await db.insert(cardiologyStents).values({
         id: stentId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         stentNumber,
         procedureDate: new Date(data.procedureDate),
@@ -1317,7 +1713,7 @@ cardiology.post(
         data: stent,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1341,7 +1737,7 @@ cardiology.get(
   '/risk-scores',
   requirePermission('cardiology:risk-scores:read'),
   zValidator('query', listQuerySchema.extend({
-    patientId: z.string().uuid().optional(),
+    patientId: z.string().optional(),
     scoreType: z.string().optional(),
   })),
   async (c) => {
@@ -1350,7 +1746,7 @@ cardiology.get(
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyRiskScores.organizationId, organizationId)];
+      const conditions = [eq(cardiologyRiskScores.companyId, organizationId)];
 
       if (query.patientId) {
         conditions.push(eq(cardiologyRiskScores.patientId, query.patientId));
@@ -1383,7 +1779,50 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/risk-scores/:id
+ * Get a single risk score
+ */
+cardiology.get(
+  '/risk-scores/:id',
+  requirePermission('cardiology:risk-scores:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const scoreId = c.req.param('id');
+
+      const [score] = await db
+        .select()
+        .from(cardiologyRiskScores)
+        .where(and(
+          eq(cardiologyRiskScores.id, scoreId),
+          eq(cardiologyRiskScores.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!score) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Risk score not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: score });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1415,7 +1854,7 @@ cardiology.post(
 
       await db.insert(cardiologyRiskScores).values({
         id: scoreId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
         scoreType: data.scoreType,
@@ -1443,7 +1882,7 @@ cardiology.post(
         data: score,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1467,7 +1906,7 @@ cardiology.get(
   '/medications',
   requirePermission('cardiology:medications:read'),
   zValidator('query', listQuerySchema.extend({
-    patientId: z.string().uuid().optional(),
+    patientId: z.string().optional(),
     status: z.enum(['active', 'discontinued', 'on_hold', 'completed']).optional(),
   })),
   async (c) => {
@@ -1476,7 +1915,7 @@ cardiology.get(
       const organizationId = c.get('organizationId');
       const query = c.req.valid('query');
 
-      const conditions = [eq(cardiologyMedications.organizationId, organizationId)];
+      const conditions = [eq(cardiologyMedications.companyId, organizationId)];
 
       if (query.patientId) {
         conditions.push(eq(cardiologyMedications.patientId, query.patientId));
@@ -1509,7 +1948,50 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/medications/:id
+ * Get a single medication
+ */
+cardiology.get(
+  '/medications/:id',
+  requirePermission('cardiology:medications:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const medId = c.req.param('id');
+
+      const [medication] = await db
+        .select()
+        .from(cardiologyMedications)
+        .where(and(
+          eq(cardiologyMedications.id, medId),
+          eq(cardiologyMedications.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!medication) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Medication not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: medication });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1541,7 +2023,7 @@ cardiology.post(
 
       await db.insert(cardiologyMedications).values({
         id: medicationId,
-        organizationId,
+        companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
         medicationName: data.medicationName,
@@ -1573,7 +2055,329 @@ cardiology.post(
         data: medication,
       }, 201);
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+// ============================================================================
+// EVENTS ROUTES
+// ============================================================================
+
+/**
+ * GET /cardiology/events
+ * List cardiac events
+ */
+cardiology.get(
+  '/events',
+  requirePermission('cardiology:events:read'),
+  zValidator('query', listQuerySchema.extend({
+    patientId: z.string().optional(),
+    eventType: z.string().optional(),
+    severity: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const query = c.req.valid('query');
+
+      const conditions = [eq(cardiologyCardiacEvents.companyId, organizationId)];
+
+      if (query.patientId) {
+        conditions.push(eq(cardiologyCardiacEvents.patientId, query.patientId));
+      }
+
+      if (query.eventType) {
+        conditions.push(eq(cardiologyCardiacEvents.eventType, query.eventType as any));
+      }
+
+      if (query.severity) {
+        conditions.push(eq(cardiologyCardiacEvents.severity, query.severity as any));
+      }
+
+      const events = await db
+        .select()
+        .from(cardiologyCardiacEvents)
+        .where(and(...conditions))
+        .orderBy(desc(cardiologyCardiacEvents.eventDate))
+        .limit(query.limit)
+        .offset(query.offset);
+
+      const [totalResult] = await db
+        .select({ count: count() })
+        .from(cardiologyCardiacEvents)
+        .where(and(...conditions));
+
+      return c.json({
+        success: true,
+        data: events,
+        meta: {
+          total: totalResult?.count || 0,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/events/:id
+ * Get a single event
+ */
+cardiology.get(
+  '/events/:id',
+  requirePermission('cardiology:events:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const eventId = c.req.param('id');
+
+      const [event] = await db
+        .select()
+        .from(cardiologyCardiacEvents)
+        .where(and(
+          eq(cardiologyCardiacEvents.id, eventId),
+          eq(cardiologyCardiacEvents.companyId, organizationId)
+        ))
+        .limit(1);
+
+      if (!event) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Event not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: event });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+// ============================================================================
+// REPORTS ROUTES
+// ============================================================================
+
+/**
+ * GET /cardiology/reports
+ * List cardiology reports
+ */
+cardiology.get(
+  '/reports',
+  requirePermission('cardiology:read'),
+  zValidator('query', listQuerySchema.extend({
+    patientId: z.string().optional(),
+    reportType: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const query = c.req.valid('query');
+
+      // Get reports from healthcare_examinations table with parameterized SQL
+      const reportsResult = await db.run(sql`
+        SELECT
+          e.id, e.patient_id, e.company_id, e.module, e.examination_type as report_type,
+          e.examination_date as report_date, e.findings, e.recommendations,
+          e.performed_by, e.status, e.notes, e.created_at, e.updated_at,
+          hp.first_name as patient_first_name, hp.last_name as patient_last_name
+        FROM healthcare_examinations e
+        LEFT JOIN healthcare_patients hp ON e.patient_id = hp.id
+        WHERE e.company_id = ${organizationId} AND e.module = 'cardiology'
+        ${query.patientId ? sql`AND e.patient_id = ${query.patientId}` : sql``}
+        ${query.reportType ? sql`AND e.examination_type = ${query.reportType}` : sql``}
+        ORDER BY e.examination_date DESC
+        LIMIT ${query.limit} OFFSET ${query.offset}
+      `);
+
+      // Get total count
+      const totalResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM healthcare_examinations e
+        WHERE e.company_id = ${organizationId} AND e.module = 'cardiology'
+        ${query.patientId ? sql`AND e.patient_id = ${query.patientId}` : sql``}
+        ${query.reportType ? sql`AND e.examination_type = ${query.reportType}` : sql``}
+      `);
+
+      const reports = (reportsResult.results || []).map((row: any) => ({
+        id: row.id,
+        patientId: row.patient_id,
+        patientName: row.patient_first_name && row.patient_last_name
+          ? `${row.patient_first_name} ${row.patient_last_name}`
+          : null,
+        reportType: row.report_type,
+        reportDate: row.report_date,
+        findings: row.findings,
+        recommendations: row.recommendations,
+        performedBy: row.performed_by,
+        status: row.status,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
+      return c.json({
+        success: true,
+        data: reports,
+        meta: {
+          total: (totalResult.results?.[0] as any)?.count || 0,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/reports/stats
+ * Get cardiology statistics for reports
+ */
+cardiology.get(
+  '/reports/stats',
+  requirePermission('cardiology:read'),
+  zValidator('query', z.object({
+    range: z.enum(['week', 'month', 'quarter', 'year']).default('month'),
+  })),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const query = c.req.valid('query');
+
+      // Calculate date range
+      const now = new Date();
+      let startDate: Date;
+      switch (query.range) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'quarter':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case 'year':
+          startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+      }
+
+      // Get total patients
+      const totalPatientsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_patients WHERE company_id = ${organizationId}
+      `);
+      const totalPatients = (totalPatientsResult.results?.[0] as any)?.count ?? 0;
+
+      // Get new patients in range
+      const newPatientsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_patients
+        WHERE company_id = ${organizationId}
+        AND created_at >= ${startDate.getTime()}
+      `);
+      const newPatients = (newPatientsResult.results?.[0] as any)?.count ?? 0;
+
+      // Get ECG count in range
+      const ecgResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_ecg_records
+        WHERE company_id = ${organizationId}
+        AND recording_date >= ${startDate.getTime()}
+      `);
+      const ecgCount = (ecgResult.results?.[0] as any)?.count ?? 0;
+
+      // Get Echo count in range
+      const echoResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_echocardiograms
+        WHERE company_id = ${organizationId}
+        AND study_date >= ${startDate.getTime()}
+      `);
+      const echoCount = (echoResult.results?.[0] as any)?.count ?? 0;
+
+      // Get active pacemakers
+      const pacemakerResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_pacemakers
+        WHERE company_id = ${organizationId} AND status = 'active'
+      `);
+      const pacemakerCount = (pacemakerResult.results?.[0] as any)?.count ?? 0;
+
+      // Get stent count
+      const stentResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_stents
+        WHERE company_id = ${organizationId}
+      `);
+      const stentCount = (stentResult.results?.[0] as any)?.count ?? 0;
+
+      // Get critical events in range
+      const criticalEventsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM cardiology_cardiac_events
+        WHERE company_id = ${organizationId}
+        AND severity IN ('severe', 'fatal')
+        AND event_date >= ${startDate.getTime()}
+      `);
+      const criticalEvents = (criticalEventsResult.results?.[0] as any)?.count ?? 0;
+
+      // Calculate average appointments per day (using healthcare_appointments if available)
+      const daysInRange = Math.ceil((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+      const appointmentsResult = await db.run(sql`
+        SELECT COUNT(*) as count FROM healthcare_appointments
+        WHERE company_id = ${organizationId}
+        AND module = 'cardiology'
+        AND scheduled_date >= ${startDate.getTime()}
+      `);
+      const totalAppointments = (appointmentsResult.results?.[0] as any)?.count ?? 0;
+      const avgAppointmentsPerDay = daysInRange > 0 ? Math.round(totalAppointments / daysInRange * 10) / 10 : 0;
+
+      return c.json({
+        success: true,
+        data: {
+          totalPatients,
+          newPatients,
+          ecgCount,
+          echoCount,
+          pacemakerCount,
+          stentCount,
+          avgAppointmentsPerDay,
+          criticalEvents,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1597,7 +2401,7 @@ cardiology.get(
   '/alerts',
   requirePermission('cardiology:alerts:read'),
   zValidator('query', listQuerySchema.extend({
-    patientId: z.string().uuid().optional(),
+    patientId: z.string().optional(),
     severity: z.enum(['info', 'warning', 'critical']).optional(),
     status: z.enum(['active', 'acknowledged', 'resolved', 'dismissed', 'snoozed']).optional(),
   })),
@@ -1608,7 +2412,7 @@ cardiology.get(
       const query = c.req.valid('query');
 
       const conditions = [
-        eq(healthcareAlerts.organizationId, organizationId),
+        eq(healthcareAlerts.companyId, organizationId),
         eq(healthcareAlerts.module, 'cardiology'),
       ];
 
@@ -1647,7 +2451,7 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {
@@ -1671,7 +2475,7 @@ cardiology.get(
   '/appointments',
   requirePermission('cardiology:appointments:read'),
   zValidator('query', listQuerySchema.extend({
-    patientId: z.string().uuid().optional(),
+    patientId: z.string().optional(),
     status: z.string().optional(),
     fromDate: z.string().optional(),
     toDate: z.string().optional(),
@@ -1683,7 +2487,7 @@ cardiology.get(
       const query = c.req.valid('query');
 
       const conditions = [
-        eq(healthcareAppointments.organizationId, organizationId),
+        eq(healthcareAppointments.companyId, organizationId),
         eq(healthcareAppointments.module, 'cardiology'),
       ];
 
@@ -1726,7 +2530,401 @@ cardiology.get(
         },
       });
     } catch (error) {
-      console.error('Route error:', error);
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/appointments/:id
+ * Get a single appointment
+ */
+cardiology.get(
+  '/appointments/:id',
+  requirePermission('cardiology:appointments:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const appointmentId = c.req.param('id');
+
+      const [appointment] = await db
+        .select()
+        .from(healthcareAppointments)
+        .where(and(
+          eq(healthcareAppointments.id, appointmentId),
+          eq(healthcareAppointments.companyId, organizationId),
+          eq(healthcareAppointments.module, 'cardiology')
+        ))
+        .limit(1);
+
+      if (!appointment) {
+        return c.json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Appointment not found' }
+        }, 404);
+      }
+
+      return c.json({ success: true, data: appointment });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+// ============================================================================
+// HOLTER RECORDS
+// ============================================================================
+
+/**
+ * GET /cardiology/holter
+ * List Holter records
+ */
+cardiology.get(
+  '/holter',
+  requirePermission('cardiology:holter:read'),
+  zValidator('query', listQuerySchema.extend({ patientId: z.string().optional() })),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const query = c.req.valid('query');
+
+      const conditions = [eq(cardiologyHolterRecords.companyId, organizationId)];
+
+      if (query.patientId) {
+        conditions.push(eq(cardiologyHolterRecords.patientId, query.patientId));
+      }
+
+      if (query.status) {
+        conditions.push(eq(cardiologyHolterRecords.status, query.status as any));
+      }
+
+      const holters = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(and(...conditions))
+        .orderBy(desc(cardiologyHolterRecords.startDate))
+        .limit(query.limit)
+        .offset(query.offset);
+
+      const [totalResult] = await db
+        .select({ count: count() })
+        .from(cardiologyHolterRecords)
+        .where(and(...conditions));
+
+      return c.json({
+        success: true,
+        data: holters,
+        meta: {
+          total: totalResult?.count || 0,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * GET /cardiology/holter/:id
+ * Get Holter record by ID
+ */
+cardiology.get(
+  '/holter/:id',
+  requirePermission('cardiology:holter:read'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const holterId = c.req.param('id');
+
+      const [holter] = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(
+          and(
+            eq(cardiologyHolterRecords.id, holterId),
+            eq(cardiologyHolterRecords.companyId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (!holter) {
+        return c.json({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Holter record not found'
+          }
+        }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: holter,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * POST /cardiology/holter
+ * Create a new Holter record
+ */
+cardiology.post(
+  '/holter',
+  requirePermission('cardiology:holter:write'),
+  zValidator('json', createHolterSchema),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
+
+      const holterId = crypto.randomUUID();
+      const now = new Date();
+
+      // Generate holter number
+      const [countResult] = await db
+        .select({ count: count() })
+        .from(cardiologyHolterRecords)
+        .where(eq(cardiologyHolterRecords.companyId, organizationId));
+      const holterNumber = `HOLTER-${String((countResult?.count || 0) + 1).padStart(6, '0')}`;
+
+      await db.insert(cardiologyHolterRecords).values({
+        id: holterId,
+        companyId: organizationId,
+        patientId: data.patientId,
+        holterNumber,
+        indication: data.indication,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        durationHours: data.durationHours,
+        monitorType: data.monitorType,
+        deviceModel: data.deviceModel,
+        minHeartRate: data.minHeartRate,
+        maxHeartRate: data.maxHeartRate,
+        avgHeartRate: data.avgHeartRate,
+        totalQrsComplexes: data.totalQrsComplexes,
+        svePrematureBeats: data.svePrematureBeats,
+        pvePrematureBeats: data.pvePrematureBeats,
+        afibEpisodes: data.afibEpisodes,
+        afibBurden: data.afibBurden,
+        vtEpisodes: data.vtEpisodes,
+        pausesOver2s: data.pausesOver2s,
+        pausesOver3s: data.pausesOver3s,
+        longestPause: data.longestPause,
+        interpretation: data.interpretation,
+        conclusion: data.conclusion,
+        recommendations: data.recommendations,
+        analyzedBy: data.analyzedById,
+        interpretedBy: data.interpretedById,
+        reportUrl: data.reportUrl,
+        status: 'recording',
+        urgency: 'routine',
+        notes: data.notes,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const [holter] = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(eq(cardiologyHolterRecords.id, holterId))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        data: holter,
+      }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * PUT /cardiology/holter/:id
+ * Update a Holter record
+ */
+cardiology.put(
+  '/holter/:id',
+  requirePermission('cardiology:holter:write'),
+  zValidator('json', createHolterSchema.partial()),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const holterId = c.req.param('id');
+      const data = c.req.valid('json');
+
+      // Check if holter exists
+      const [existing] = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(
+          and(
+            eq(cardiologyHolterRecords.id, holterId),
+            eq(cardiologyHolterRecords.companyId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (!existing) {
+        return c.json({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Holter record not found'
+          }
+        }, 404);
+      }
+
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      if (data.indication !== undefined) updateData.indication = data.indication;
+      if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
+      if (data.endDate !== undefined) updateData.endDate = new Date(data.endDate);
+      if (data.durationHours !== undefined) updateData.durationHours = data.durationHours;
+      if (data.monitorType !== undefined) updateData.monitorType = data.monitorType;
+      if (data.deviceModel !== undefined) updateData.deviceModel = data.deviceModel;
+      if (data.minHeartRate !== undefined) updateData.minHeartRate = data.minHeartRate;
+      if (data.maxHeartRate !== undefined) updateData.maxHeartRate = data.maxHeartRate;
+      if (data.avgHeartRate !== undefined) updateData.avgHeartRate = data.avgHeartRate;
+      if (data.totalQrsComplexes !== undefined) updateData.totalQrsComplexes = data.totalQrsComplexes;
+      if (data.svePrematureBeats !== undefined) updateData.svePrematureBeats = data.svePrematureBeats;
+      if (data.pvePrematureBeats !== undefined) updateData.pvePrematureBeats = data.pvePrematureBeats;
+      if (data.afibEpisodes !== undefined) updateData.afibEpisodes = data.afibEpisodes;
+      if (data.afibBurden !== undefined) updateData.afibBurden = data.afibBurden;
+      if (data.vtEpisodes !== undefined) updateData.vtEpisodes = data.vtEpisodes;
+      if (data.pausesOver2s !== undefined) updateData.pausesOver2s = data.pausesOver2s;
+      if (data.pausesOver3s !== undefined) updateData.pausesOver3s = data.pausesOver3s;
+      if (data.longestPause !== undefined) updateData.longestPause = data.longestPause;
+      if (data.interpretation !== undefined) updateData.interpretation = data.interpretation;
+      if (data.conclusion !== undefined) updateData.conclusion = data.conclusion;
+      if (data.recommendations !== undefined) updateData.recommendations = data.recommendations;
+      if (data.analyzedById !== undefined) updateData.analyzedBy = data.analyzedById;
+      if (data.interpretedById !== undefined) updateData.interpretedBy = data.interpretedById;
+      if (data.reportUrl !== undefined) updateData.reportUrl = data.reportUrl;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+
+      await db
+        .update(cardiologyHolterRecords)
+        .set(updateData)
+        .where(eq(cardiologyHolterRecords.id, holterId));
+
+      const [updated] = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(eq(cardiologyHolterRecords.id, holterId))
+        .limit(1);
+
+      return c.json({
+        success: true,
+        data: updated,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
+  }
+);
+
+/**
+ * DELETE /cardiology/holter/:id
+ * Delete a Holter record
+ */
+cardiology.delete(
+  '/holter/:id',
+  requirePermission('cardiology:holter:delete'),
+  async (c) => {
+    try {
+      const db = getDb();
+      const organizationId = c.get('organizationId');
+      const holterId = c.req.param('id');
+
+      // Check if holter exists
+      const [existing] = await db
+        .select()
+        .from(cardiologyHolterRecords)
+        .where(
+          and(
+            eq(cardiologyHolterRecords.id, holterId),
+            eq(cardiologyHolterRecords.companyId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (!existing) {
+        return c.json({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Holter record not found'
+          }
+        }, 404);
+      }
+
+      await db
+        .delete(cardiologyHolterRecords)
+        .where(eq(cardiologyHolterRecords.id, holterId));
+
+      return c.json({
+        success: true,
+        message: 'Holter record deleted successfully',
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'cardiology' });
       return c.json({
         success: false,
         error: {

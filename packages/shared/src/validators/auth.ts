@@ -151,6 +151,7 @@ export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
 export const createRoleSchema = z.object({
   name: z.string().min(2).max(50).trim(),
   permissions: z.array(z.string()).min(1, 'At least one permission is required'),
+  organizationId: z.string().optional(),
 });
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>;

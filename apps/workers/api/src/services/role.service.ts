@@ -14,8 +14,6 @@ import {
 import type {
   CreateRoleInput,
   UpdateRoleInput,
-  PermissionKey,
-  PERMISSIONS,
 } from '@perfex/shared';
 
 export class RoleService {
@@ -336,7 +334,7 @@ export class RoleService {
    */
   async hasPermission(
     userId: string,
-    permission: PermissionKey,
+    permission: string,
     organizationId?: string
   ): Promise<boolean> {
     // Get user's roles
@@ -344,7 +342,10 @@ export class RoleService {
 
     // Check if any role has the permission
     for (const role of userRolesList) {
-      if ((role.permissions as string[]).includes(permission)) {
+      const perms = typeof role.permissions === 'string'
+        ? JSON.parse(role.permissions)
+        : role.permissions;
+      if (Array.isArray(perms) && perms.includes(permission)) {
         return true;
       }
     }

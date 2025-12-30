@@ -6,7 +6,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FlaskConical, Save } from 'lucide-react';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  PageHeader,
+  FormSection,
+  FormGrid,
+  FormActions,
+  Button,
+  Input,
+  Select,
+  Textarea
+} from '@/components/healthcare';
 
 interface Patient {
   id: string;
@@ -137,6 +150,8 @@ export function DialyseLabResultFormPage() {
   const patientIdParam = searchParams.get('patientId');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
   const isEditing = !!id;
 
   const [formData, setFormData] = useState<LabResultFormData>({
@@ -245,7 +260,7 @@ export function DialyseLabResultFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-lab-results'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-patient-labs'] });
-      window.alert(isEditing ? 'Résultat mis à jour' : 'Résultat enregistré');
+      toast.success(isEditing ? t('dialyse.labResultUpdated') : t('dialyse.labResultSaved'));
       if (patientIdParam) {
         navigate(`/dialyse/patients/${patientIdParam}`);
       } else {
@@ -253,14 +268,14 @@ export function DialyseLabResultFormPage() {
       }
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patientId) {
-      window.alert('Veuillez sélectionner un patient');
+      toast.warning(t('dialyse.pleaseSelectPatient'));
       return;
     }
     saveLabResult.mutate(formData);
@@ -288,9 +303,9 @@ export function DialyseLabResultFormPage() {
 
     return (
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">
           {label}
-          {range && <span className="text-xs text-muted-foreground ml-1">({range.unit})</span>}
+          {range && <span className="text-xs text-gray-600 dark:text-gray-400 ml-1">({range.unit})</span>}
         </label>
         <input
           type="number"
@@ -298,12 +313,14 @@ export function DialyseLabResultFormPage() {
           onChange={(e) => handleChange(field, e.target.value ? parseFloat(e.target.value) : null)}
           step={step}
           className={`w-full rounded-md border px-3 py-2 text-sm ${
-            outOfRange ? 'border-red-500 bg-red-50' : 'border-input bg-background'
+            outOfRange
+              ? 'border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
+              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
           }`}
         />
         {range && (
-          <p className={`text-xs mt-1 ${outOfRange ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-            Norme: {range.min} - {range.max}
+          <p className={`text-xs mt-1 ${outOfRange ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+            {t('dialyse.normalRange')}: {range.min} - {range.max}
           </p>
         )}
       </div>
@@ -312,163 +329,140 @@ export function DialyseLabResultFormPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {isEditing ? 'Modifier le Bilan' : 'Nouveau Bilan de Laboratoire'}
-          </h1>
-          <p className="text-muted-foreground">
-            {patient ? `Patient: ${patient.contact.firstName} ${patient.contact.lastName} (${patient.medicalId})` : 'Enregistrer les résultats de laboratoire'}
-          </p>
-        </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          Retour
-        </button>
-      </div>
+      <PageHeader
+        title={isEditing ? t('dialyse.editLabResult') : t('dialyse.newLabResult')}
+        subtitle={patient ? `${t('dialyse.patient')}: ${patient.contact.firstName} ${patient.contact.lastName} (${patient.medicalId})` : t('dialyse.recordLabResults')}
+        icon={FlaskConical}
+        module="dialyse"
+        onBack={() => navigate(-1)}
+      />
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Patient & Date */}
-        <div className="rounded-lg border bg-card p-6">
-          <div className="grid gap-4 md:grid-cols-2">
+        <FormSection title={t('dialyse.generalInformation')} module="dialyse">
+          <FormGrid columns={2}>
             {!patientIdParam && (
-              <div>
-                <label className="block text-sm font-medium mb-2">Patient *</label>
-                <select
-                  value={formData.patientId}
-                  onChange={(e) => handleChange('patientId', e.target.value)}
-                  required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Sélectionner un patient</option>
-                  {patients?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.contact.firstName} {p.contact.lastName} ({p.medicalId})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label={t('dialyse.patient')}
+                value={formData.patientId}
+                onChange={(e) => handleChange('patientId', e.target.value)}
+                options={patients?.map((p) => ({
+                  value: p.id,
+                  label: `${p.contact.firstName} ${p.contact.lastName} (${p.medicalId})`
+                })) || []}
+                placeholder={t('dialyse.selectPatient')}
+                required
+                module="dialyse"
+              />
             )}
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Date du bilan *</label>
-              <input
-                type="date"
-                value={formData.labDate}
-                onChange={(e) => handleChange('labDate', e.target.value)}
-                required
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
+            <Input
+              type="date"
+              label={t('dialyse.labDate')}
+              value={formData.labDate}
+              onChange={(e) => handleChange('labDate', e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              required
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Kidney Function */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Fonction rénale et dialyse</h3>
+        <FormSection title={t('dialyse.kidneyFunctionAndDialysis')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-4">
-            {renderLabField('urea', 'Urée', 0.1)}
-            {renderLabField('creatinine', 'Créatinine', 1)}
-            {renderLabField('ktV', 'Kt/V', 0.01)}
-            {renderLabField('urr', 'URR', 1)}
+            {renderLabField('urea', t('dialyse.urea'), 0.1)}
+            {renderLabField('creatinine', t('dialyse.creatinine'), 1)}
+            {renderLabField('ktV', t('dialyse.ktV'), 0.01)}
+            {renderLabField('urr', t('dialyse.urr'), 1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Electrolytes */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Électrolytes</h3>
+        <FormSection title={t('dialyse.electrolytes')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-6">
-            {renderLabField('sodium', 'Sodium', 1)}
-            {renderLabField('potassium', 'Potassium', 0.1)}
-            {renderLabField('calcium', 'Calcium', 0.01)}
-            {renderLabField('phosphorus', 'Phosphore', 0.01)}
-            {renderLabField('magnesium', 'Magnésium', 0.01)}
-            {renderLabField('bicarbonate', 'Bicarbonate', 1)}
+            {renderLabField('sodium', t('dialyse.sodium'), 1)}
+            {renderLabField('potassium', t('dialyse.potassium'), 0.1)}
+            {renderLabField('calcium', t('dialyse.calcium'), 0.01)}
+            {renderLabField('phosphorus', t('dialyse.phosphorus'), 0.01)}
+            {renderLabField('magnesium', t('dialyse.magnesium'), 0.01)}
+            {renderLabField('bicarbonate', t('dialyse.bicarbonate'), 1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Hematology */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Hématologie</h3>
+        <FormSection title={t('dialyse.hematology')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-6">
-            {renderLabField('hemoglobin', 'Hémoglobine', 1)}
-            {renderLabField('hematocrit', 'Hématocrite', 0.1)}
-            {renderLabField('wbc', 'Leucocytes', 0.1)}
-            {renderLabField('platelets', 'Plaquettes', 1)}
-            {renderLabField('ferritin', 'Ferritine', 1)}
-            {renderLabField('tsat', 'TSAT', 1)}
+            {renderLabField('hemoglobin', t('dialyse.hemoglobin'), 1)}
+            {renderLabField('hematocrit', t('dialyse.hematocrit'), 0.1)}
+            {renderLabField('wbc', t('dialyse.wbc'), 0.1)}
+            {renderLabField('platelets', t('dialyse.platelets'), 1)}
+            {renderLabField('ferritin', t('dialyse.ferritin'), 1)}
+            {renderLabField('tsat', t('dialyse.tsat'), 1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Metabolic */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Métabolisme phosphocalcique et nutrition</h3>
+        <FormSection title={t('dialyse.metabolicAndNutrition')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-5">
-            {renderLabField('albumin', 'Albumine', 0.1)}
-            {renderLabField('pth', 'PTH', 1)}
-            {renderLabField('vitaminD', 'Vitamine D', 1)}
-            {renderLabField('glucose', 'Glucose', 0.1)}
-            {renderLabField('hba1c', 'HbA1c', 0.1)}
+            {renderLabField('albumin', t('dialyse.albumin'), 0.1)}
+            {renderLabField('pth', t('dialyse.pth'), 1)}
+            {renderLabField('vitaminD', t('dialyse.vitaminD'), 1)}
+            {renderLabField('glucose', t('dialyse.glucose'), 0.1)}
+            {renderLabField('hba1c', t('dialyse.hba1c'), 0.1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Lipids */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Bilan lipidique</h3>
+        <FormSection title={t('dialyse.lipidProfile')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-4">
-            {renderLabField('cholesterol', 'Cholestérol total', 0.1)}
-            {renderLabField('triglycerides', 'Triglycérides', 0.1)}
-            {renderLabField('hdl', 'HDL', 0.1)}
-            {renderLabField('ldl', 'LDL', 0.1)}
+            {renderLabField('cholesterol', t('dialyse.cholesterol'), 0.1)}
+            {renderLabField('triglycerides', t('dialyse.triglycerides'), 0.1)}
+            {renderLabField('hdl', t('dialyse.hdl'), 0.1)}
+            {renderLabField('ldl', t('dialyse.ldl'), 0.1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Liver & Inflammatory */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Fonction hépatique et inflammation</h3>
+        <FormSection title={t('dialyse.liverAndInflammation')} module="dialyse">
           <div className="grid gap-4 md:grid-cols-5">
-            {renderLabField('alt', 'ALT (SGPT)', 1)}
-            {renderLabField('ast', 'AST (SGOT)', 1)}
-            {renderLabField('alp', 'PAL', 1)}
-            {renderLabField('bilirubin', 'Bilirubine', 1)}
-            {renderLabField('crp', 'CRP', 0.1)}
+            {renderLabField('alt', t('dialyse.alt'), 1)}
+            {renderLabField('ast', t('dialyse.ast'), 1)}
+            {renderLabField('alp', t('dialyse.alp'), 1)}
+            {renderLabField('bilirubin', t('dialyse.bilirubin'), 1)}
+            {renderLabField('crp', t('dialyse.crp'), 0.1)}
           </div>
-        </div>
+        </FormSection>
 
         {/* Notes */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Notes et commentaires</h3>
-          <textarea
+        <FormSection title={t('dialyse.notesAndComments')} module="dialyse">
+          <Textarea
             value={formData.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={4}
-            placeholder="Observations, valeurs additionnelles, contexte clinique..."
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder={t('dialyse.notesPlaceholder')}
+            module="dialyse"
           />
-        </div>
+        </FormSection>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
+        <FormActions>
+          <Button
+            variant="outline"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
           >
-            Annuler
-          </button>
-          <button
+            {t('dialyse.cancel')}
+          </Button>
+          <Button
             type="submit"
+            variant="primary"
+            module="dialyse"
             disabled={saveLabResult.isPending}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            loading={saveLabResult.isPending}
+            icon={Save}
           >
-            {saveLabResult.isPending ? 'Enregistrement...' : isEditing ? 'Mettre à jour' : 'Enregistrer le bilan'}
-          </button>
-        </div>
+            {saveLabResult.isPending ? t('dialyse.saving') : isEditing ? t('dialyse.update') : t('dialyse.saveLabResult')}
+          </Button>
+        </FormActions>
       </form>
     </div>
   );

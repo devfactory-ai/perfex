@@ -11,6 +11,13 @@ import type { WorkOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
+interface ManufacturingStats {
+  totalBOMs: number;
+  activeBOMs: number;
+  totalWorkOrders: number;
+  inProgressOrders: number;
+}
+
 export function WorkOrdersPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -38,7 +45,7 @@ export function WorkOrdersPage() {
   const { data: stats } = useQuery({
     queryKey: ['manufacturing-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/manufacturing/boms/stats');
+      const response = await api.get<ApiResponse<ManufacturingStats>>('/manufacturing/boms/stats');
       return response.data.data;
     },
   });
@@ -122,19 +129,19 @@ export function WorkOrdersPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.totalBOMs')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalBOMs}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalBOMs ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.activeBOMs')}</div>
-            <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeBOMs}</div>
+            <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeBOMs ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.totalWorkOrders')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalWorkOrders}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalWorkOrders ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('manufacturing.inProgress')}</div>
-            <div className="mt-2 text-2xl font-bold text-yellow-600">{stats.inProgressOrders}</div>
+            <div className="mt-2 text-2xl font-bold text-yellow-600">{stats.inProgressOrders ?? 0}</div>
           </div>
         </div>
       )}

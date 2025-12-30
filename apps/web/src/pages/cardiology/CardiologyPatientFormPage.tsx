@@ -6,9 +6,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Heart, Save, ArrowLeft, User, Phone, Activity, AlertTriangle } from 'lucide-react';
+import { Heart, Save, User, Phone, Activity, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useToast } from '../../contexts/ToastContext';
 import { api } from '../../lib/api';
+import { PageHeader, Button, FormSection, FormGrid, FormActions } from '../../components/healthcare';
 
 interface PatientFormData {
   firstName: string;
@@ -54,6 +56,7 @@ const initialFormData: PatientFormData = {
 
 export default function CardiologyPatientFormPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const navigate = useNavigate();
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -106,7 +109,11 @@ export default function CardiologyPatientFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cardiology-patients'] });
+      toast.success(isEditing ? t('cardiology.patientUpdated') : t('cardiology.patientCreated'));
       navigate('/cardiology/patients');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || t('common.saveError'));
     },
   });
 
@@ -120,10 +127,10 @@ export default function CardiologyPatientFormPage() {
 
   const validate = () => {
     const newErrors: Partial<PatientFormData> = {};
-    if (!formData.firstName) newErrors.firstName = 'Prénom requis';
-    if (!formData.lastName) newErrors.lastName = 'Nom requis';
-    if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date de naissance requise';
-    if (!formData.phone) newErrors.phone = 'Téléphone requis';
+    if (!formData.firstName) newErrors.firstName = t('validation.firstNameRequired');
+    if (!formData.lastName) newErrors.lastName = t('validation.lastNameRequired');
+    if (!formData.dateOfBirth) newErrors.dateOfBirth = t('validation.dateOfBirthRequired');
+    if (!formData.phone) newErrors.phone = t('validation.phoneRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,43 +145,30 @@ export default function CardiologyPatientFormPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
+        <div className="animate-spin h-8 w-8 border-4 border-gray-900 dark:border-white border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/cardiology/patients')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Heart className="h-7 w-7 text-red-500" />
-              {isEditing ? t('editPatient') || 'Modifier Patient' : t('newPatient') || 'Nouveau Patient'}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {isEditing ? t('editPatientDescription') || 'Modifier les informations du patient' : t('newPatientDescription') || 'Créer un nouveau patient cardiologie'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={isEditing ? t('editPatient') || 'Modifier Patient' : t('newPatient') || 'Nouveau Patient'}
+        subtitle={isEditing ? t('editPatientDescription') || 'Modifier les informations du patient' : t('newPatientDescription') || 'Créer un nouveau patient cardiologie'}
+        icon={Heart}
+        module="cardiology"
+        onBack={() => navigate('/cardiology/patients')}
+      />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Personal Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <User className="h-5 w-5 text-red-500" />
-            {t('personalInfo') || 'Informations Personnelles'}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FormSection
+          title={t('personalInfo') || 'Informations Personnelles'}
+          icon={User}
+          module="cardiology"
+        >
+          <FormGrid columns={3}>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('lastName') || 'Nom'} *
@@ -184,7 +178,7 @@ export default function CardiologyPatientFormPage() {
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500`}
+                className={`w-full px-3 py-2 border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white`}
               />
               {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
             </div>
@@ -197,7 +191,7 @@ export default function CardiologyPatientFormPage() {
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500`}
+                className={`w-full px-3 py-2 border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white`}
               />
               {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
             </div>
@@ -210,7 +204,7 @@ export default function CardiologyPatientFormPage() {
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500`}
+                className={`w-full px-3 py-2 border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white`}
               />
               {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>}
             </div>
@@ -222,7 +216,7 @@ export default function CardiologyPatientFormPage() {
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               >
                 <option value="male">{t('male') || 'Homme'}</option>
                 <option value="female">{t('female') || 'Femme'}</option>
@@ -236,7 +230,7 @@ export default function CardiologyPatientFormPage() {
                 name="bloodType"
                 value={formData.bloodType}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               >
                 <option value="">--</option>
                 <option value="A+">A+</option>
@@ -258,19 +252,19 @@ export default function CardiologyPatientFormPage() {
                 name="nationalId"
                 value={formData.nationalId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
-          </div>
-        </div>
+          </FormGrid>
+        </FormSection>
 
         {/* Contact Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Phone className="h-5 w-5 text-red-500" />
-            {t('contactInfo') || 'Coordonnées'}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FormSection
+          title={t('contactInfo') || 'Coordonnées'}
+          icon={Phone}
+          module="cardiology"
+        >
+          <FormGrid columns={3}>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('phone') || 'Téléphone'} *
@@ -280,7 +274,7 @@ export default function CardiologyPatientFormPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500`}
+                className={`w-full px-3 py-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white`}
               />
               {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
             </div>
@@ -293,7 +287,7 @@ export default function CardiologyPatientFormPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -305,7 +299,7 @@ export default function CardiologyPatientFormPage() {
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div className="md:col-span-2 lg:col-span-3">
@@ -317,7 +311,7 @@ export default function CardiologyPatientFormPage() {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -329,7 +323,7 @@ export default function CardiologyPatientFormPage() {
                 name="emergencyContact"
                 value={formData.emergencyContact}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -341,19 +335,19 @@ export default function CardiologyPatientFormPage() {
                 name="emergencyPhone"
                 value={formData.emergencyPhone}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
-          </div>
-        </div>
+          </FormGrid>
+        </FormSection>
 
         {/* Medical Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-red-500" />
-            {t('medicalInfo') || 'Informations Médicales'}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormSection
+          title={t('medicalInfo') || 'Informations Médicales'}
+          icon={Activity}
+          module="cardiology"
+        >
+          <FormGrid columns={2}>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('primaryDiagnosis') || 'Diagnostic principal'}
@@ -364,7 +358,7 @@ export default function CardiologyPatientFormPage() {
                 value={formData.primaryDiagnosis}
                 onChange={handleChange}
                 placeholder="Ex: Insuffisance cardiaque, HTA..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -375,7 +369,7 @@ export default function CardiologyPatientFormPage() {
                 name="riskLevel"
                 value={formData.riskLevel}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               >
                 <option value="low">{t('low') || 'Faible'}</option>
                 <option value="medium">{t('medium') || 'Moyen'}</option>
@@ -385,7 +379,7 @@ export default function CardiologyPatientFormPage() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <AlertTriangle className="h-4 w-4 inline mr-1 text-orange-500" />
+                <AlertTriangle className="h-4 w-4 inline mr-1" />
                 {t('allergies') || 'Allergies'}
               </label>
               <textarea
@@ -394,7 +388,7 @@ export default function CardiologyPatientFormPage() {
                 onChange={handleChange}
                 rows={2}
                 placeholder="Liste des allergies connues..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -406,7 +400,7 @@ export default function CardiologyPatientFormPage() {
                 value={formData.medicalHistory}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div>
@@ -418,7 +412,7 @@ export default function CardiologyPatientFormPage() {
                 value={formData.familyHistory}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
             <div className="md:col-span-2">
@@ -430,30 +424,32 @@ export default function CardiologyPatientFormPage() {
                 value={formData.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
               />
             </div>
-          </div>
-        </div>
+          </FormGrid>
+        </FormSection>
 
         {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <button
+        <FormActions>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate('/cardiology/patients')}
-            className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            module="cardiology"
           >
             {t('cancel') || 'Annuler'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
+            variant="primary"
             disabled={mutation.isPending}
-            className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+            icon={Save}
+            module="cardiology"
           >
-            <Save className="h-5 w-5" />
             {mutation.isPending ? (t('saving') || 'Enregistrement...') : (t('save') || 'Enregistrer')}
-          </button>
-        </div>
+          </Button>
+        </FormActions>
       </form>
     </div>
   );

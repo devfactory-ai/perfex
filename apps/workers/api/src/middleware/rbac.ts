@@ -5,15 +5,14 @@
  */
 
 import { Context, Next } from 'hono';
-import type { Env } from '../index';
+import type { Env } from '../types';
 import { RoleService } from '../services/role.service';
-import type { PermissionKey } from '@perfex/shared';
 
 /**
  * Check if user has specific permission
  * Usage: app.get('/admin', checkPermission('users:create'), handler)
  */
-export function checkPermission(permission: PermissionKey) {
+export function checkPermission(permission: string) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
     const organizationId = c.get('organizationId');
@@ -30,26 +29,12 @@ export function checkPermission(permission: PermissionKey) {
       );
     }
 
-    // For now, grant all permissions to authenticated users with an organization
-    // TODO: Implement proper RBAC with role-based permissions from database
-    if (organizationId) {
-      await next();
-      return;
-    }
-
-    // In development, all authenticated users have all permissions
-    const environment = c.env.ENVIRONMENT || 'production';
-    if (environment === 'development') {
-      await next();
-      return;
-    }
-
     try {
       const roleService = new RoleService(c.env.DB);
       const hasPermission = await roleService.hasPermission(
         userId,
         permission,
-        organizationId
+        organizationId || undefined
       );
 
       if (!hasPermission) {
@@ -65,7 +50,7 @@ export function checkPermission(permission: PermissionKey) {
       }
 
       await next();
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {
@@ -82,7 +67,7 @@ export function checkPermission(permission: PermissionKey) {
 /**
  * Check if user has ANY of the specified permissions
  */
-export function checkAnyPermission(...permissions: PermissionKey[]) {
+export function checkAnyPermission(...permissions: string[]) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
     const organizationId = c.get('organizationId');
@@ -99,20 +84,6 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
       );
     }
 
-    // For now, grant all permissions to authenticated users with an organization
-    // TODO: Implement proper RBAC with role-based permissions from database
-    if (organizationId) {
-      await next();
-      return;
-    }
-
-    // In development, all authenticated users have all permissions
-    const environment = c.env.ENVIRONMENT || 'production';
-    if (environment === 'development') {
-      await next();
-      return;
-    }
-
     try {
       const roleService = new RoleService(c.env.DB);
 
@@ -120,7 +91,7 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
         const hasPermission = await roleService.hasPermission(
           userId,
           permission,
-          organizationId
+          organizationId || undefined
         );
 
         if (hasPermission) {
@@ -138,7 +109,7 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
         },
         403
       );
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {
@@ -155,7 +126,7 @@ export function checkAnyPermission(...permissions: PermissionKey[]) {
 /**
  * Check if user has ALL of the specified permissions
  */
-export function checkAllPermissions(...permissions: PermissionKey[]) {
+export function checkAllPermissions(...permissions: string[]) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const userId = c.get('userId');
     const organizationId = c.get('organizationId');
@@ -172,20 +143,6 @@ export function checkAllPermissions(...permissions: PermissionKey[]) {
       );
     }
 
-    // For now, grant all permissions to authenticated users with an organization
-    // TODO: Implement proper RBAC with role-based permissions from database
-    if (organizationId) {
-      await next();
-      return;
-    }
-
-    // In development, all authenticated users have all permissions
-    const environment = c.env.ENVIRONMENT || 'production';
-    if (environment === 'development') {
-      await next();
-      return;
-    }
-
     try {
       const roleService = new RoleService(c.env.DB);
 
@@ -193,7 +150,7 @@ export function checkAllPermissions(...permissions: PermissionKey[]) {
         const hasPermission = await roleService.hasPermission(
           userId,
           permission,
-          organizationId
+          organizationId || undefined
         );
 
         if (!hasPermission) {
@@ -210,7 +167,7 @@ export function checkAllPermissions(...permissions: PermissionKey[]) {
       }
 
       await next();
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: {

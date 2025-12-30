@@ -8,6 +8,7 @@ import { zValidator } from '@hono/zod-validator';
 import { createOpportunitySchema, updateOpportunitySchema } from '@perfex/shared';
 import { opportunityService } from '../services/opportunity.service';
 import { requireAuth, requirePermission } from '../middleware/auth';
+import { logger } from '../utils/logger';
 import type { Env } from '../types';
 
 const opportunities = new Hono<{ Bindings: Env }>();
@@ -23,29 +24,40 @@ opportunities.get(
   '/',
   requirePermission('crm:opportunities:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const companyId = c.req.query('companyId');
-    const stageId = c.req.query('stageId');
-    const status = c.req.query('status');
-    const assignedTo = c.req.query('assignedTo');
-    const minValue = c.req.query('minValue');
-    const maxValue = c.req.query('maxValue');
+    try {
+      const organizationId = c.get('organizationId');
+      const companyId = c.req.query('companyId');
+      const stageId = c.req.query('stageId');
+      const status = c.req.query('status');
+      const assignedTo = c.req.query('assignedTo');
+      const minValue = c.req.query('minValue');
+      const maxValue = c.req.query('maxValue');
 
-    const filters = {
-      companyId,
-      stageId,
-      status,
-      assignedTo,
-      minValue: minValue ? parseFloat(minValue) : undefined,
-      maxValue: maxValue ? parseFloat(maxValue) : undefined,
-    };
+      const filters = {
+        companyId,
+        stageId,
+        status,
+        assignedTo,
+        minValue: minValue ? parseFloat(minValue) : undefined,
+        maxValue: maxValue ? parseFloat(maxValue) : undefined,
+      };
 
-    const result = await opportunityService.list(organizationId, filters);
+      const result = await opportunityService.list(organizationId, filters);
 
-    return c.json({
-      success: true,
-      data: result,
-    });
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -57,13 +69,24 @@ opportunities.get(
   '/stats',
   requirePermission('crm:opportunities:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const stats = await opportunityService.getStats(organizationId);
+    try {
+      const organizationId = c.get('organizationId');
+      const stats = await opportunityService.getStats(organizationId);
 
-    return c.json({
-      success: true,
-      data: stats,
-    });
+      return c.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -75,19 +98,30 @@ opportunities.get(
   '/:id',
   requirePermission('crm:opportunities:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const opportunityId = c.req.param('id');
+    try {
+      const organizationId = c.get('organizationId');
+      const opportunityId = c.req.param('id');
 
-    const opportunity = await opportunityService.getByIdWithDetails(organizationId, opportunityId);
+      const opportunity = await opportunityService.getByIdWithDetails(organizationId, opportunityId);
 
-    if (!opportunity) {
-      return c.json({ success: false, error: 'Opportunity not found' }, 404);
+      if (!opportunity) {
+        return c.json({ success: false, error: 'Opportunity not found' }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: opportunity,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({
-      success: true,
-      data: opportunity,
-    });
   }
 );
 
@@ -100,16 +134,27 @@ opportunities.post(
   requirePermission('crm:opportunities:create'),
   zValidator('json', createOpportunitySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
+    try {
+      const organizationId = c.get('organizationId');
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
 
-    const opportunity = await opportunityService.create(organizationId, userId, data);
+      const opportunity = await opportunityService.create(organizationId, userId, data);
 
-    return c.json({
-      success: true,
-      data: opportunity,
-    }, 201);
+      return c.json({
+        success: true,
+        data: opportunity,
+      }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -122,16 +167,27 @@ opportunities.put(
   requirePermission('crm:opportunities:update'),
   zValidator('json', updateOpportunitySchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const opportunityId = c.req.param('id');
-    const data = c.req.valid('json');
+    try {
+      const organizationId = c.get('organizationId');
+      const opportunityId = c.req.param('id');
+      const data = c.req.valid('json');
 
-    const opportunity = await opportunityService.update(organizationId, opportunityId, data);
+      const opportunity = await opportunityService.update(organizationId, opportunityId, data);
 
-    return c.json({
-      success: true,
-      data: opportunity,
-    });
+      return c.json({
+        success: true,
+        data: opportunity,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -143,15 +199,26 @@ opportunities.delete(
   '/:id',
   requirePermission('crm:opportunities:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const opportunityId = c.req.param('id');
+    try {
+      const organizationId = c.get('organizationId');
+      const opportunityId = c.req.param('id');
 
-    await opportunityService.delete(organizationId, opportunityId);
+      await opportunityService.delete(organizationId, opportunityId);
 
-    return c.json({
-      success: true,
-      data: { message: 'Opportunity deleted successfully' },
-    });
+      return c.json({
+        success: true,
+        data: { message: 'Opportunity deleted successfully' },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'opportunities' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 

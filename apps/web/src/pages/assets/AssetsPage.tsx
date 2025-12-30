@@ -117,21 +117,21 @@ export function AssetsPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('assets.totalAssets')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalAssets}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalAssets ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('assets.activeAssets')}</div>
-            <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeAssets}</div>
+            <div className="mt-2 text-2xl font-bold text-green-600">{stats.activeAssets ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('assets.totalValue')}</div>
             <div className="mt-2 text-2xl font-bold text-blue-600">
-              {formatCurrency(stats.totalValue)}
+              {formatCurrency(stats.totalValue ?? 0)}
             </div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('assets.pendingMaintenance')}</div>
-            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingMaintenance}</div>
+            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingMaintenance ?? 0}</div>
           </div>
         </div>
       )}

@@ -6,17 +6,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import {
-  Stethoscope,
-  Plus,
-  Search,
-  Calendar,
-  ChevronRight,
-  Clock,
-  FileText,
-} from 'lucide-react';
+import { Stethoscope, Plus, Calendar, Clock, FileText } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  FilterBar,
+  SectionCard,
+  Button,
+  EmptyState,
+  InlineLoading,
+} from '../../components/healthcare';
 
 export default function CardiologyConsultationsPage() {
   const { t } = useLanguage();
@@ -35,119 +35,106 @@ export default function CardiologyConsultationsPage() {
     },
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Stethoscope className="h-7 w-7 text-red-500" />
-            {t('consultations') || 'Consultations Cardiologie'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {t('consultationsDescription') || 'Gestion des consultations cardiaques'}
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/cardiology/consultations/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          {t('newConsultation') || 'Nouvelle Consultation'}
-        </button>
-      </div>
+      <PageHeader
+        title={t('consultations') || 'Consultations Cardiologie'}
+        subtitle={t('consultationsDescription') || 'Gestion des consultations cardiaques'}
+        icon={Stethoscope}
+        module="cardiology"
+        actions={
+          <Button
+            module="cardiology"
+            icon={Plus}
+            onClick={() => navigate('/cardiology/consultations/new')}
+          >
+            {t('newConsultation') || 'Nouvelle Consultation'}
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder={t('searchConsultations') || 'Rechercher une consultation...'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
-          >
-            <option value="all">{t('allDates') || 'Toutes les dates'}</option>
-            <option value="today">{t('today') || 'Aujourd\'hui'}</option>
-            <option value="week">{t('thisWeek') || 'Cette semaine'}</option>
-            <option value="month">{t('thisMonth') || 'Ce mois'}</option>
-          </select>
-        </div>
-      </div>
+      <FilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder={t('searchConsultations') || 'Rechercher une consultation...'}
+        module="cardiology"
+        filters={[
+          {
+            name: 'date',
+            value: dateFilter,
+            options: [
+              { value: 'all', label: t('allDates') || 'Toutes les dates' },
+              { value: 'today', label: t('today') || "Aujourd'hui" },
+              { value: 'week', label: t('thisWeek') || 'Cette semaine' },
+              { value: 'month', label: t('thisMonth') || 'Ce mois' },
+            ],
+            onChange: setDateFilter,
+          },
+        ]}
+      />
 
       {/* Consultations List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <SectionCard>
         {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto"></div>
-          </div>
+          <InlineLoading rows={5} />
         ) : consultations?.length === 0 ? (
-          <div className="p-8 text-center">
-            <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">{t('noConsultations') || 'Aucune consultation trouvée'}</p>
-          </div>
+          <EmptyState
+            icon={Stethoscope}
+            title={t('noConsultations') || 'Aucune consultation trouvée'}
+            module="cardiology"
+            action={{
+              label: t('newConsultation') || 'Nouvelle Consultation',
+              icon: Plus,
+              onClick: () => navigate('/cardiology/consultations/new'),
+            }}
+          />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {consultations?.map((consultation: any) => (
               <div
                 key={consultation.id}
-                onClick={() => navigate(`/cardiology/consultations/${consultation.id}`)}
+                onClick={() => navigate(`/cardiology/consultations/${consultation.id}/edit`)}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                      <Stethoscope className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center flex-shrink-0">
+                      <Stethoscope className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
                           {consultation.patientName}
                         </h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(consultation.status)}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                          consultation.status === 'completed' ? 'bg-slate-600 text-white dark:bg-slate-500' :
+                          consultation.status === 'scheduled' ? 'bg-slate-400 text-white dark:bg-slate-500' :
+                          'bg-slate-500 text-white dark:bg-slate-500'
+                        }`}>
                           {consultation.status === 'completed' ? 'Terminée' :
                            consultation.status === 'scheduled' ? 'Planifiée' : 'Annulée'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 mt-1 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {new Date(consultation.date).toLocaleDateString('fr-FR')}
+                          {consultation.consultationDate ? new Date(consultation.consultationDate).toLocaleDateString('fr-FR') : '-'}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {consultation.time}
-                        </span>
+                        {consultation.consultationType && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {consultation.consultationType}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 ml-4">
                     <div className="text-right hidden md:block">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{consultation.type}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500">{consultation.doctor}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500">{consultation.doctorName}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
                 </div>
                 {consultation.diagnosis && (
@@ -160,7 +147,7 @@ export default function CardiologyConsultationsPage() {
             ))}
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

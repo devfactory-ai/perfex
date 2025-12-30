@@ -1,7 +1,9 @@
 /**
  * Email Service
- * Handles email sending with console.log in development
+ * Handles email sending with structured logging in development
  */
+
+import { logger } from './logger';
 
 export interface EmailOptions {
   to: string;
@@ -33,25 +35,20 @@ export class EmailService {
     };
 
     if (this.environment === 'development') {
-      // Log to console in development
-      console.log('📧 ==================== EMAIL ====================');
-      console.log('From:', email.from);
-      console.log('To:', email.to);
-      console.log('Subject:', email.subject);
-      console.log('---');
-      if (email.text) {
-        console.log('Text:', email.text);
-      }
-      if (email.html) {
-        console.log('HTML:', email.html);
-      }
-      console.log('================================================\n');
+      // Log email in development mode
+      logger.info('[DEV] Email would be sent', {
+        from: email.from,
+        to: email.to,
+        subject: email.subject,
+        hasText: !!email.text,
+        hasHtml: !!email.html,
+      });
       return;
     }
 
     // TODO: Implement actual email sending for production
     // Could use Resend, SendGrid, AWS SES, etc.
-    console.warn('Email sending not implemented for production yet:', email);
+    logger.warn('Email sending not implemented for production yet', { email });
   }
 
   /**

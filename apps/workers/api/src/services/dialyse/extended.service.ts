@@ -1,124 +1,254 @@
 /**
  * Dialyse Extended Services
  * Protocols, Staff, Billing, Transport, Consumables, Reports
+ *
+ * SECURITY: All queries use Drizzle ORM's parameterized queries to prevent SQL injection
  */
 
-import { sql } from 'drizzle-orm';
+import { eq, and, gte, lte, count, sum, desc, asc, sql } from 'drizzle-orm';
 import { drizzleDb } from '../../db';
+import {
+  dialysePatients,
+  dialysisSessions,
+  clinicalAlerts,
+  contacts,
+  dialyseProtocols,
+  dialyseStaff,
+  dialyseBilling,
+  dialyseTransport,
+  dialyseConsumables,
+  dialyseConsumableMovements,
+  type InsertDialyseProtocol,
+  type InsertDialyseStaff,
+  type InsertDialyseBilling,
+  type InsertDialyseTransport,
+  type InsertDialyseConsumable,
+  type InsertDialyseConsumableMovement,
+} from '@perfex/database';
 
-// Generate UUID using crypto API
-const generateId = () => crypto.randomUUID();
+// Type definitions for filters
+interface PaginationFilters {
+  limit?: number;
+  offset?: number;
+}
+
+interface ProtocolFilters extends PaginationFilters {
+  status?: string;
+  type?: string;
+}
+
+interface StaffFilters extends PaginationFilters {
+  role?: string;
+  status?: string;
+}
+
+interface BillingFilters extends PaginationFilters {
+  status?: string;
+  patientId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+interface TransportFilters extends PaginationFilters {
+  status?: string;
+  date?: string;
+  patientId?: string;
+  direction?: string;
+}
+
+interface ConsumableFilters extends PaginationFilters {
+  category?: string;
+  status?: string;
+  lowStock?: boolean;
+}
+
+// Whitelist of allowed values for enum-like fields
+const ALLOWED_PROTOCOL_STATUS = ['active', 'inactive'] as const;
+const ALLOWED_PROTOCOL_TYPES = ['hemodialysis', 'hemodiafiltration', 'peritoneal'] as const;
+const ALLOWED_STAFF_ROLES = ['nephrologist', 'nurse', 'technician', 'admin', 'receptionist'] as const;
+const ALLOWED_BILLING_STATUS = ['pending', 'paid', 'overdue', 'cancelled'] as const;
+const ALLOWED_BILLING_TYPES = ['session', 'monthly', 'emergency'] as const;
+const ALLOWED_TRANSPORT_STATUS = ['scheduled', 'confirmed', 'in_transit', 'completed', 'cancelled'] as const;
+const ALLOWED_TRANSPORT_DIRECTIONS = ['pickup', 'dropoff', 'both'] as const;
+const ALLOWED_TRANSPORT_TYPES = ['ambulance', 'taxi', 'private', 'public', 'family'] as const;
+const ALLOWED_CONSUMABLE_CATEGORIES = ['dialyzers', 'lines', 'needles', 'solutions', 'medications', 'disposables', 'other'] as const;
+const ALLOWED_CONSUMABLE_STATUS = ['active', 'inactive'] as const;
+
+// Validation helpers
+function validatePagination(limit?: number, offset?: number): { limit: number; offset: number } {
+  return {
+    limit: Math.min(Math.max(1, Number(limit) || 25), 100),
+    offset: Math.max(0, Number(offset) || 0),
+  };
+}
+
+function validateEnum<T extends readonly string[]>(value: string | undefined, allowed: T, defaultValue: T[number]): T[number] {
+  if (!value) return defaultValue;
+  return (allowed as readonly string[]).includes(value) ? value as T[number] : defaultValue;
+}
 
 // ============================================================================
 // PROTOCOLS SERVICE
 // ============================================================================
 
 export const protocolService = {
-  async list(organizationId: string, filters: { status?: string; type?: string; limit?: number; offset?: number } = {}) {
-    const { status, type, limit = 25, offset = 0 } = filters;
+  async list(organizationId: string, filters: ProtocolFilters = {}) {
+    const { status, type } = filters;
+    const { limit, offset } = validatePagination(filters.limit, filters.offset);
 
-    let whereClause = `organization_id = '${organizationId}'`;
-    if (status && status !== 'all') whereClause += ` AND status = '${status}'`;
-    if (type && type !== 'all') whereClause += ` AND type = '${type}'`;
+    // Build conditions array
+    const conditions = [eq(dialyseProtocols.organizationId, organizationId)];
 
-    const dataQuery = sql.raw(`SELECT * FROM dialyse_protocols WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
-    const countQuery = sql.raw(`SELECT COUNT(*) as count FROM dialyse_protocols WHERE ${whereClause}`);
+    if (status && status !== 'all') {
+      const safeStatus = validateEnum(status, ALLOWED_PROTOCOL_STATUS, 'active');
+      conditions.push(eq(dialyseProtocols.status, safeStatus));
+    }
 
-    const [dataResult, countResult] = await Promise.all([
-      drizzleDb.all(dataQuery),
-      drizzleDb.get(countQuery),
+    if (type && type !== 'all') {
+      const safeType = validateEnum(type, ALLOWED_PROTOCOL_TYPES, 'hemodialysis');
+      conditions.push(eq(dialyseProtocols.type, safeType));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [data, countResult] = await Promise.all([
+      drizzleDb
+        .select()
+        .from(dialyseProtocols)
+        .where(whereClause)
+        .orderBy(desc(dialyseProtocols.createdAt))
+        .limit(limit)
+        .offset(offset),
+      drizzleDb
+        .select({ count: count() })
+        .from(dialyseProtocols)
+        .where(whereClause),
     ]);
 
     return {
-      data: dataResult || [],
-      total: (countResult as any)?.count || 0,
+      data: data || [],
+      total: countResult[0]?.count || 0,
     };
   },
 
   async getById(organizationId: string, id: string) {
-    const result = await drizzleDb.get(sql.raw(`SELECT * FROM dialyse_protocols WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    const result = await drizzleDb
+      .select()
+      .from(dialyseProtocols)
+      .where(and(
+        eq(dialyseProtocols.id, id),
+        eq(dialyseProtocols.organizationId, organizationId)
+      ))
+      .get();
     return result;
   },
 
-  async create(organizationId: string, userId: string, data: any) {
-    const id = generateId();
-    const now = Date.now();
+  async create(organizationId: string, userId: string, data: Partial<InsertDialyseProtocol>) {
+    const safeType = validateEnum(data.type, ALLOWED_PROTOCOL_TYPES, 'hemodialysis');
+    const now = new Date();
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_protocols (
-        id, organization_id, name, code, description, type, is_template,
-        dialyzer_type, dialyzer_surface, blood_flow_rate, dialysate_flow_rate,
-        session_duration_minutes, uf_goal, anticoagulation_type, anticoagulation_dose,
-        anticoagulation_protocol, dialysate_sodium, dialysate_potassium, dialysate_bicarbonate,
-        dialysate_calcium, dialysate_glucose, dialysate_temperature, access_type_preference,
-        special_instructions, contraindications, status, created_by, created_at, updated_at
-      ) VALUES (
-        '${id}', '${organizationId}', '${data.name || ''}', ${data.code ? `'${data.code}'` : 'NULL'},
-        ${data.description ? `'${data.description}'` : 'NULL'}, '${data.type || 'hemodialysis'}', ${data.isTemplate ? 1 : 1},
-        ${data.dialyzerType ? `'${data.dialyzerType}'` : 'NULL'}, ${data.dialyzerSurface || 'NULL'},
-        ${data.bloodFlowRate || 'NULL'}, ${data.dialysateFlowRate || 'NULL'}, ${data.sessionDurationMinutes || 'NULL'},
-        ${data.ufGoal || 'NULL'}, ${data.anticoagulationType ? `'${data.anticoagulationType}'` : 'NULL'},
-        ${data.anticoagulationDose ? `'${data.anticoagulationDose}'` : 'NULL'},
-        ${data.anticoagulationProtocol ? `'${data.anticoagulationProtocol}'` : 'NULL'},
-        ${data.dialysateSodium || 'NULL'}, ${data.dialysatePotassium || 'NULL'},
-        ${data.dialysateBicarbonate || 'NULL'}, ${data.dialysateCalcium || 'NULL'},
-        ${data.dialysateGlucose || 'NULL'}, ${data.dialysateTemperature || 'NULL'},
-        ${data.accessTypePreference ? `'${data.accessTypePreference}'` : 'NULL'},
-        ${data.specialInstructions ? `'${data.specialInstructions}'` : 'NULL'},
-        ${data.contraindications ? `'${data.contraindications}'` : 'NULL'},
-        'active', '${userId}', ${now}, ${now}
-      )
-    `));
+    const insertData: InsertDialyseProtocol = {
+      organizationId,
+      name: data.name || 'New Protocol',
+      code: data.code,
+      description: data.description,
+      type: safeType,
+      isTemplate: data.isTemplate ?? true,
+      dialyzerType: data.dialyzerType,
+      dialyzerSurface: data.dialyzerSurface,
+      bloodFlowRate: data.bloodFlowRate,
+      dialysateFlowRate: data.dialysateFlowRate,
+      sessionDurationMinutes: data.sessionDurationMinutes,
+      ufGoal: data.ufGoal,
+      anticoagulationType: data.anticoagulationType,
+      anticoagulationDose: data.anticoagulationDose,
+      anticoagulationProtocol: data.anticoagulationProtocol,
+      dialysateSodium: data.dialysateSodium,
+      dialysatePotassium: data.dialysatePotassium,
+      dialysateBicarbonate: data.dialysateBicarbonate,
+      dialysateCalcium: data.dialysateCalcium,
+      dialysateGlucose: data.dialysateGlucose,
+      dialysateTemperature: data.dialysateTemperature,
+      accessTypePreference: data.accessTypePreference,
+      specialInstructions: data.specialInstructions,
+      contraindications: data.contraindications,
+      status: 'active',
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return this.getById(organizationId, id);
+    const result = await drizzleDb
+      .insert(dialyseProtocols)
+      .values(insertData)
+      .returning();
+
+    return result[0];
   },
 
-  async update(organizationId: string, id: string, data: any) {
+  async update(organizationId: string, id: string, data: Partial<InsertDialyseProtocol>) {
     const existing = await this.getById(organizationId, id);
     if (!existing) throw new Error('Protocol not found');
 
-    const updates: string[] = [];
-    if (data.name !== undefined) updates.push(`name = '${data.name}'`);
-    if (data.code !== undefined) updates.push(`code = ${data.code ? `'${data.code}'` : 'NULL'}`);
-    if (data.description !== undefined) updates.push(`description = ${data.description ? `'${data.description}'` : 'NULL'}`);
-    if (data.status !== undefined) updates.push(`status = '${data.status}'`);
-    if (data.type !== undefined) updates.push(`type = '${data.type}'`);
+    const updateData: Partial<InsertDialyseProtocol> = {
+      updatedAt: new Date(),
+    };
 
-    if (updates.length > 0) {
-      updates.push(`updated_at = ${Date.now()}`);
-      await drizzleDb.run(sql.raw(`UPDATE dialyse_protocols SET ${updates.join(', ')} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.code !== undefined) updateData.code = data.code;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) {
+      updateData.status = validateEnum(data.status, ALLOWED_PROTOCOL_STATUS, 'active');
     }
+    if (data.type !== undefined) {
+      updateData.type = validateEnum(data.type, ALLOWED_PROTOCOL_TYPES, 'hemodialysis');
+    }
+
+    await drizzleDb
+      .update(dialyseProtocols)
+      .set(updateData)
+      .where(and(
+        eq(dialyseProtocols.id, id),
+        eq(dialyseProtocols.organizationId, organizationId)
+      ));
 
     return this.getById(organizationId, id);
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb.run(sql.raw(`DELETE FROM dialyse_protocols WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    await drizzleDb
+      .delete(dialyseProtocols)
+      .where(and(
+        eq(dialyseProtocols.id, id),
+        eq(dialyseProtocols.organizationId, organizationId)
+      ));
   },
 
   async duplicate(organizationId: string, id: string, userId: string) {
-    const original = await this.getById(organizationId, id) as any;
+    const original = await this.getById(organizationId, id);
     if (!original) throw new Error('Protocol not found');
 
-    const newData = { ...original };
-    newData.name = `${original.name} (copie)`;
-    newData.code = original.code ? `${original.code}-COPY` : null;
-
-    return this.create(organizationId, userId, newData);
+    return this.create(organizationId, userId, {
+      ...original,
+      name: `${original.name} (copie)`,
+      code: original.code ? `${original.code}-COPY` : undefined,
+    });
   },
 
   async getStats(organizationId: string) {
-    const result = await drizzleDb.get(sql.raw(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN type = 'hemodialysis' THEN 1 ELSE 0 END) as hemodialysis,
-        SUM(CASE WHEN type = 'hemodiafiltration' THEN 1 ELSE 0 END) as hemodiafiltration,
-        SUM(CASE WHEN is_template = 1 THEN 1 ELSE 0 END) as templates
-      FROM dialyse_protocols WHERE organization_id = '${organizationId}'
-    `));
-    return result;
+    const result = await drizzleDb
+      .select({
+        total: count(),
+        active: sum(sql<number>`CASE WHEN ${dialyseProtocols.status} = 'active' THEN 1 ELSE 0 END`),
+        inactive: sum(sql<number>`CASE WHEN ${dialyseProtocols.status} = 'inactive' THEN 1 ELSE 0 END`),
+        hemodialysis: sum(sql<number>`CASE WHEN ${dialyseProtocols.type} = 'hemodialysis' THEN 1 ELSE 0 END`),
+        hemodiafiltration: sum(sql<number>`CASE WHEN ${dialyseProtocols.type} = 'hemodiafiltration' THEN 1 ELSE 0 END`),
+        templates: sum(sql<number>`CASE WHEN ${dialyseProtocols.isTemplate} = 1 THEN 1 ELSE 0 END`),
+      })
+      .from(dialyseProtocols)
+      .where(eq(dialyseProtocols.organizationId, organizationId));
+
+    return result[0];
   },
 };
 
@@ -127,95 +257,155 @@ export const protocolService = {
 // ============================================================================
 
 export const staffService = {
-  async list(organizationId: string, filters: { role?: string; status?: string; limit?: number; offset?: number } = {}) {
-    const { role, status, limit = 25, offset = 0 } = filters;
+  async list(organizationId: string, filters: StaffFilters = {}) {
+    const { role, status } = filters;
+    const { limit, offset } = validatePagination(filters.limit, filters.offset);
 
-    let whereClause = `organization_id = '${organizationId}'`;
-    if (role && role !== 'all') whereClause += ` AND role = '${role}'`;
-    if (status && status !== 'all') whereClause += ` AND status = '${status}'`;
+    const conditions = [eq(dialyseStaff.organizationId, organizationId)];
 
-    const dataResult = await drizzleDb.all(sql.raw(`SELECT * FROM dialyse_staff WHERE ${whereClause} ORDER BY last_name, first_name LIMIT ${limit} OFFSET ${offset}`));
-    const countResult = await drizzleDb.get(sql.raw(`SELECT COUNT(*) as count FROM dialyse_staff WHERE ${whereClause}`));
+    if (role && role !== 'all') {
+      const safeRole = validateEnum(role, ALLOWED_STAFF_ROLES, 'nurse');
+      conditions.push(eq(dialyseStaff.role, safeRole));
+    }
+
+    if (status && status !== 'all') {
+      const safeStatus = validateEnum(status, ALLOWED_CONSUMABLE_STATUS, 'active');
+      conditions.push(eq(dialyseStaff.status, safeStatus));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [data, countResult] = await Promise.all([
+      drizzleDb
+        .select()
+        .from(dialyseStaff)
+        .where(whereClause)
+        .orderBy(asc(dialyseStaff.lastName), asc(dialyseStaff.firstName))
+        .limit(limit)
+        .offset(offset),
+      drizzleDb
+        .select({ count: count() })
+        .from(dialyseStaff)
+        .where(whereClause),
+    ]);
 
     return {
-      data: dataResult || [],
-      total: (countResult as any)?.count || 0,
+      data: data || [],
+      total: countResult[0]?.count || 0,
     };
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb.get(sql.raw(`SELECT * FROM dialyse_staff WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    return drizzleDb
+      .select()
+      .from(dialyseStaff)
+      .where(and(
+        eq(dialyseStaff.id, id),
+        eq(dialyseStaff.organizationId, organizationId)
+      ))
+      .get();
   },
 
-  async create(organizationId: string, userId: string, data: any) {
-    const id = generateId();
-    const now = Date.now();
-    const licenseExpiry = data.licenseExpiry ? new Date(data.licenseExpiry).getTime() : null;
+  async create(organizationId: string, userId: string, data: Partial<InsertDialyseStaff>) {
+    const safeRole = validateEnum(data.role, ALLOWED_STAFF_ROLES, 'nurse');
+    const safeStatus = validateEnum(data.status, ALLOWED_CONSUMABLE_STATUS, 'active');
+    const now = new Date();
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_staff (
-        id, organization_id, employee_id, first_name, last_name, role, specialty,
-        license_number, license_expiry, phone, email, status, schedule, notes,
-        created_by, created_at, updated_at
-      ) VALUES (
-        '${id}', '${organizationId}', ${data.employeeId ? `'${data.employeeId}'` : 'NULL'},
-        '${data.firstName}', '${data.lastName}', '${data.role}',
-        ${data.specialty ? `'${data.specialty}'` : 'NULL'},
-        ${data.licenseNumber ? `'${data.licenseNumber}'` : 'NULL'},
-        ${licenseExpiry || 'NULL'},
-        ${data.phone ? `'${data.phone}'` : 'NULL'},
-        ${data.email ? `'${data.email}'` : 'NULL'},
-        '${data.status || 'active'}',
-        ${data.schedule ? `'${JSON.stringify(data.schedule)}'` : 'NULL'},
-        ${data.notes ? `'${data.notes}'` : 'NULL'},
-        '${userId}', ${now}, ${now}
-      )
-    `));
+    const insertData: InsertDialyseStaff = {
+      organizationId,
+      employeeId: data.employeeId,
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      role: safeRole,
+      specialty: data.specialty,
+      licenseNumber: data.licenseNumber,
+      licenseExpiry: data.licenseExpiry ? new Date(data.licenseExpiry as unknown as string) : undefined,
+      phone: data.phone,
+      email: data.email,
+      status: safeStatus,
+      schedule: data.schedule,
+      notes: data.notes,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return this.getById(organizationId, id);
+    const result = await drizzleDb
+      .insert(dialyseStaff)
+      .values(insertData)
+      .returning();
+
+    return result[0];
   },
 
-  async update(organizationId: string, id: string, data: any) {
+  async update(organizationId: string, id: string, data: Partial<InsertDialyseStaff>) {
     const existing = await this.getById(organizationId, id);
     if (!existing) throw new Error('Staff member not found');
 
-    const updates: string[] = [];
-    if (data.firstName !== undefined) updates.push(`first_name = '${data.firstName}'`);
-    if (data.lastName !== undefined) updates.push(`last_name = '${data.lastName}'`);
-    if (data.role !== undefined) updates.push(`role = '${data.role}'`);
-    if (data.specialty !== undefined) updates.push(`specialty = ${data.specialty ? `'${data.specialty}'` : 'NULL'}`);
-    if (data.licenseNumber !== undefined) updates.push(`license_number = ${data.licenseNumber ? `'${data.licenseNumber}'` : 'NULL'}`);
-    if (data.status !== undefined) updates.push(`status = '${data.status}'`);
+    const updateData: Partial<InsertDialyseStaff> = {
+      updatedAt: new Date(),
+    };
 
-    if (updates.length > 0) {
-      updates.push(`updated_at = ${Date.now()}`);
-      await drizzleDb.run(sql.raw(`UPDATE dialyse_staff SET ${updates.join(', ')} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.role !== undefined) {
+      updateData.role = validateEnum(data.role, ALLOWED_STAFF_ROLES, 'nurse');
     }
+    if (data.specialty !== undefined) updateData.specialty = data.specialty;
+    if (data.licenseNumber !== undefined) updateData.licenseNumber = data.licenseNumber;
+    if (data.status !== undefined) {
+      updateData.status = validateEnum(data.status, ALLOWED_CONSUMABLE_STATUS, 'active');
+    }
+
+    await drizzleDb
+      .update(dialyseStaff)
+      .set(updateData)
+      .where(and(
+        eq(dialyseStaff.id, id),
+        eq(dialyseStaff.organizationId, organizationId)
+      ));
 
     return this.getById(organizationId, id);
   },
 
-  async updateSchedule(organizationId: string, id: string, schedule: any) {
-    await drizzleDb.run(sql.raw(`UPDATE dialyse_staff SET schedule = '${JSON.stringify(schedule)}', updated_at = ${Date.now()} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+  async updateSchedule(organizationId: string, id: string, schedule: Record<string, unknown>) {
+    await drizzleDb
+      .update(dialyseStaff)
+      .set({
+        schedule: JSON.stringify(schedule),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(dialyseStaff.id, id),
+        eq(dialyseStaff.organizationId, organizationId)
+      ));
     return this.getById(organizationId, id);
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb.run(sql.raw(`DELETE FROM dialyse_staff WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    await drizzleDb
+      .delete(dialyseStaff)
+      .where(and(
+        eq(dialyseStaff.id, id),
+        eq(dialyseStaff.organizationId, organizationId)
+      ));
   },
 
   async getStats(organizationId: string) {
-    const now = Date.now();
-    return drizzleDb.get(sql.raw(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN role = 'nephrologist' THEN 1 ELSE 0 END) as nephrologists,
-        SUM(CASE WHEN role = 'nurse' THEN 1 ELSE 0 END) as nurses,
-        SUM(CASE WHEN role = 'technician' THEN 1 ELSE 0 END) as technicians,
-        SUM(CASE WHEN license_expiry < ${now} THEN 1 ELSE 0 END) as expired_licenses
-      FROM dialyse_staff WHERE organization_id = '${organizationId}'
-    `));
+    const now = new Date();
+    const result = await drizzleDb
+      .select({
+        total: count(),
+        active: sum(sql<number>`CASE WHEN ${dialyseStaff.status} = 'active' THEN 1 ELSE 0 END`),
+        nephrologists: sum(sql<number>`CASE WHEN ${dialyseStaff.role} = 'nephrologist' THEN 1 ELSE 0 END`),
+        nurses: sum(sql<number>`CASE WHEN ${dialyseStaff.role} = 'nurse' THEN 1 ELSE 0 END`),
+        technicians: sum(sql<number>`CASE WHEN ${dialyseStaff.role} = 'technician' THEN 1 ELSE 0 END`),
+        expiredLicenses: sum(sql<number>`CASE WHEN ${dialyseStaff.licenseExpiry} < ${now.getTime()} THEN 1 ELSE 0 END`),
+      })
+      .from(dialyseStaff)
+      .where(eq(dialyseStaff.organizationId, organizationId));
+
+    return result[0];
   },
 };
 
@@ -224,104 +414,176 @@ export const staffService = {
 // ============================================================================
 
 export const billingService = {
-  async list(organizationId: string, filters: { status?: string; patientId?: string; startDate?: string; endDate?: string; limit?: number; offset?: number } = {}) {
-    const { status, patientId, limit = 25, offset = 0 } = filters;
+  async list(organizationId: string, filters: BillingFilters = {}) {
+    const { status, patientId } = filters;
+    const { limit, offset } = validatePagination(filters.limit, filters.offset);
 
-    let whereClause = `b.organization_id = '${organizationId}'`;
-    if (status && status !== 'all') whereClause += ` AND b.status = '${status}'`;
-    if (patientId) whereClause += ` AND b.patient_id = '${patientId}'`;
+    const conditions = [eq(dialyseBilling.organizationId, organizationId)];
 
-    const dataResult = await drizzleDb.all(sql.raw(`
-      SELECT b.*,
-        p.medical_id as patient_medical_id,
-        c.first_name as patient_first_name,
-        c.last_name as patient_last_name
-      FROM dialyse_billing b
-      LEFT JOIN dialyse_patients p ON b.patient_id = p.id
-      LEFT JOIN contacts c ON p.contact_id = c.id
-      WHERE ${whereClause}
-      ORDER BY b.billing_date DESC LIMIT ${limit} OFFSET ${offset}
-    `));
-    const countResult = await drizzleDb.get(sql.raw(`SELECT COUNT(*) as count FROM dialyse_billing b WHERE ${whereClause}`));
+    if (status && status !== 'all') {
+      const safeStatus = validateEnum(status, ALLOWED_BILLING_STATUS, 'pending');
+      conditions.push(eq(dialyseBilling.status, safeStatus));
+    }
+
+    if (patientId) {
+      conditions.push(eq(dialyseBilling.patientId, patientId));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [data, countResult] = await Promise.all([
+      drizzleDb
+        .select({
+          billing: dialyseBilling,
+          patientMedicalId: dialysePatients.medicalId,
+          patientFirstName: contacts.firstName,
+          patientLastName: contacts.lastName,
+        })
+        .from(dialyseBilling)
+        .leftJoin(dialysePatients, eq(dialyseBilling.patientId, dialysePatients.id))
+        .leftJoin(contacts, eq(dialysePatients.contactId, contacts.id))
+        .where(whereClause)
+        .orderBy(desc(dialyseBilling.billingDate))
+        .limit(limit)
+        .offset(offset),
+      drizzleDb
+        .select({ count: count() })
+        .from(dialyseBilling)
+        .where(whereClause),
+    ]);
 
     return {
-      data: dataResult || [],
-      total: (countResult as any)?.count || 0,
+      data: data.map(row => ({
+        ...row.billing,
+        patient_medical_id: row.patientMedicalId,
+        patient_first_name: row.patientFirstName,
+        patient_last_name: row.patientLastName,
+      })) || [],
+      total: countResult[0]?.count || 0,
     };
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb.get(sql.raw(`SELECT * FROM dialyse_billing WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    return drizzleDb
+      .select()
+      .from(dialyseBilling)
+      .where(and(
+        eq(dialyseBilling.id, id),
+        eq(dialyseBilling.organizationId, organizationId)
+      ))
+      .get();
   },
 
-  async create(organizationId: string, userId: string, data: any) {
-    const id = generateId();
-    const now = Date.now();
-    const countResult = await drizzleDb.get(sql.raw(`SELECT COUNT(*) as count FROM dialyse_billing WHERE organization_id = '${organizationId}'`));
-    const invoiceNumber = `DIAL-${new Date().getFullYear()}-${String(((countResult as any)?.count || 0) + 1).padStart(5, '0')}`;
+  async create(organizationId: string, userId: string, data: Partial<InsertDialyseBilling>) {
+    // Generate invoice number
+    const countResult = await drizzleDb
+      .select({ count: count() })
+      .from(dialyseBilling)
+      .where(eq(dialyseBilling.organizationId, organizationId));
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_billing (
-        id, organization_id, patient_id, session_id, invoice_number, billing_date,
-        session_date, billing_type, amount, insurance_amount, patient_amount,
-        insurance_provider, insurance_policy_number, status, line_items, notes,
-        created_by, created_at, updated_at
-      ) VALUES (
-        '${id}', '${organizationId}', '${data.patientId}', ${data.sessionId ? `'${data.sessionId}'` : 'NULL'},
-        '${invoiceNumber}', ${now}, ${now}, '${data.billingType || 'session'}',
-        ${data.amount || 0}, ${data.insuranceAmount || 0}, ${data.patientAmount || 0},
-        ${data.insuranceProvider ? `'${data.insuranceProvider}'` : 'NULL'},
-        ${data.insurancePolicyNumber ? `'${data.insurancePolicyNumber}'` : 'NULL'},
-        'pending', ${data.lineItems ? `'${JSON.stringify(data.lineItems)}'` : 'NULL'},
-        ${data.notes ? `'${data.notes}'` : 'NULL'}, '${userId}', ${now}, ${now}
-      )
-    `));
+    const invoiceNumber = `DIAL-${new Date().getFullYear()}-${String((countResult[0]?.count || 0) + 1).padStart(5, '0')}`;
+    const safeBillingType = validateEnum(data.billingType, ALLOWED_BILLING_TYPES, 'session');
+    const now = new Date();
 
-    return this.getById(organizationId, id);
+    const insertData: InsertDialyseBilling = {
+      organizationId,
+      patientId: data.patientId || '',
+      sessionId: data.sessionId,
+      invoiceNumber,
+      billingDate: now,
+      sessionDate: data.sessionDate,
+      billingType: safeBillingType,
+      amount: data.amount || 0,
+      insuranceAmount: data.insuranceAmount || 0,
+      patientAmount: data.patientAmount || 0,
+      insuranceProvider: data.insuranceProvider,
+      insurancePolicyNumber: data.insurancePolicyNumber,
+      status: 'pending',
+      lineItems: data.lineItems,
+      notes: data.notes,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const result = await drizzleDb
+      .insert(dialyseBilling)
+      .values(insertData)
+      .returning();
+
+    return result[0];
   },
 
-  async update(organizationId: string, id: string, data: any) {
+  async update(organizationId: string, id: string, data: Partial<InsertDialyseBilling & { status?: string }>) {
     const existing = await this.getById(organizationId, id);
     if (!existing) throw new Error('Billing record not found');
 
-    const updates: string[] = [];
-    if (data.amount !== undefined) updates.push(`amount = ${data.amount}`);
-    if (data.insuranceAmount !== undefined) updates.push(`insurance_amount = ${data.insuranceAmount}`);
-    if (data.patientAmount !== undefined) updates.push(`patient_amount = ${data.patientAmount}`);
-    if (data.status !== undefined) updates.push(`status = '${data.status}'`);
+    const updateData: Partial<InsertDialyseBilling> = {
+      updatedAt: new Date(),
+    };
 
-    if (updates.length > 0) {
-      updates.push(`updated_at = ${Date.now()}`);
-      await drizzleDb.run(sql.raw(`UPDATE dialyse_billing SET ${updates.join(', ')} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    if (data.amount !== undefined) updateData.amount = data.amount;
+    if (data.insuranceAmount !== undefined) updateData.insuranceAmount = data.insuranceAmount;
+    if (data.patientAmount !== undefined) updateData.patientAmount = data.patientAmount;
+    if (data.status !== undefined) {
+      updateData.status = validateEnum(data.status, ALLOWED_BILLING_STATUS, 'pending');
     }
+
+    await drizzleDb
+      .update(dialyseBilling)
+      .set(updateData)
+      .where(and(
+        eq(dialyseBilling.id, id),
+        eq(dialyseBilling.organizationId, organizationId)
+      ));
 
     return this.getById(organizationId, id);
   },
 
   async markPaid(organizationId: string, id: string, paidAmount: number, paidDate: string) {
-    await drizzleDb.run(sql.raw(`
-      UPDATE dialyse_billing SET status = 'paid', paid_amount = ${paidAmount}, paid_date = ${new Date(paidDate).getTime()}, updated_at = ${Date.now()}
-      WHERE id = '${id}' AND organization_id = '${organizationId}'
-    `));
+    const safePaidDate = new Date(paidDate);
+    if (isNaN(safePaidDate.getTime())) throw new Error('Invalid paid date');
+
+    await drizzleDb
+      .update(dialyseBilling)
+      .set({
+        status: 'paid',
+        paidAmount,
+        paidDate: safePaidDate,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(dialyseBilling.id, id),
+        eq(dialyseBilling.organizationId, organizationId)
+      ));
+
     return this.getById(organizationId, id);
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb.run(sql.raw(`DELETE FROM dialyse_billing WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    await drizzleDb
+      .delete(dialyseBilling)
+      .where(and(
+        eq(dialyseBilling.id, id),
+        eq(dialyseBilling.organizationId, organizationId)
+      ));
   },
 
   async getStats(organizationId: string) {
-    return drizzleDb.get(sql.raw(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid,
-        SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue,
-        SUM(amount) as total_amount,
-        SUM(paid_amount) as total_paid,
-        SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount
-      FROM dialyse_billing WHERE organization_id = '${organizationId}'
-    `));
+    const result = await drizzleDb
+      .select({
+        total: count(),
+        pending: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'pending' THEN 1 ELSE 0 END`),
+        paid: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'paid' THEN 1 ELSE 0 END`),
+        overdue: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'overdue' THEN 1 ELSE 0 END`),
+        totalAmount: sum(dialyseBilling.amount),
+        totalPaid: sum(dialyseBilling.paidAmount),
+        pendingAmount: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'pending' THEN ${dialyseBilling.amount} ELSE 0 END`),
+      })
+      .from(dialyseBilling)
+      .where(eq(dialyseBilling.organizationId, organizationId));
+
+    return result[0];
   },
 };
 
@@ -330,95 +592,165 @@ export const billingService = {
 // ============================================================================
 
 export const transportService = {
-  async list(organizationId: string, filters: { status?: string; date?: string; patientId?: string; direction?: string; limit?: number; offset?: number } = {}) {
-    const { status, patientId, direction, limit = 25, offset = 0 } = filters;
+  async list(organizationId: string, filters: TransportFilters = {}) {
+    const { status, patientId, direction } = filters;
+    const { limit, offset } = validatePagination(filters.limit, filters.offset);
 
-    let whereClause = `t.organization_id = '${organizationId}'`;
-    if (status && status !== 'all') whereClause += ` AND t.status = '${status}'`;
-    if (patientId) whereClause += ` AND t.patient_id = '${patientId}'`;
-    if (direction && direction !== 'all') whereClause += ` AND t.direction = '${direction}'`;
+    const conditions = [eq(dialyseTransport.organizationId, organizationId)];
 
-    const dataResult = await drizzleDb.all(sql.raw(`
-      SELECT t.*,
-        p.medical_id as patient_medical_id,
-        c.first_name as patient_first_name,
-        c.last_name as patient_last_name
-      FROM dialyse_transport t
-      LEFT JOIN dialyse_patients p ON t.patient_id = p.id
-      LEFT JOIN contacts c ON p.contact_id = c.id
-      WHERE ${whereClause}
-      ORDER BY t.transport_date DESC, t.scheduled_time LIMIT ${limit} OFFSET ${offset}
-    `));
-    const countResult = await drizzleDb.get(sql.raw(`SELECT COUNT(*) as count FROM dialyse_transport t WHERE ${whereClause}`));
+    if (status && status !== 'all') {
+      const safeStatus = validateEnum(status, ALLOWED_TRANSPORT_STATUS, 'scheduled');
+      conditions.push(eq(dialyseTransport.status, safeStatus));
+    }
+
+    if (patientId) {
+      conditions.push(eq(dialyseTransport.patientId, patientId));
+    }
+
+    if (direction && direction !== 'all') {
+      const safeDirection = validateEnum(direction, ALLOWED_TRANSPORT_DIRECTIONS, 'pickup');
+      conditions.push(eq(dialyseTransport.direction, safeDirection));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [data, countResult] = await Promise.all([
+      drizzleDb
+        .select({
+          transport: dialyseTransport,
+          patientMedicalId: dialysePatients.medicalId,
+          patientFirstName: contacts.firstName,
+          patientLastName: contacts.lastName,
+        })
+        .from(dialyseTransport)
+        .leftJoin(dialysePatients, eq(dialyseTransport.patientId, dialysePatients.id))
+        .leftJoin(contacts, eq(dialysePatients.contactId, contacts.id))
+        .where(whereClause)
+        .orderBy(desc(dialyseTransport.transportDate))
+        .limit(limit)
+        .offset(offset),
+      drizzleDb
+        .select({ count: count() })
+        .from(dialyseTransport)
+        .where(whereClause),
+    ]);
 
     return {
-      data: dataResult || [],
-      total: (countResult as any)?.count || 0,
+      data: data.map(row => ({
+        ...row.transport,
+        patient_medical_id: row.patientMedicalId,
+        patient_first_name: row.patientFirstName,
+        patient_last_name: row.patientLastName,
+      })) || [],
+      total: countResult[0]?.count || 0,
     };
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb.get(sql.raw(`SELECT * FROM dialyse_transport WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    return drizzleDb
+      .select()
+      .from(dialyseTransport)
+      .where(and(
+        eq(dialyseTransport.id, id),
+        eq(dialyseTransport.organizationId, organizationId)
+      ))
+      .get();
   },
 
-  async create(organizationId: string, userId: string, data: any) {
-    const id = generateId();
-    const now = Date.now();
+  async create(organizationId: string, userId: string, data: Partial<InsertDialyseTransport>) {
+    const transportDate = data.transportDate ? new Date(data.transportDate as unknown as string) : new Date();
+    if (isNaN(transportDate.getTime())) throw new Error('Invalid transport date');
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_transport (
-        id, organization_id, patient_id, session_id, transport_date, direction,
-        transport_type, provider_name, provider_phone, vehicle_number, driver_name,
-        pickup_address, dropoff_address, scheduled_time, special_needs,
-        wheelchair_required, stretcher_required, oxygen_required, escort_required,
-        escort_name, status, cost, notes, created_by, created_at, updated_at
-      ) VALUES (
-        '${id}', '${organizationId}', '${data.patientId}', ${data.sessionId ? `'${data.sessionId}'` : 'NULL'},
-        ${new Date(data.transportDate).getTime()}, '${data.direction}', '${data.transportType}',
-        ${data.providerName ? `'${data.providerName}'` : 'NULL'},
-        ${data.providerPhone ? `'${data.providerPhone}'` : 'NULL'},
-        ${data.vehicleNumber ? `'${data.vehicleNumber}'` : 'NULL'},
-        ${data.driverName ? `'${data.driverName}'` : 'NULL'},
-        ${data.pickupAddress ? `'${data.pickupAddress}'` : 'NULL'},
-        ${data.dropoffAddress ? `'${data.dropoffAddress}'` : 'NULL'},
-        '${data.scheduledTime}', ${data.specialNeeds ? `'${data.specialNeeds}'` : 'NULL'},
-        ${data.wheelchairRequired ? 1 : 0}, ${data.stretcherRequired ? 1 : 0},
-        ${data.oxygenRequired ? 1 : 0}, ${data.escortRequired ? 1 : 0},
-        ${data.escortName ? `'${data.escortName}'` : 'NULL'},
-        'scheduled', ${data.cost || 0}, ${data.notes ? `'${data.notes}'` : 'NULL'},
-        '${userId}', ${now}, ${now}
-      )
-    `));
+    const safeDirection = validateEnum(data.direction, ALLOWED_TRANSPORT_DIRECTIONS, 'pickup');
+    const safeTransportType = validateEnum(data.transportType, ALLOWED_TRANSPORT_TYPES, 'ambulance');
+    const now = new Date();
 
-    return this.getById(organizationId, id);
+    const insertData: InsertDialyseTransport = {
+      organizationId,
+      patientId: data.patientId || '',
+      sessionId: data.sessionId,
+      transportDate,
+      direction: safeDirection,
+      transportType: safeTransportType,
+      providerName: data.providerName,
+      providerPhone: data.providerPhone,
+      vehicleNumber: data.vehicleNumber,
+      driverName: data.driverName,
+      pickupAddress: data.pickupAddress,
+      dropoffAddress: data.dropoffAddress,
+      scheduledTime: data.scheduledTime,
+      specialNeeds: data.specialNeeds,
+      wheelchairRequired: data.wheelchairRequired || false,
+      stretcherRequired: data.stretcherRequired || false,
+      oxygenRequired: data.oxygenRequired || false,
+      escortRequired: data.escortRequired || false,
+      escortName: data.escortName,
+      status: 'scheduled',
+      cost: data.cost || 0,
+      notes: data.notes,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const result = await drizzleDb
+      .insert(dialyseTransport)
+      .values(insertData)
+      .returning();
+
+    return result[0];
   },
 
-  async update(organizationId: string, id: string, data: any) {
+  async update(organizationId: string, id: string, data: Partial<InsertDialyseTransport>) {
     const existing = await this.getById(organizationId, id);
     if (!existing) throw new Error('Transport record not found');
 
-    const updates: string[] = [];
-    if (data.transportType !== undefined) updates.push(`transport_type = '${data.transportType}'`);
-    if (data.scheduledTime !== undefined) updates.push(`scheduled_time = '${data.scheduledTime}'`);
-    if (data.cost !== undefined) updates.push(`cost = ${data.cost}`);
+    const updateData: Partial<InsertDialyseTransport> = {
+      updatedAt: new Date(),
+    };
 
-    if (updates.length > 0) {
-      updates.push(`updated_at = ${Date.now()}`);
-      await drizzleDb.run(sql.raw(`UPDATE dialyse_transport SET ${updates.join(', ')} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    if (data.transportType !== undefined) {
+      updateData.transportType = validateEnum(data.transportType, ALLOWED_TRANSPORT_TYPES, 'ambulance');
     }
+    if (data.scheduledTime !== undefined) updateData.scheduledTime = data.scheduledTime;
+    if (data.cost !== undefined) updateData.cost = data.cost;
+
+    await drizzleDb
+      .update(dialyseTransport)
+      .set(updateData)
+      .where(and(
+        eq(dialyseTransport.id, id),
+        eq(dialyseTransport.organizationId, organizationId)
+      ));
 
     return this.getById(organizationId, id);
   },
 
   async updateStatus(organizationId: string, id: string, status: string, actualTime?: string) {
-    let updateSql = `status = '${status}', updated_at = ${Date.now()}`;
-    if (actualTime) updateSql += `, actual_time = '${actualTime}'`;
-    await drizzleDb.run(sql.raw(`UPDATE dialyse_transport SET ${updateSql} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    const safeStatus = validateEnum(status, ALLOWED_TRANSPORT_STATUS, 'scheduled');
+
+    await drizzleDb
+      .update(dialyseTransport)
+      .set({
+        status: safeStatus,
+        actualTime,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(dialyseTransport.id, id),
+        eq(dialyseTransport.organizationId, organizationId)
+      ));
+
     return this.getById(organizationId, id);
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb.run(sql.raw(`DELETE FROM dialyse_transport WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    await drizzleDb
+      .delete(dialyseTransport)
+      .where(and(
+        eq(dialyseTransport.id, id),
+        eq(dialyseTransport.organizationId, organizationId)
+      ));
   },
 
   async getStats(organizationId: string) {
@@ -427,16 +759,19 @@ export const transportService = {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    return drizzleDb.get(sql.raw(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled,
-        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
-        SUM(CASE WHEN status = 'in_transit' THEN 1 ELSE 0 END) as in_transit,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN transport_date >= ${today.getTime()} AND transport_date < ${tomorrow.getTime()} THEN 1 ELSE 0 END) as today
-      FROM dialyse_transport WHERE organization_id = '${organizationId}'
-    `));
+    const result = await drizzleDb
+      .select({
+        total: count(),
+        scheduled: sum(sql<number>`CASE WHEN ${dialyseTransport.status} = 'scheduled' THEN 1 ELSE 0 END`),
+        confirmed: sum(sql<number>`CASE WHEN ${dialyseTransport.status} = 'confirmed' THEN 1 ELSE 0 END`),
+        inTransit: sum(sql<number>`CASE WHEN ${dialyseTransport.status} = 'in_transit' THEN 1 ELSE 0 END`),
+        completed: sum(sql<number>`CASE WHEN ${dialyseTransport.status} = 'completed' THEN 1 ELSE 0 END`),
+        today: sum(sql<number>`CASE WHEN ${dialyseTransport.transportDate} >= ${today.getTime()} AND ${dialyseTransport.transportDate} < ${tomorrow.getTime()} THEN 1 ELSE 0 END`),
+      })
+      .from(dialyseTransport)
+      .where(eq(dialyseTransport.organizationId, organizationId));
+
+    return result[0];
   },
 };
 
@@ -445,116 +780,188 @@ export const transportService = {
 // ============================================================================
 
 export const consumablesService = {
-  async list(organizationId: string, filters: { category?: string; status?: string; lowStock?: boolean; limit?: number; offset?: number } = {}) {
-    const { category, status, lowStock, limit = 50, offset = 0 } = filters;
+  async list(organizationId: string, filters: ConsumableFilters = {}) {
+    const { category, status, lowStock } = filters;
+    const { limit, offset } = validatePagination(filters.limit, filters.offset);
 
-    let whereClause = `organization_id = '${organizationId}'`;
-    if (category && category !== 'all') whereClause += ` AND category = '${category}'`;
-    if (status && status !== 'all') whereClause += ` AND status = '${status}'`;
-    if (lowStock) whereClause += ` AND current_stock <= min_stock`;
+    const conditions = [eq(dialyseConsumables.organizationId, organizationId)];
 
-    const dataResult = await drizzleDb.all(sql.raw(`SELECT * FROM dialyse_consumables WHERE ${whereClause} ORDER BY name LIMIT ${limit} OFFSET ${offset}`));
-    const countResult = await drizzleDb.get(sql.raw(`SELECT COUNT(*) as count FROM dialyse_consumables WHERE ${whereClause}`));
+    if (category && category !== 'all') {
+      const safeCategory = validateEnum(category, ALLOWED_CONSUMABLE_CATEGORIES, 'other');
+      conditions.push(eq(dialyseConsumables.category, safeCategory));
+    }
+
+    if (status && status !== 'all') {
+      const safeStatus = validateEnum(status, ALLOWED_CONSUMABLE_STATUS, 'active');
+      conditions.push(eq(dialyseConsumables.status, safeStatus));
+    }
+
+    if (lowStock) {
+      conditions.push(lte(dialyseConsumables.currentStock, dialyseConsumables.minStock));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [data, countResult] = await Promise.all([
+      drizzleDb
+        .select()
+        .from(dialyseConsumables)
+        .where(whereClause)
+        .orderBy(asc(dialyseConsumables.name))
+        .limit(Math.min(limit, 200))
+        .offset(offset),
+      drizzleDb
+        .select({ count: count() })
+        .from(dialyseConsumables)
+        .where(whereClause),
+    ]);
 
     return {
-      data: dataResult || [],
-      total: (countResult as any)?.count || 0,
+      data: data || [],
+      total: countResult[0]?.count || 0,
     };
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb.get(sql.raw(`SELECT * FROM dialyse_consumables WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    return drizzleDb
+      .select()
+      .from(dialyseConsumables)
+      .where(and(
+        eq(dialyseConsumables.id, id),
+        eq(dialyseConsumables.organizationId, organizationId)
+      ))
+      .get();
   },
 
-  async create(organizationId: string, userId: string, data: any) {
-    const id = generateId();
-    const now = Date.now();
+  async create(organizationId: string, userId: string, data: Partial<InsertDialyseConsumable>) {
+    const safeCategory = validateEnum(data.category, ALLOWED_CONSUMABLE_CATEGORIES, 'other');
+    const now = new Date();
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_consumables (
-        id, organization_id, inventory_item_id, name, code, category, description,
-        unit, current_stock, min_stock, max_stock, reorder_point, unit_cost,
-        supplier, manufacturer, expiry_tracking, lot_tracking, status, notes,
-        created_by, created_at, updated_at
-      ) VALUES (
-        '${id}', '${organizationId}', ${data.inventoryItemId ? `'${data.inventoryItemId}'` : 'NULL'},
-        '${data.name}', ${data.code ? `'${data.code}'` : 'NULL'}, '${data.category}',
-        ${data.description ? `'${data.description}'` : 'NULL'}, '${data.unit}',
-        ${data.currentStock || 0}, ${data.minStock || 0}, ${data.maxStock || 'NULL'},
-        ${data.reorderPoint || 'NULL'}, ${data.unitCost || 0},
-        ${data.supplier ? `'${data.supplier}'` : 'NULL'},
-        ${data.manufacturer ? `'${data.manufacturer}'` : 'NULL'},
-        ${data.expiryTracking !== false ? 1 : 0}, ${data.lotTracking !== false ? 1 : 0},
-        'active', ${data.notes ? `'${data.notes}'` : 'NULL'}, '${userId}', ${now}, ${now}
-      )
-    `));
+    const insertData: InsertDialyseConsumable = {
+      organizationId,
+      inventoryItemId: data.inventoryItemId,
+      name: data.name || '',
+      code: data.code,
+      category: safeCategory,
+      description: data.description,
+      unit: data.unit || 'unit',
+      currentStock: data.currentStock || 0,
+      minStock: data.minStock || 0,
+      maxStock: data.maxStock,
+      reorderPoint: data.reorderPoint,
+      unitCost: data.unitCost || 0,
+      supplier: data.supplier,
+      manufacturer: data.manufacturer,
+      expiryTracking: data.expiryTracking ?? true,
+      lotTracking: data.lotTracking ?? true,
+      status: 'active',
+      notes: data.notes,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return this.getById(organizationId, id);
+    const result = await drizzleDb
+      .insert(dialyseConsumables)
+      .values(insertData)
+      .returning();
+
+    return result[0];
   },
 
-  async update(organizationId: string, id: string, data: any) {
+  async update(organizationId: string, id: string, data: Partial<InsertDialyseConsumable & { status?: string }>) {
     const existing = await this.getById(organizationId, id);
     if (!existing) throw new Error('Consumable not found');
 
-    const updates: string[] = [];
-    if (data.name !== undefined) updates.push(`name = '${data.name}'`);
-    if (data.category !== undefined) updates.push(`category = '${data.category}'`);
-    if (data.unit !== undefined) updates.push(`unit = '${data.unit}'`);
-    if (data.minStock !== undefined) updates.push(`min_stock = ${data.minStock}`);
-    if (data.unitCost !== undefined) updates.push(`unit_cost = ${data.unitCost}`);
-    if (data.status !== undefined) updates.push(`status = '${data.status}'`);
+    const updateData: Partial<InsertDialyseConsumable> = {
+      updatedAt: new Date(),
+    };
 
-    if (updates.length > 0) {
-      updates.push(`updated_at = ${Date.now()}`);
-      await drizzleDb.run(sql.raw(`UPDATE dialyse_consumables SET ${updates.join(', ')} WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.category !== undefined) {
+      updateData.category = validateEnum(data.category, ALLOWED_CONSUMABLE_CATEGORIES, 'other');
     }
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.minStock !== undefined) updateData.minStock = data.minStock;
+    if (data.unitCost !== undefined) updateData.unitCost = data.unitCost;
+    if (data.status !== undefined) {
+      updateData.status = validateEnum(data.status, ALLOWED_CONSUMABLE_STATUS, 'active');
+    }
+
+    await drizzleDb
+      .update(dialyseConsumables)
+      .set(updateData)
+      .where(and(
+        eq(dialyseConsumables.id, id),
+        eq(dialyseConsumables.organizationId, organizationId)
+      ));
 
     return this.getById(organizationId, id);
   },
 
-  async adjustStock(organizationId: string, id: string, userId: string, movement: any) {
-    const consumable = await this.getById(organizationId, id) as any;
+  async adjustStock(
+    organizationId: string,
+    id: string,
+    userId: string,
+    movement: { type: 'in' | 'out'; quantity: number; lotNumber?: string; expiryDate?: string; reference?: string; sessionId?: string; notes?: string }
+  ) {
+    const consumable = await this.getById(organizationId, id);
     if (!consumable) throw new Error('Consumable not found');
 
-    const movementId = generateId();
-    const now = Date.now();
     const quantity = movement.type === 'out' ? -Math.abs(movement.quantity) : Math.abs(movement.quantity);
+    const expiryDate = movement.expiryDate ? new Date(movement.expiryDate) : undefined;
 
-    await drizzleDb.run(sql.raw(`
-      INSERT INTO dialyse_consumable_movements (
-        id, consumable_id, movement_type, quantity, lot_number, expiry_date,
-        reference, session_id, notes, created_by, created_at
-      ) VALUES (
-        '${movementId}', '${id}', '${movement.type}', ${quantity},
-        ${movement.lotNumber ? `'${movement.lotNumber}'` : 'NULL'},
-        ${movement.expiryDate ? new Date(movement.expiryDate).getTime() : 'NULL'},
-        ${movement.reference ? `'${movement.reference}'` : 'NULL'},
-        ${movement.sessionId ? `'${movement.sessionId}'` : 'NULL'},
-        ${movement.notes ? `'${movement.notes}'` : 'NULL'},
-        '${userId}', ${now}
-      )
-    `));
+    // Insert movement record
+    const movementData: InsertDialyseConsumableMovement = {
+      consumableId: id,
+      movementType: movement.type,
+      quantity,
+      lotNumber: movement.lotNumber,
+      expiryDate: expiryDate && !isNaN(expiryDate.getTime()) ? expiryDate : undefined,
+      reference: movement.reference,
+      sessionId: movement.sessionId,
+      notes: movement.notes,
+      createdBy: userId,
+      createdAt: new Date(),
+    };
 
-    const newStock = consumable.current_stock + quantity;
-    await drizzleDb.run(sql.raw(`UPDATE dialyse_consumables SET current_stock = ${newStock}, updated_at = ${now} WHERE id = '${id}'`));
+    await drizzleDb.insert(dialyseConsumableMovements).values(movementData);
+
+    // Update stock
+    const newStock = (consumable.currentStock || 0) + quantity;
+    await drizzleDb
+      .update(dialyseConsumables)
+      .set({
+        currentStock: newStock,
+        updatedAt: new Date(),
+      })
+      .where(eq(dialyseConsumables.id, id));
 
     return this.getById(organizationId, id);
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb.run(sql.raw(`DELETE FROM dialyse_consumables WHERE id = '${id}' AND organization_id = '${organizationId}'`));
+    await drizzleDb
+      .delete(dialyseConsumables)
+      .where(and(
+        eq(dialyseConsumables.id, id),
+        eq(dialyseConsumables.organizationId, organizationId)
+      ));
   },
 
   async getStats(organizationId: string) {
-    return drizzleDb.get(sql.raw(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN current_stock <= min_stock THEN 1 ELSE 0 END) as low_stock,
-        SUM(CASE WHEN current_stock = 0 THEN 1 ELSE 0 END) as out_of_stock,
-        SUM(current_stock * unit_cost) as total_value
-      FROM dialyse_consumables WHERE organization_id = '${organizationId}'
-    `));
+    const result = await drizzleDb
+      .select({
+        total: count(),
+        active: sum(sql<number>`CASE WHEN ${dialyseConsumables.status} = 'active' THEN 1 ELSE 0 END`),
+        lowStock: sum(sql<number>`CASE WHEN ${dialyseConsumables.currentStock} <= ${dialyseConsumables.minStock} THEN 1 ELSE 0 END`),
+        outOfStock: sum(sql<number>`CASE WHEN ${dialyseConsumables.currentStock} = 0 THEN 1 ELSE 0 END`),
+        totalValue: sum(sql<number>`${dialyseConsumables.currentStock} * ${dialyseConsumables.unitCost}`),
+      })
+      .from(dialyseConsumables)
+      .where(eq(dialyseConsumables.organizationId, organizationId));
+
+    return result[0];
   },
 };
 
@@ -566,7 +973,12 @@ export const reportsService = {
   async getReport(organizationId: string, period: string) {
     const now = new Date();
     let startDate: Date;
-    switch (period) {
+
+    // Validate period
+    const validPeriods = ['week', 'month', 'quarter', 'year'];
+    const safePeriod = validPeriods.includes(period) ? period : 'month';
+
+    switch (safePeriod) {
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
@@ -584,42 +996,58 @@ export const reportsService = {
     }
 
     const [sessionsData, patientsData, billingData, alertsData] = await Promise.all([
-      drizzleDb.get(sql.raw(`
-        SELECT
-          COUNT(*) as total_sessions,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_sessions,
-          SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_sessions,
-          AVG(actual_duration_minutes) as avg_duration
-        FROM dialyse_sessions WHERE organization_id = '${organizationId}' AND session_date >= ${startDate.getTime()}
-      `)),
-      drizzleDb.get(sql.raw(`
-        SELECT COUNT(*) as total_patients,
-          SUM(CASE WHEN patient_status = 'active' THEN 1 ELSE 0 END) as active_patients
-        FROM dialyse_patients WHERE organization_id = '${organizationId}'
-      `)),
-      drizzleDb.get(sql.raw(`
-        SELECT COUNT(*) as total_invoices,
-          SUM(amount) as total_billed,
-          SUM(paid_amount) as total_collected,
-          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount
-        FROM dialyse_billing WHERE organization_id = '${organizationId}' AND billing_date >= ${startDate.getTime()}
-      `)),
-      drizzleDb.get(sql.raw(`
-        SELECT COUNT(*) as total_alerts,
-          SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical_alerts,
-          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_alerts
-        FROM dialyse_clinical_alerts WHERE organization_id = '${organizationId}' AND created_at >= ${startDate.getTime()}
-      `)),
+      drizzleDb
+        .select({
+          totalSessions: count(),
+          completedSessions: sum(sql<number>`CASE WHEN ${dialysisSessions.status} = 'completed' THEN 1 ELSE 0 END`),
+          cancelledSessions: sum(sql<number>`CASE WHEN ${dialysisSessions.status} = 'cancelled' THEN 1 ELSE 0 END`),
+          avgDuration: sql<number>`AVG(${dialysisSessions.actualDurationMinutes})`,
+        })
+        .from(dialysisSessions)
+        .where(and(
+          eq(dialysisSessions.organizationId, organizationId),
+          gte(dialysisSessions.sessionDate, startDate)
+        )),
+      drizzleDb
+        .select({
+          totalPatients: count(),
+          activePatients: sum(sql<number>`CASE WHEN ${dialysePatients.patientStatus} = 'active' THEN 1 ELSE 0 END`),
+        })
+        .from(dialysePatients)
+        .where(eq(dialysePatients.organizationId, organizationId)),
+      drizzleDb
+        .select({
+          totalInvoices: count(),
+          totalBilled: sum(dialyseBilling.amount),
+          totalCollected: sum(dialyseBilling.paidAmount),
+          pendingAmount: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'pending' THEN ${dialyseBilling.amount} ELSE 0 END`),
+        })
+        .from(dialyseBilling)
+        .where(and(
+          eq(dialyseBilling.organizationId, organizationId),
+          gte(dialyseBilling.billingDate, startDate)
+        )),
+      drizzleDb
+        .select({
+          totalAlerts: count(),
+          criticalAlerts: sum(sql<number>`CASE WHEN ${clinicalAlerts.severity} = 'critical' THEN 1 ELSE 0 END`),
+          activeAlerts: sum(sql<number>`CASE WHEN ${clinicalAlerts.status} = 'active' THEN 1 ELSE 0 END`),
+        })
+        .from(clinicalAlerts)
+        .where(and(
+          eq(clinicalAlerts.organizationId, organizationId),
+          gte(clinicalAlerts.createdAt, startDate)
+        )),
     ]);
 
     return {
-      period,
+      period: safePeriod,
       startDate: startDate.toISOString(),
       endDate: now.toISOString(),
-      sessions: sessionsData,
-      patients: patientsData,
-      billing: billingData,
-      alerts: alertsData,
+      sessions: sessionsData[0],
+      patients: patientsData[0],
+      billing: billingData[0],
+      alerts: alertsData[0],
     };
   },
 };

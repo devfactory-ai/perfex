@@ -129,8 +129,15 @@ const CardiologyPatientFormPage = lazy(() => import('./pages/cardiology/Cardiolo
 const CardiologyPatientDetailPage = lazy(() => import('./pages/cardiology/CardiologyPatientDetailPage'));
 const CardiologyConsultationsPage = lazy(() => import('./pages/cardiology/CardiologyConsultationsPage'));
 const CardiologyEcgPage = lazy(() => import('./pages/cardiology/CardiologyEcgPage'));
+const CardiologyEchoPage = lazy(() => import('./pages/cardiology/CardiologyEchoPage'));
 const CardiologyPacemakersPage = lazy(() => import('./pages/cardiology/CardiologyPacemakersPage'));
 const CardiologyStentsPage = lazy(() => import('./pages/cardiology/CardiologyStentsPage'));
+const CardiologyRiskScoresPage = lazy(() => import('./pages/cardiology/CardiologyRiskScoresPage'));
+const CardiologyMedicationsPage = lazy(() => import('./pages/cardiology/CardiologyMedicationsPage'));
+const CardiologyEventsPage = lazy(() => import('./pages/cardiology/CardiologyEventsPage'));
+const CardiologyAlertsPage = lazy(() => import('./pages/cardiology/CardiologyAlertsPage'));
+const CardiologyAppointmentsPage = lazy(() => import('./pages/cardiology/CardiologyAppointmentsPage'));
+const CardiologyReportsPage = lazy(() => import('./pages/cardiology/CardiologyReportsPage'));
 
 // Ophthalmology pages (Healthcare - Ophthalmology module)
 const OphthalmologyDashboardPage = lazy(() => import('./pages/ophthalmology/OphthalmologyDashboardPage'));
@@ -141,6 +148,37 @@ const OphthalmologyConsultationsPage = lazy(() => import('./pages/ophthalmology/
 const OphthalmologyOctPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOctPage'));
 const OphthalmologyVisualFieldsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyVisualFieldsPage'));
 const OphthalmologyIvtPage = lazy(() => import('./pages/ophthalmology/OphthalmologyIvtPage'));
+const OphthalmologyBiometryPage = lazy(() => import('./pages/ophthalmology/OphthalmologyBiometryPage'));
+const OphthalmologyIolImplantsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyIolImplantsPage'));
+const OphthalmologySurgeriesPage = lazy(() => import('./pages/ophthalmology/OphthalmologySurgeriesPage'));
+const OphthalmologyRefractionPage = lazy(() => import('./pages/ophthalmology/OphthalmologyRefractionPage'));
+const OphthalmologyTonometryPage = lazy(() => import('./pages/ophthalmology/OphthalmologyTonometryPage'));
+const OphthalmologyOsdiPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOsdiPage'));
+const OphthalmologyAlertsPage = lazy(() => import('./pages/ophthalmology/OphthalmologyAlertsPage'));
+// Ophthalmology form pages
+const OphthalmologySurgeryFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologySurgeryFormPage'));
+const OphthalmologyConsultationFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyConsultationFormPage'));
+const OphthalmologyOctFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOctFormPage'));
+const OphthalmologyIvtFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyIvtFormPage'));
+const OphthalmologyBiometryFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyBiometryFormPage'));
+
+// Cardiology form pages
+const CardiologyConsultationFormPage = lazy(() => import('./pages/cardiology/CardiologyConsultationFormPage'));
+const CardiologyEcgFormPage = lazy(() => import('./pages/cardiology/CardiologyEcgFormPage'));
+const CardiologyEchoFormPage = lazy(() => import('./pages/cardiology/CardiologyEchoFormPage'));
+const CardiologyPacemakerFormPage = lazy(() => import('./pages/cardiology/CardiologyPacemakerFormPage'));
+const CardiologyStentFormPage = lazy(() => import('./pages/cardiology/CardiologyStentFormPage'));
+const CardiologyRiskScoresFormPage = lazy(() => import('./pages/cardiology/CardiologyRiskScoresFormPage'));
+const CardiologyMedicationsFormPage = lazy(() => import('./pages/cardiology/CardiologyMedicationsFormPage'));
+const CardiologyEventsFormPage = lazy(() => import('./pages/cardiology/CardiologyEventsFormPage'));
+const CardiologyAppointmentsFormPage = lazy(() => import('./pages/cardiology/CardiologyAppointmentsFormPage'));
+
+// Ophthalmology additional form pages
+const OphthalmologyTonometryFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyTonometryFormPage'));
+const OphthalmologyVisualFieldsFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyVisualFieldsFormPage'));
+const OphthalmologyIolImplantsFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyIolImplantsFormPage'));
+const OphthalmologyOsdiFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOsdiFormPage'));
+const OphthalmologyRefractionFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyRefractionFormPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -294,9 +332,34 @@ function App() {
             <Route path="cardiology/patients/:id" element={<Suspense fallback={<PageLoader />}><CardiologyPatientDetailPage /></Suspense>} />
             <Route path="cardiology/patients/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyPatientFormPage /></Suspense>} />
             <Route path="cardiology/consultations" element={<Suspense fallback={<PageLoader />}><CardiologyConsultationsPage /></Suspense>} />
+            <Route path="cardiology/consultations/new" element={<Suspense fallback={<PageLoader />}><CardiologyConsultationFormPage /></Suspense>} />
+            <Route path="cardiology/consultations/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyConsultationFormPage /></Suspense>} />
             <Route path="cardiology/ecg" element={<Suspense fallback={<PageLoader />}><CardiologyEcgPage /></Suspense>} />
+            <Route path="cardiology/ecg/new" element={<Suspense fallback={<PageLoader />}><CardiologyEcgFormPage /></Suspense>} />
+            <Route path="cardiology/ecg/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyEcgFormPage /></Suspense>} />
+            <Route path="cardiology/echo" element={<Suspense fallback={<PageLoader />}><CardiologyEchoPage /></Suspense>} />
+            <Route path="cardiology/echo/new" element={<Suspense fallback={<PageLoader />}><CardiologyEchoFormPage /></Suspense>} />
+            <Route path="cardiology/echo/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyEchoFormPage /></Suspense>} />
             <Route path="cardiology/pacemakers" element={<Suspense fallback={<PageLoader />}><CardiologyPacemakersPage /></Suspense>} />
+            <Route path="cardiology/pacemakers/new" element={<Suspense fallback={<PageLoader />}><CardiologyPacemakerFormPage /></Suspense>} />
+            <Route path="cardiology/pacemakers/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyPacemakerFormPage /></Suspense>} />
             <Route path="cardiology/stents" element={<Suspense fallback={<PageLoader />}><CardiologyStentsPage /></Suspense>} />
+            <Route path="cardiology/stents/new" element={<Suspense fallback={<PageLoader />}><CardiologyStentFormPage /></Suspense>} />
+            <Route path="cardiology/stents/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyStentFormPage /></Suspense>} />
+            <Route path="cardiology/risk-scores" element={<Suspense fallback={<PageLoader />}><CardiologyRiskScoresPage /></Suspense>} />
+            <Route path="cardiology/risk-scores/new" element={<Suspense fallback={<PageLoader />}><CardiologyRiskScoresFormPage /></Suspense>} />
+            <Route path="cardiology/risk-scores/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyRiskScoresFormPage /></Suspense>} />
+            <Route path="cardiology/medications" element={<Suspense fallback={<PageLoader />}><CardiologyMedicationsPage /></Suspense>} />
+            <Route path="cardiology/medications/new" element={<Suspense fallback={<PageLoader />}><CardiologyMedicationsFormPage /></Suspense>} />
+            <Route path="cardiology/medications/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyMedicationsFormPage /></Suspense>} />
+            <Route path="cardiology/events" element={<Suspense fallback={<PageLoader />}><CardiologyEventsPage /></Suspense>} />
+            <Route path="cardiology/events/new" element={<Suspense fallback={<PageLoader />}><CardiologyEventsFormPage /></Suspense>} />
+            <Route path="cardiology/events/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyEventsFormPage /></Suspense>} />
+            <Route path="cardiology/alerts" element={<Suspense fallback={<PageLoader />}><CardiologyAlertsPage /></Suspense>} />
+            <Route path="cardiology/appointments" element={<Suspense fallback={<PageLoader />}><CardiologyAppointmentsPage /></Suspense>} />
+            <Route path="cardiology/appointments/new" element={<Suspense fallback={<PageLoader />}><CardiologyAppointmentsFormPage /></Suspense>} />
+            <Route path="cardiology/appointments/:id/edit" element={<Suspense fallback={<PageLoader />}><CardiologyAppointmentsFormPage /></Suspense>} />
+            <Route path="cardiology/reports" element={<Suspense fallback={<PageLoader />}><CardiologyReportsPage /></Suspense>} />
             {/* Ophthalmology (Healthcare - Ophthalmology module) */}
             <Route path="ophthalmology" element={<Suspense fallback={<PageLoader />}><OphthalmologyDashboardPage /></Suspense>} />
             <Route path="ophthalmology/patients" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientsPage /></Suspense>} />
@@ -304,9 +367,36 @@ function App() {
             <Route path="ophthalmology/patients/:id" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientDetailPage /></Suspense>} />
             <Route path="ophthalmology/patients/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyPatientFormPage /></Suspense>} />
             <Route path="ophthalmology/consultations" element={<Suspense fallback={<PageLoader />}><OphthalmologyConsultationsPage /></Suspense>} />
+            <Route path="ophthalmology/consultations/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyConsultationFormPage /></Suspense>} />
+            <Route path="ophthalmology/consultations/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyConsultationFormPage /></Suspense>} />
             <Route path="ophthalmology/oct" element={<Suspense fallback={<PageLoader />}><OphthalmologyOctPage /></Suspense>} />
+            <Route path="ophthalmology/oct/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyOctFormPage /></Suspense>} />
+            <Route path="ophthalmology/oct/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyOctFormPage /></Suspense>} />
             <Route path="ophthalmology/visual-fields" element={<Suspense fallback={<PageLoader />}><OphthalmologyVisualFieldsPage /></Suspense>} />
+            <Route path="ophthalmology/visual-fields/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyVisualFieldsFormPage /></Suspense>} />
+            <Route path="ophthalmology/visual-fields/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyVisualFieldsFormPage /></Suspense>} />
             <Route path="ophthalmology/ivt-injections" element={<Suspense fallback={<PageLoader />}><OphthalmologyIvtPage /></Suspense>} />
+            <Route path="ophthalmology/ivt-injections/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyIvtFormPage /></Suspense>} />
+            <Route path="ophthalmology/ivt-injections/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyIvtFormPage /></Suspense>} />
+            <Route path="ophthalmology/biometry" element={<Suspense fallback={<PageLoader />}><OphthalmologyBiometryPage /></Suspense>} />
+            <Route path="ophthalmology/biometry/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyBiometryFormPage /></Suspense>} />
+            <Route path="ophthalmology/biometry/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyBiometryFormPage /></Suspense>} />
+            <Route path="ophthalmology/iol-implants" element={<Suspense fallback={<PageLoader />}><OphthalmologyIolImplantsPage /></Suspense>} />
+            <Route path="ophthalmology/iol-implants/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyIolImplantsFormPage /></Suspense>} />
+            <Route path="ophthalmology/iol-implants/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyIolImplantsFormPage /></Suspense>} />
+            <Route path="ophthalmology/surgeries" element={<Suspense fallback={<PageLoader />}><OphthalmologySurgeriesPage /></Suspense>} />
+            <Route path="ophthalmology/surgeries/new" element={<Suspense fallback={<PageLoader />}><OphthalmologySurgeryFormPage /></Suspense>} />
+            <Route path="ophthalmology/surgeries/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologySurgeryFormPage /></Suspense>} />
+            <Route path="ophthalmology/refraction" element={<Suspense fallback={<PageLoader />}><OphthalmologyRefractionPage /></Suspense>} />
+            <Route path="ophthalmology/refraction/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyRefractionFormPage /></Suspense>} />
+            <Route path="ophthalmology/refraction/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyRefractionFormPage /></Suspense>} />
+            <Route path="ophthalmology/tonometry" element={<Suspense fallback={<PageLoader />}><OphthalmologyTonometryPage /></Suspense>} />
+            <Route path="ophthalmology/tonometry/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyTonometryFormPage /></Suspense>} />
+            <Route path="ophthalmology/tonometry/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyTonometryFormPage /></Suspense>} />
+            <Route path="ophthalmology/osdi-scores" element={<Suspense fallback={<PageLoader />}><OphthalmologyOsdiPage /></Suspense>} />
+            <Route path="ophthalmology/osdi-scores/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyOsdiFormPage /></Suspense>} />
+            <Route path="ophthalmology/osdi-scores/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyOsdiFormPage /></Suspense>} />
+            <Route path="ophthalmology/alerts" element={<Suspense fallback={<PageLoader />}><OphthalmologyAlertsPage /></Suspense>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

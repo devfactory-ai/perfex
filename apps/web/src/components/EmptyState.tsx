@@ -5,17 +5,6 @@
 
 import { ReactNode } from 'react';
 
-interface EmptyStateProps {
-  title: string;
-  description?: string;
-  icon?: 'inbox' | 'search' | 'users' | 'document' | 'chart' | 'box' | 'folder' | 'invoice' | 'payment' | 'company' | 'project' | 'task' | 'inventory' | 'employee' | 'workflow' | 'audit';
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-  children?: ReactNode;
-}
-
 const EmptyStateIllustrations = {
   inbox: (
     <svg className="mx-auto w-48 h-48" viewBox="0 0 200 200" fill="none">
@@ -224,7 +213,71 @@ const EmptyStateIllustrations = {
       <path d="M150 55 L154 59 L163 50" stroke="white" strokeWidth="2" />
     </svg>
   ),
+  receipt: (
+    <svg className="mx-auto w-48 h-48" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="80" fill="#F0FDF4" />
+      <path d="M60 40 L140 40 L140 160 L130 150 L120 160 L110 150 L100 160 L90 150 L80 160 L70 150 L60 160 Z" fill="white" stroke="#86EFAC" strokeWidth="2" />
+      <line x1="75" y1="65" x2="125" y2="65" stroke="#BBF7D0" strokeWidth="3" strokeLinecap="round" />
+      <line x1="75" y1="85" x2="115" y2="85" stroke="#BBF7D0" strokeWidth="3" strokeLinecap="round" />
+      <line x1="75" y1="105" x2="110" y2="105" stroke="#BBF7D0" strokeWidth="3" strokeLinecap="round" />
+      <line x1="75" y1="125" x2="100" y2="125" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="145" cy="140" r="20" fill="#22C55E" />
+      <path d="M140 140 L144 144 L153 135" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ),
+  wrench: (
+    <svg className="mx-auto w-48 h-48" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="80" fill="#FEF3C7" />
+      <path d="M130 55 C145 70 145 95 130 110 L75 165 C70 170 60 170 55 165 L45 155 C40 150 40 140 45 135 L100 80 C85 65 85 40 100 25" fill="white" stroke="#F59E0B" strokeWidth="3" />
+      <circle cx="60" cy="150" r="8" fill="#F59E0B" />
+      <path d="M135 50 L150 35 L165 50 L150 65 Z" fill="#F59E0B" />
+      <circle cx="150" cy="130" r="20" fill="#F59E0B" />
+      <path d="M145 130 L149 134 L158 125" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ),
+  clipboard: (
+    <svg className="mx-auto w-48 h-48" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="80" fill="#EFF6FF" />
+      <rect x="55" y="50" width="90" height="110" rx="6" fill="white" stroke="#93C5FD" strokeWidth="2" />
+      <rect x="75" y="40" width="50" height="20" rx="4" fill="#3B82F6" />
+      <circle cx="100" cy="50" r="5" fill="white" />
+      <line x1="70" y1="80" x2="130" y2="80" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
+      <line x1="70" y1="100" x2="120" y2="100" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
+      <line x1="70" y1="120" x2="110" y2="120" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
+      <line x1="70" y1="140" x2="95" y2="140" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="145" cy="140" r="20" fill="#3B82F6" />
+      <path d="M140 140 L144 144 L153 135" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ),
+  truck: (
+    <svg className="mx-auto w-48 h-48" viewBox="0 0 200 200" fill="none">
+      <circle cx="100" cy="100" r="80" fill="#EDE9FE" />
+      <rect x="35" y="70" width="80" height="55" rx="4" fill="white" stroke="#A78BFA" strokeWidth="2" />
+      <path d="M115 85 L115 125 L155 125 L155 100 L140 85 Z" fill="white" stroke="#A78BFA" strokeWidth="2" />
+      <rect x="120" y="95" width="20" height="15" rx="2" fill="#DDD6FE" />
+      <circle cx="65" cy="130" r="15" fill="#8B5CF6" />
+      <circle cx="65" cy="130" r="8" fill="white" />
+      <circle cx="135" cy="130" r="15" fill="#8B5CF6" />
+      <circle cx="135" cy="130" r="8" fill="white" />
+      <rect x="45" y="80" width="30" height="20" rx="2" fill="#DDD6FE" />
+      <circle cx="155" cy="55" r="20" fill="#8B5CF6" />
+      <path d="M150 55 L154 59 L163 50" stroke="white" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  ),
 };
+
+type EmptyStateIconType = keyof typeof EmptyStateIllustrations;
+
+interface EmptyStateProps {
+  title: string;
+  description?: string;
+  icon?: EmptyStateIconType;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  children?: ReactNode;
+}
 
 export function EmptyState({
   title,

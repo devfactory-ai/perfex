@@ -6,7 +6,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { User } from 'lucide-react';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { PageHeader, SectionCard, Button, getStatusColor } from '@/components/healthcare';
 
 interface DialysePatient {
   id: string;
@@ -76,8 +80,10 @@ interface LabResult {
 
 export function DialysePatientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | 'labs' | 'prescriptions' | 'accesses'>('overview');
 
   // Fetch patient details
@@ -136,16 +142,17 @@ export function DialysePatientDetailPage() {
       await api.delete(`/dialyse/patients/${id}`);
     },
     onSuccess: () => {
+      toast.success(t('dialyse.patientDeleted'));
       queryClient.invalidateQueries({ queryKey: ['dialyse-patients'] });
       navigate('/dialyse/patients');
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
   const handleDelete = () => {
-    if (patient && confirm(`Êtes-vous sûr de vouloir supprimer "${patient.contact.firstName} ${patient.contact.lastName}" ? Cette action est irréversible.`)) {
+    if (patient && confirm(`${t('dialyse.confirmDeletePatient')} "${patient.contact.firstName} ${patient.contact.lastName}" ? ${t('dialyse.actionIrreversible')}`)) {
       deleteMutation.mutate();
     }
   };
@@ -156,63 +163,29 @@ export function DialysePatientDetailPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      active: 'bg-green-100 text-green-800',
-      transferred: 'bg-blue-100 text-blue-800',
-      deceased: 'bg-gray-100 text-gray-800',
-      transplanted: 'bg-purple-100 text-purple-800',
-      recovered: 'bg-teal-100 text-teal-800',
-    };
-    const labels: Record<string, string> = {
-      active: 'Actif',
-      transferred: 'Transféré',
-      deceased: 'Décédé',
-      transplanted: 'Transplanté',
-      recovered: 'Guéri',
-    };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status] || status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+        {t(`dialyse.patientStatus.${status}`)}
       </span>
     );
   };
 
   const getSerologyBadge = (status: string) => {
-    if (status === 'positive') return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Positif</span>;
-    if (status === 'negative') return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Négatif</span>;
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Inconnu</span>;
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+        {t(`dialyse.serologyStatus.${status}`)}
+      </span>
+    );
   };
 
   const getAccessTypeName = (type: string) => {
-    const names: Record<string, string> = {
-      fav: 'FAV',
-      catheter_permanent: 'Cathéter permanent',
-      catheter_temporary: 'Cathéter temporaire',
-      graft: 'Greffon',
-    };
-    return names[type] || type;
+    return t(`dialyse.vascularAccessType.${type}`);
   };
 
   const getSessionStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      scheduled: 'bg-blue-100 text-blue-800',
-      checked_in: 'bg-yellow-100 text-yellow-800',
-      in_progress: 'bg-green-100 text-green-800',
-      completed: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800',
-      no_show: 'bg-orange-100 text-orange-800',
-    };
-    const labels: Record<string, string> = {
-      scheduled: 'Planifiée',
-      checked_in: 'Arrivé',
-      in_progress: 'En cours',
-      completed: 'Terminée',
-      cancelled: 'Annulée',
-      no_show: 'Absent',
-    };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status] || status}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+        {t(`dialyse.sessionStatus.${status}`)}
       </span>
     );
   };
@@ -222,7 +195,7 @@ export function DialysePatientDetailPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Chargement du patient...</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t('dialyse.loadingPatient')}</p>
         </div>
       </div>
     );
@@ -231,9 +204,9 @@ export function DialysePatientDetailPage() {
   if (error || !patient) {
     return (
       <div className="p-6 text-center">
-        <p className="text-destructive">Patient non trouvé</p>
+        <p className="text-destructive">{t('dialyse.patientNotFound')}</p>
         <Link to="/dialyse/patients" className="text-primary mt-4 inline-block">
-          Retour à la liste
+          {t('dialyse.backToList')}
         </Link>
       </div>
     );
@@ -242,58 +215,47 @@ export function DialysePatientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            to="/dialyse/patients"
-            className="p-2 rounded-md hover:bg-accent"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">
-                {patient.contact.firstName} {patient.contact.lastName}
-              </h1>
-              {getStatusBadge(patient.patientStatus)}
-              {patient.requiresIsolation && (
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  Isolation requise
-                </span>
-              )}
-            </div>
-            <p className="text-muted-foreground">
-              ID Médical: {patient.medicalId} | {patient.contact.email}
-            </p>
+      <PageHeader
+        title={`${patient.contact.firstName} ${patient.contact.lastName}`}
+        subtitle={`ID Médical: ${patient.medicalId} | ${patient.contact.email}`}
+        icon={User}
+        module="dialyse"
+        onBack={() => navigate('/dialyse/patients')}
+        actions={
+          <div className="flex items-center gap-3">
+            {getStatusBadge(patient.patientStatus)}
+            {patient.requiresIsolation && (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('urgent')}`}>
+                {t('dialyse.isolationRequired')}
+              </span>
+            )}
+            <Button
+              module="dialyse"
+              variant="outline"
+              onClick={() => navigate(`/dialyse/patients/${id}/edit`)}
+            >
+              {t('dialyse.edit')}
+            </Button>
+            <Button
+              module="dialyse"
+              variant="danger"
+              onClick={handleDelete}
+            >
+              {t('dialyse.delete')}
+            </Button>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/dialyse/patients/${id}/edit`)}
-            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Modifier
-          </button>
-          <button
-            onClick={handleDelete}
-            className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
-          >
-            Supprimer
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs */}
       <div className="border-b">
         <nav className="flex gap-4">
           {[
-            { key: 'overview', label: 'Vue générale' },
-            { key: 'sessions', label: 'Séances' },
-            { key: 'labs', label: 'Laboratoire' },
-            { key: 'prescriptions', label: 'Prescriptions' },
-            { key: 'accesses', label: 'Accès vasculaires' },
+            { key: 'overview', label: t('dialyse.tabs.overview') },
+            { key: 'sessions', label: t('dialyse.tabs.sessions') },
+            { key: 'labs', label: t('dialyse.tabs.labs') },
+            { key: 'prescriptions', label: t('dialyse.tabs.prescriptions') },
+            { key: 'accesses', label: t('dialyse.tabs.accesses') },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -314,145 +276,146 @@ export function DialysePatientDetailPage() {
       {activeTab === 'overview' && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Patient Info */}
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Informations Patient</h3>
+          <SectionCard className="p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('dialyse.patientInfo')}</h3>
             <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Groupe sanguin</dt>
+                <dt className="text-muted-foreground">{t('dialyse.bloodType')}</dt>
                 <dd className="font-medium">{patient.bloodType || '-'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Poids sec</dt>
+                <dt className="text-muted-foreground">{t('dialyse.dryWeight')}</dt>
                 <dd className="font-medium">{patient.dryWeight ? `${patient.dryWeight} kg` : '-'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Début dialyse</dt>
+                <dt className="text-muted-foreground">{t('dialyse.dialysisStartDate')}</dt>
                 <dd className="font-medium">{formatDate(patient.dialysisStartDate)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Étiologie</dt>
+                <dt className="text-muted-foreground">{t('dialyse.etiology')}</dt>
                 <dd className="font-medium">{patient.renalFailureEtiology || '-'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Téléphone</dt>
+                <dt className="text-muted-foreground">{t('dialyse.phone')}</dt>
                 <dd className="font-medium">{patient.contact.phone || '-'}</dd>
               </div>
             </dl>
-          </div>
+          </SectionCard>
 
           {/* Serology */}
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Sérologie</h3>
+          <SectionCard className="p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('dialyse.serology')}</h3>
             <dl className="space-y-3">
               <div className="flex justify-between items-center">
-                <dt className="text-muted-foreground">VIH</dt>
+                <dt className="text-muted-foreground">{t('dialyse.hiv')}</dt>
                 <dd>{getSerologyBadge(patient.hivStatus)}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-muted-foreground">VHB</dt>
+                <dt className="text-muted-foreground">{t('dialyse.hbv')}</dt>
                 <dd>{getSerologyBadge(patient.hbvStatus)}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-muted-foreground">VHC</dt>
+                <dt className="text-muted-foreground">{t('dialyse.hcv')}</dt>
                 <dd>{getSerologyBadge(patient.hcvStatus)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Dernière mise à jour</dt>
+                <dt className="text-muted-foreground">{t('dialyse.lastUpdate')}</dt>
                 <dd className="font-medium">{formatDate(patient.serologyLastUpdate)}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-muted-foreground">Vacciné Hépatite B</dt>
+                <dt className="text-muted-foreground">{t('dialyse.hepatitisBVaccinated')}</dt>
                 <dd>
                   {patient.hepatitisBVaccinated ? (
-                    <span className="text-green-600">Oui</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{t('dialyse.yes')}</span>
                   ) : (
-                    <span className="text-red-600">Non</span>
+                    <span className="font-medium text-slate-600 dark:text-slate-400">{t('dialyse.no')}</span>
                   )}
                 </dd>
               </div>
             </dl>
-          </div>
+          </SectionCard>
 
           {/* Emergency Contact */}
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Contact d'urgence</h3>
+          <SectionCard className="p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('dialyse.emergencyContact')}</h3>
             {patient.emergencyContactName ? (
               <dl className="space-y-3">
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Nom</dt>
+                  <dt className="text-muted-foreground">{t('dialyse.name')}</dt>
                   <dd className="font-medium">{patient.emergencyContactName}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Téléphone</dt>
+                  <dt className="text-muted-foreground">{t('dialyse.phone')}</dt>
                   <dd className="font-medium">{patient.emergencyContactPhone || '-'}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Relation</dt>
+                  <dt className="text-muted-foreground">{t('dialyse.relation')}</dt>
                   <dd className="font-medium">{patient.emergencyContactRelation || '-'}</dd>
                 </div>
               </dl>
             ) : (
-              <p className="text-muted-foreground">Aucun contact d'urgence renseigné</p>
+              <p className="text-muted-foreground">{t('dialyse.noEmergencyContact')}</p>
             )}
-          </div>
+          </SectionCard>
 
           {/* Active Access */}
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Accès vasculaire actif</h3>
+          <SectionCard className="p-6">
+            <h3 className="text-lg font-semibold mb-4">{t('dialyse.activeVascularAccess')}</h3>
             {accesses && accesses.filter(a => a.status === 'active').length > 0 ? (
               <dl className="space-y-3">
                 {accesses.filter(a => a.status === 'active').map((access) => (
                   <div key={access.id}>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Type</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.type')}</dt>
                       <dd className="font-medium">{getAccessTypeName(access.type)}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Localisation</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.location')}</dt>
                       <dd className="font-medium">{access.location}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Prochain contrôle</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.nextControl')}</dt>
                       <dd className="font-medium">{formatDate(access.nextControlDate)}</dd>
                     </div>
                   </div>
                 ))}
               </dl>
             ) : (
-              <p className="text-muted-foreground">Aucun accès vasculaire actif</p>
+              <p className="text-muted-foreground">{t('dialyse.noActiveVascularAccess')}</p>
             )}
-          </div>
+          </SectionCard>
 
           {/* Notes */}
           {patient.notes && (
-            <div className="rounded-lg border bg-card p-6 md:col-span-2">
-              <h3 className="text-lg font-semibold mb-4">Notes</h3>
+            <SectionCard className="p-6 md:col-span-2">
+              <h3 className="text-lg font-semibold mb-4">{t('dialyse.notes')}</h3>
               <p className="text-muted-foreground whitespace-pre-wrap">{patient.notes}</p>
-            </div>
+            </SectionCard>
           )}
         </div>
       )}
 
       {activeTab === 'sessions' && (
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">Séances récentes</h3>
-            <button
+            <h3 className="font-semibold">{t('dialyse.recentSessions')}</h3>
+            <Button
+              module="dialyse"
+              size="sm"
               onClick={() => navigate(`/dialyse/sessions/new?patientId=${id}`)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Nouvelle séance
-            </button>
+              {t('dialyse.newSession')}
+            </Button>
           </div>
           {sessions && sessions.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">N° Séance</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Durée</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.sessionNumber')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.date')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.duration')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -471,32 +434,33 @@ export function DialysePatientDetailPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-muted-foreground">
-              Aucune séance enregistrée
+              {t('dialyse.noSessions')}
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === 'labs' && (
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">Résultats de laboratoire</h3>
-            <button
+            <h3 className="font-semibold">{t('dialyse.labResults')}</h3>
+            <Button
+              module="dialyse"
+              size="sm"
               onClick={() => navigate(`/dialyse/lab-results/new?patientId=${id}`)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Nouveau résultat
-            </button>
+              {t('dialyse.newResult')}
+            </Button>
           </div>
           {labs && labs.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Kt/V</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Hémoglobine</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Alertes</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.date')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.ktv')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.hemoglobin')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.alerts')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -511,11 +475,11 @@ export function DialysePatientDetailPage() {
                       </td>
                       <td className="px-6 py-4">
                         {lab.hasOutOfRangeValues ? (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Valeurs hors normes
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('critical')}`}>
+                            {t('dialyse.outOfRange')}
                           </span>
                         ) : (
-                          <span className="text-green-600 text-sm">Normal</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{t('dialyse.normal')}</span>
                         )}
                       </td>
                     </tr>
@@ -525,34 +489,35 @@ export function DialysePatientDetailPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-muted-foreground">
-              Aucun résultat de laboratoire
+              {t('dialyse.noLabResults')}
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === 'prescriptions' && (
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">Prescriptions</h3>
-            <button
+            <h3 className="font-semibold">{t('dialyse.prescriptions')}</h3>
+            <Button
+              module="dialyse"
+              size="sm"
               onClick={() => navigate(`/dialyse/prescriptions/new?patientId=${id}`)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Nouvelle prescription
-            </button>
+              {t('dialyse.newPrescription')}
+            </Button>
           </div>
           {prescriptions && prescriptions.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">N°</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Durée</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fréquence</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date début</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.number')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.type')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.duration')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.frequency')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.startDate')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -561,13 +526,11 @@ export function DialysePatientDetailPage() {
                       <td className="px-6 py-4 text-sm font-mono">{rx.prescriptionNumber}</td>
                       <td className="px-6 py-4 text-sm capitalize">{rx.type.replace('_', ' ')}</td>
                       <td className="px-6 py-4 text-sm">{rx.durationMinutes} min</td>
-                      <td className="px-6 py-4 text-sm">{rx.frequencyPerWeek}x/semaine</td>
+                      <td className="px-6 py-4 text-sm">{rx.frequencyPerWeek}x/{t('dialyse.week')}</td>
                       <td className="px-6 py-4 text-sm">{formatDate(rx.startDate)}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          rx.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {rx.status === 'active' ? 'Active' : rx.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(rx.status)}`}>
+                          {t(`dialyse.prescriptionStatus.${rx.status}`)}
                         </span>
                       </td>
                     </tr>
@@ -577,33 +540,34 @@ export function DialysePatientDetailPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-muted-foreground">
-              Aucune prescription
+              {t('dialyse.noPrescriptions')}
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === 'accesses' && (
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold">Historique des accès vasculaires</h3>
-            <button
+            <h3 className="font-semibold">{t('dialyse.vascularAccessHistory')}</h3>
+            <Button
+              module="dialyse"
+              size="sm"
               onClick={() => navigate(`/dialyse/vascular-accesses/new?patientId=${id}`)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Nouvel accès
-            </button>
+              {t('dialyse.newAccess')}
+            </Button>
           </div>
           {accesses && accesses.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Localisation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date création</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Dernier contrôle</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.type')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.location')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.creationDate')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.lastControl')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -614,16 +578,8 @@ export function DialysePatientDetailPage() {
                       <td className="px-6 py-4 text-sm">{formatDate(access.creationDate)}</td>
                       <td className="px-6 py-4 text-sm">{formatDate(access.lastControlDate)}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          access.status === 'active' ? 'bg-green-100 text-green-800' :
-                          access.status === 'maturing' ? 'bg-blue-100 text-blue-800' :
-                          access.status === 'failed' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {access.status === 'active' ? 'Actif' :
-                           access.status === 'maturing' ? 'Maturation' :
-                           access.status === 'failed' ? 'Échec' :
-                           access.status === 'removed' ? 'Retiré' : access.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(access.status)}`}>
+                          {t(`dialyse.vascularAccessStatus.${access.status}`)}
                         </span>
                       </td>
                     </tr>
@@ -633,10 +589,10 @@ export function DialysePatientDetailPage() {
             </div>
           ) : (
             <div className="p-8 text-center text-muted-foreground">
-              Aucun accès vasculaire enregistré
+              {t('dialyse.noVascularAccesses')}
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
     </div>
   );

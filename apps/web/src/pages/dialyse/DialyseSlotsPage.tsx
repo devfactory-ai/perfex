@@ -7,6 +7,28 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { Pencil, Trash2, Plus, Clock } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  PageHeader,
+  Button,
+  SectionCard,
+  EmptyState,
+  InlineLoading,
+} from '@/components/healthcare';
+
+// API returns snake_case - we transform it
+interface SessionSlotApi {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  days_of_week: string | number[];
+  max_patients: number;
+  active: boolean;
+  created_at: number;
+}
 
 interface SessionSlot {
   id: string;
@@ -37,22 +59,55 @@ const defaultSlotForm: SlotFormData = {
   active: true,
 };
 
-const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+// Day names are now handled by t() function in component
+
+// Transform API response to frontend format
+const transformSlot = (record: SessionSlotApi): SessionSlot => {
+  let daysOfWeek: number[] = [];
+  if (typeof record.days_of_week === 'string') {
+    try {
+      daysOfWeek = JSON.parse(record.days_of_week);
+    } catch (e) {
+      daysOfWeek = [];
+    }
+  } else if (Array.isArray(record.days_of_week)) {
+    daysOfWeek = record.days_of_week;
+  }
+
+  return {
+    id: record.id,
+    name: record.name,
+    startTime: record.start_time || '',
+    endTime: record.end_time || '',
+    daysOfWeek,
+    maxPatients: record.max_patients || 6,
+    active: record.active ?? true,
+    createdAt: record.created_at ? new Date(record.created_at).toISOString() : '',
+  };
+};
 
 export function DialyseSlotsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
 
   const [showModal, setShowModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<SessionSlot | null>(null);
   const [formData, setFormData] = useState<SlotFormData>(defaultSlotForm);
 
+  // Day names with translation
+  const getDayName = (index: number): string => {
+    const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    return t(`dialyse.days.${days[index]}`);
+  };
+
   // Fetch slots
   const { data: slots, isLoading } = useQuery({
     queryKey: ['dialyse-slots'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<SessionSlot[]>>('/dialyse/slots');
-      return response.data.data;
+      const response = await api.get<{ success: boolean; data: SessionSlotApi[] }>('/dialyse/slots');
+      return (response.data.data || []).map(transformSlot);
     },
   });
 
@@ -66,10 +121,10 @@ export function DialyseSlotsPage() {
       queryClient.invalidateQueries({ queryKey: ['dialyse-slots'] });
       setShowModal(false);
       resetForm();
-      window.alert('Créneau créé avec succès');
+      toast.success(t('dialyse.slotCreated'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -83,10 +138,10 @@ export function DialyseSlotsPage() {
       queryClient.invalidateQueries({ queryKey: ['dialyse-slots'] });
       setShowModal(false);
       resetForm();
-      window.alert('Créneau mis à jour');
+      toast.success(t('dialyse.slotUpdated'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -97,10 +152,10 @@ export function DialyseSlotsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-slots'] });
-      window.alert('Créneau supprimé');
+      toast.success(t('dialyse.slotDeleted'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -114,7 +169,7 @@ export function DialyseSlotsPage() {
       queryClient.invalidateQueries({ queryKey: ['dialyse-slots'] });
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -144,11 +199,11 @@ export function DialyseSlotsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      window.alert('Veuillez saisir un nom pour le créneau');
+      toast.warning(t('dialyse.enterSlotName'));
       return;
     }
     if (formData.daysOfWeek.length === 0) {
-      window.alert('Veuillez sélectionner au moins un jour');
+      toast.warning(t('dialyse.selectAtLeastOneDay'));
       return;
     }
 
@@ -160,7 +215,7 @@ export function DialyseSlotsPage() {
   };
 
   const handleDelete = (slot: SessionSlot) => {
-    if (window.confirm(`Supprimer le créneau "${slot.name}" ? Cette action est irréversible.`)) {
+    if (window.confirm(`${t('dialyse.confirmDeleteSlot')} "${slot.name}"?`)) {
       deleteSlot.mutate(slot.id);
     }
   };
@@ -179,10 +234,10 @@ export function DialyseSlotsPage() {
   };
 
   const getDaysDisplay = (days: number[]) => {
-    if (days.length === 7) return 'Tous les jours';
-    if (days.length === 6 && !days.includes(6)) return 'Lun-Sam';
-    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return 'Lun-Ven';
-    return days.map(d => dayNames[d]).join(', ');
+    if (days.length === 7) return t('dialyse.allDays');
+    if (days.length === 6 && !days.includes(6)) return t('dialyse.monToSat');
+    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return t('dialyse.monToFri');
+    return days.map(d => getDayName(d)).join(', ');
   };
 
   // Sort slots by start time
@@ -191,59 +246,56 @@ export function DialyseSlotsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configuration des Créneaux</h1>
-          <p className="text-muted-foreground">
-            Gérer les créneaux horaires pour les séances de dialyse
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate('/dialyse/planning')}
-            className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Retour au Planning
-          </button>
-          <button
-            onClick={openCreateModal}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Nouveau Créneau
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t('dialyse.slotsConfiguration')}
+        subtitle={t('dialyse.slotsSubtitle')}
+        icon={Clock}
+        module="dialyse"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/dialyse/planning')}
+            >
+              {t('dialyse.backToPlanning')}
+            </Button>
+            <Button
+              module="dialyse"
+              variant="primary"
+              icon={Plus}
+              onClick={openCreateModal}
+            >
+              {t('dialyse.newSlot')}
+            </Button>
+          </>
+        }
+      />
 
       {/* Slots List */}
-      <div className="rounded-lg border bg-card">
+      <SectionCard>
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement des créneaux...</p>
-            </div>
-          </div>
+          <InlineLoading rows={5} message={t('dialyse.loadingSlots')} />
         ) : sortedSlots && sortedSlots.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b bg-muted/50">
+              <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Nom</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Horaire</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Jours</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Capacité</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.name')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.schedule')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.days')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.capacity')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.status')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">{t('dialyse.actions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedSlots.map((slot) => (
-                  <tr key={slot.id} className={`hover:bg-muted/50 ${!slot.active ? 'opacity-50' : ''}`}>
+                  <tr key={slot.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${!slot.active ? 'opacity-50' : ''}`}>
                     <td className="px-6 py-4">
-                      <span className="font-medium">{slot.name}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{slot.name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-mono text-sm">
+                      <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
                         {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
                       </span>
                     </td>
@@ -254,43 +306,45 @@ export function DialyseSlotsPage() {
                             key={day}
                             className={`px-1.5 py-0.5 text-xs rounded ${
                               slot.daysOfWeek.includes(day)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground'
+                                ? 'bg-slate-800 text-white dark:bg-slate-600'
+                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
                             }`}
                           >
-                            {dayNames[day]}
+                            {getDayName(day)}
                           </span>
                         ))}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm">{slot.maxPatients} patients</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{slot.maxPatients} {t('dialyse.patients')}</span>
                     </td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleSlotActive.mutate({ id: slot.id, active: !slot.active })}
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                           slot.active
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            ? 'bg-slate-800 text-white hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
                         }`}
                       >
-                        {slot.active ? 'Actif' : 'Inactif'}
+                        {slot.active ? t('dialyse.active') : t('dialyse.inactive')}
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openEditModal(slot)}
-                          className="text-sm text-primary hover:underline"
+                          className="p-2 text-gray-500 hover:text-slate-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 rounded-md transition-colors"
+                          title={t('dialyse.edit')}
                         >
-                          Modifier
+                          <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(slot)}
-                          className="text-sm text-destructive hover:underline"
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 rounded-md transition-colors"
+                          title={t('dialyse.delete')}
                         >
-                          Supprimer
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -300,134 +354,130 @@ export function DialyseSlotsPage() {
             </table>
           </div>
         ) : (
-          <div className="p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="mt-4 text-lg font-medium">Aucun créneau configuré</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Créez des créneaux pour organiser les séances de dialyse
-            </p>
-            <button
-              onClick={openCreateModal}
-              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Créer un créneau
-            </button>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title={t('dialyse.noSlotsConfigured')}
+            description={t('dialyse.createSlotsToOrganize')}
+            module="dialyse"
+            action={{
+              label: t('dialyse.createSlot'),
+              onClick: openCreateModal,
+              icon: Plus,
+            }}
+          />
         )}
-      </div>
+      </SectionCard>
 
       {/* Suggested Slots */}
       {slots && slots.length === 0 && (
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Créneaux suggérés</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Configuration typique d'un centre de dialyse avec 3 créneaux par jour :
+        <SectionCard className="p-6">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t('dialyse.suggestedSlots')}</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {t('dialyse.typicalConfiguration')}
           </p>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium">Matin</h4>
-              <p className="text-sm text-muted-foreground">06:00 - 10:00</p>
-              <p className="text-xs text-muted-foreground">Premier créneau de la journée</p>
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <h4 className="font-medium text-gray-900 dark:text-white">{t('dialyse.morning')}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">06:00 - 10:00</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">{t('dialyse.firstSlotOfDay')}</p>
             </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium">Après-midi</h4>
-              <p className="text-sm text-muted-foreground">11:00 - 15:00</p>
-              <p className="text-xs text-muted-foreground">Créneau central</p>
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <h4 className="font-medium text-gray-900 dark:text-white">{t('dialyse.afternoon')}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">11:00 - 15:00</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">{t('dialyse.centralSlot')}</p>
             </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-medium">Soir</h4>
-              <p className="text-sm text-muted-foreground">16:00 - 20:00</p>
-              <p className="text-xs text-muted-foreground">Dernier créneau</p>
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <h4 className="font-medium text-gray-900 dark:text-white">{t('dialyse.evening')}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">16:00 - 20:00</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">{t('dialyse.lastSlot')}</p>
             </div>
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-lg mx-4 p-6">
-            <h2 className="text-xl font-semibold mb-4">
-              {editingSlot ? 'Modifier le Créneau' : 'Nouveau Créneau'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              {editingSlot ? t('dialyse.editSlot') : t('dialyse.newSlot')}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium mb-2">Nom du créneau *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dialyse.slotName')} *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Ex: Matin, Après-midi, Soir..."
+                  placeholder={t('dialyse.slotNamePlaceholder')}
                   required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"
                 />
               </div>
 
               {/* Times */}
               <div className="grid gap-4 grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Heure de début *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dialyse.startTime')} *</label>
                   <input
                     type="time"
                     value={formData.startTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
                     required
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Heure de fin *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dialyse.endTime')} *</label>
                   <input
                     type="time"
                     value={formData.endTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
                     required
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"
                   />
                 </div>
               </div>
 
               {/* Days of week */}
               <div>
-                <label className="block text-sm font-medium mb-2">Jours de la semaine *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dialyse.daysOfWeek')} *</label>
                 <div className="flex flex-wrap gap-2">
-                  {dayNames.map((day, index) => (
+                  {[0, 1, 2, 3, 4, 5, 6].map((index) => (
                     <button
                       key={index}
                       type="button"
                       onClick={() => toggleDay(index)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         formData.daysOfWeek.includes(index)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          ? 'bg-slate-800 text-white hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
-                      {day}
+                      {getDayName(index)}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Sélectionné: {getDaysDisplay(formData.daysOfWeek)}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('dialyse.selected')}: {getDaysDisplay(formData.daysOfWeek)}
                 </p>
               </div>
 
               {/* Max patients */}
               <div>
-                <label className="block text-sm font-medium mb-2">Capacité maximale</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('dialyse.maxCapacity')}</label>
                 <input
                   type="number"
                   value={formData.maxPatients}
                   onChange={(e) => setFormData(prev => ({ ...prev, maxPatients: parseInt(e.target.value) || 1 }))}
                   min={1}
                   max={50}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Nombre maximum de patients par créneau
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('dialyse.maxPatientsPerSlot')}
                 </p>
               </div>
 
@@ -438,32 +488,34 @@ export function DialyseSlotsPage() {
                   id="slotActive"
                   checked={formData.active}
                   onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                  className="h-4 w-4 rounded border-input"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-slate-800 focus:ring-slate-500"
                 />
-                <label htmlFor="slotActive" className="text-sm">
-                  Créneau actif
+                <label htmlFor="slotActive" className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('dialyse.slotActive')}
                 </label>
               </div>
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-4">
-                <button
+                <Button
+                  variant="outline"
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
                 >
-                  Annuler
-                </button>
-                <button
+                  {t('dialyse.cancel')}
+                </Button>
+                <Button
+                  module="dialyse"
+                  variant="primary"
                   type="submit"
                   disabled={createSlot.isPending || updateSlot.isPending}
-                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                  loading={createSlot.isPending || updateSlot.isPending}
                 >
-                  {(createSlot.isPending || updateSlot.isPending) ? 'Enregistrement...' : editingSlot ? 'Mettre à jour' : 'Créer'}
-                </button>
+                  {editingSlot ? t('dialyse.update') : t('dialyse.create')}
+                </Button>
               </div>
             </form>
           </div>

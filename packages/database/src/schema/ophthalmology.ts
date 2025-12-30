@@ -18,7 +18,7 @@ import { healthcarePatients, healthcareConsultations, healthcareExaminations } f
  */
 export const ophthalmologyOctScans = sqliteTable('ophthalmology_oct_scans', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   examinationId: text('examination_id').references(() => healthcareExaminations.id, { onDelete: 'set null' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
@@ -132,7 +132,7 @@ export const ophthalmologyOctScans = sqliteTable('ophthalmology_oct_scans', {
  */
 export const ophthalmologyVisualFields = sqliteTable('ophthalmology_visual_fields', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   examinationId: text('examination_id').references(() => healthcareExaminations.id, { onDelete: 'set null' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
@@ -233,7 +233,7 @@ export const ophthalmologyVisualFields = sqliteTable('ophthalmology_visual_field
  */
 export const ophthalmologyBiometry = sqliteTable('ophthalmology_biometry', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -328,7 +328,7 @@ export const ophthalmologyBiometry = sqliteTable('ophthalmology_biometry', {
  */
 export const ophthalmologyIolImplants = sqliteTable('ophthalmology_iol_implants', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   surgeryId: text('surgery_id').references(() => ophthalmologySurgeries.id, { onDelete: 'set null' }),
   biometryId: text('biometry_id').references(() => ophthalmologyBiometry.id, { onDelete: 'set null' }),
@@ -414,7 +414,7 @@ export const ophthalmologyIolImplants = sqliteTable('ophthalmology_iol_implants'
  */
 export const ophthalmologyIvtInjections = sqliteTable('ophthalmology_ivt_injections', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -499,7 +499,7 @@ export const ophthalmologyIvtInjections = sqliteTable('ophthalmology_ivt_injecti
  */
 export const ophthalmologySurgeries = sqliteTable('ophthalmology_surgeries', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   surgeryNumber: text('surgery_number').notNull(),
@@ -592,7 +592,7 @@ export const ophthalmologySurgeries = sqliteTable('ophthalmology_surgeries', {
  */
 export const ophthalmologyRefraction = sqliteTable('ophthalmology_refraction', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -667,49 +667,33 @@ export const ophthalmologyRefraction = sqliteTable('ophthalmology_refraction', {
 
 /**
  * Ophthalmology Tonometry
- * Intraocular pressure measurements
+ * Matches actual database structure
  */
 export const ophthalmologyTonometry = sqliteTable('ophthalmology_tonometry', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
-  consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
+  companyId: text('company_id').notNull(),
 
-  measurementNumber: text('measurement_number').notNull(),
-  measurementDate: integer('measurement_date', { mode: 'timestamp' }).notNull(),
-  measurementTime: text('measurement_time'), // Time of day for diurnal curve
+  measurementDate: text('measurement_date').notNull(), // TEXT in DB
+  measurementTime: text('measurement_time'),
 
-  // Method
-  tonometryMethod: text('tonometry_method', { enum: ['goldmann', 'non_contact', 'icare', 'tono_pen', 'palpation'] }).notNull(),
-  deviceModel: text('device_model'),
+  // Device
+  device: text('device'),
+  technician: text('technician'),
 
-  // Measurements
-  iopOd: integer('iop_od'), // mmHg
-  iopOs: integer('iop_os'), // mmHg
+  // Measurements - Note: DB uses 'og' (oeil gauche) not 'os' (oculus sinister)
+  iopOd: real('iop_od'), // mmHg
+  iopOg: real('iop_og'), // mmHg
 
   // Correction factors
   cctOd: integer('cct_od'), // Central corneal thickness µm
-  cctOs: integer('cct_os'),
-  iopOdCorrected: integer('iop_od_corrected'), // CCT-corrected IOP
-  iopOsCorrected: integer('iop_os_corrected'),
-
-  // Context
-  isOnGlaucomaMedications: integer('is_on_glaucoma_medications', { mode: 'boolean' }),
-  currentMedications: text('current_medications'), // JSON array
-  isDiurnalCurve: integer('is_diurnal_curve', { mode: 'boolean' }).default(false),
-  diurnalCurveId: text('diurnal_curve_id'),
-
-  // Target IOP (for glaucoma patients)
-  targetIopOd: integer('target_iop_od'),
-  targetIopOs: integer('target_iop_os'),
-  isAtTarget: integer('is_at_target', { mode: 'boolean' }),
-
-  performedBy: text('performed_by').references(() => employees.id, { onDelete: 'set null' }),
+  cctOg: integer('cct_og'),
+  iopOdCorrected: real('iop_od_corrected'),
+  iopOgCorrected: real('iop_og_corrected'),
 
   notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: text('created_at'),
+  updatedAt: text('updated_at'),
 });
 
 // ============================================================================
@@ -722,7 +706,7 @@ export const ophthalmologyTonometry = sqliteTable('ophthalmology_tonometry', {
  */
 export const ophthalmologyFundusPhotos = sqliteTable('ophthalmology_fundus_photos', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -802,7 +786,7 @@ export const ophthalmologyFundusPhotos = sqliteTable('ophthalmology_fundus_photo
  */
 export const ophthalmologyOsdiScores = sqliteTable('ophthalmology_osdi_scores', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 

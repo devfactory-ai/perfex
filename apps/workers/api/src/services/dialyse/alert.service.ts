@@ -6,6 +6,7 @@
 import { eq, and, desc, gte, lte, sql, or, isNull } from 'drizzle-orm';
 import { drizzleDb } from '../../db';
 import { clinicalAlerts, dialysePatients, labResults, vascularAccesses, contacts } from '@perfex/database';
+import { safeJsonParse } from '../../utils/json';
 import type {
   ClinicalAlert,
   ClinicalAlertWithPatient,
@@ -191,11 +192,19 @@ export class AlertService {
 
   /**
    * Get critical and high priority alerts
+   * Optimized with JOINs to avoid N+1 query pattern
    */
   async getCriticalAlerts(organizationId: string): Promise<ClinicalAlertWithPatient[]> {
-    const alerts = await drizzleDb
-      .select()
+    // Single query with JOINs - replaces N+1 pattern (was 1 + N*2 queries, now 1 query)
+    const results = await drizzleDb
+      .select({
+        alert: clinicalAlerts,
+        patient: dialysePatients,
+        contact: contacts,
+      })
       .from(clinicalAlerts)
+      .innerJoin(dialysePatients, eq(clinicalAlerts.patientId, dialysePatients.id))
+      .leftJoin(contacts, eq(dialysePatients.contactId, contacts.id))
       .where(
         and(
           eq(clinicalAlerts.organizationId, organizationId),
@@ -206,30 +215,11 @@ export class AlertService {
       .orderBy(desc(clinicalAlerts.severity), desc(clinicalAlerts.createdAt))
       .all();
 
-    // Enrich with patient data
-    const enrichedAlerts: ClinicalAlertWithPatient[] = [];
-    for (const alert of alerts) {
-      const patient = await drizzleDb
-        .select()
-        .from(dialysePatients)
-        .where(eq(dialysePatients.id, alert.patientId))
-        .get();
-
-      if (patient) {
-        const contact = await drizzleDb
-          .select()
-          .from(contacts)
-          .where(eq(contacts.id, patient.contactId))
-          .get();
-
-        enrichedAlerts.push({
-          ...alert,
-          patient: { ...patient, contact },
-        } as ClinicalAlertWithPatient);
-      }
-    }
-
-    return enrichedAlerts;
+    // Transform joined results into expected structure
+    return results.map((row) => ({
+      ...row.alert,
+      patient: { ...row.patient, contact: row.contact },
+    })) as ClinicalAlertWithPatient[];
   }
 
   /**
@@ -483,7 +473,7 @@ export class AlertService {
         .get();
 
       if (!existingAlert) {
-        const outOfRangeMarkers = result.outOfRangeMarkers ? JSON.parse(result.outOfRangeMarkers) : [];
+        const outOfRangeMarkers = safeJsonParse<string[]>(result.outOfRangeMarkers, [], 'alert.generateLabAlerts.outOfRangeMarkers');
         const hasCritical = outOfRangeMarkers.some((m: string) => ['potassium', 'hemoglobin'].includes(m));
 
         await this.create(organizationId, {

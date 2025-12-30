@@ -11,6 +11,13 @@ import type { Supplier } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
+interface ProcurementStats {
+  totalSuppliers: number;
+  activeSuppliers: number;
+  totalPurchaseOrders: number;
+  pendingOrders: number;
+}
+
 export function SuppliersPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -32,7 +39,7 @@ export function SuppliersPage() {
   const { data: stats } = useQuery({
     queryKey: ['procurement-stats'],
     queryFn: async () => {
-      const response = await api.get<ApiResponse<any>>('/procurement/suppliers/stats');
+      const response = await api.get<ApiResponse<ProcurementStats>>('/procurement/suppliers/stats');
       return response.data.data;
     },
   });
@@ -85,19 +92,19 @@ export function SuppliersPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('procurement.totalSuppliers')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalSuppliers}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalSuppliers ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('procurement.activeSuppliers')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.activeSuppliers}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.activeSuppliers ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('procurement.purchaseOrders')}</div>
-            <div className="mt-2 text-2xl font-bold">{stats.totalPurchaseOrders}</div>
+            <div className="mt-2 text-2xl font-bold">{stats.totalPurchaseOrders ?? 0}</div>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <div className="text-sm font-medium text-muted-foreground">{t('procurement.pendingOrders')}</div>
-            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingOrders}</div>
+            <div className="mt-2 text-2xl font-bold text-orange-600">{stats.pendingOrders ?? 0}</div>
           </div>
         </div>
       )}

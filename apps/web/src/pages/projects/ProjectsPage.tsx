@@ -253,7 +253,7 @@ export function ProjectsPage() {
                             {project.budgetCurrency} {project.budgetAmount.toFixed(2)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {t('projects.cost')}: {project.budgetCurrency} {project.actualCost.toFixed(2)}
+                            {t('projects.cost')}: {project.budgetCurrency} {(project.actualCost ?? 0).toFixed(2)}
                           </div>
                         </div>
                       ) : (

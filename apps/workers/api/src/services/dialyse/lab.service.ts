@@ -6,6 +6,7 @@
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
 import { drizzleDb } from '../../db';
 import { labResults, dialysePatients } from '@perfex/database';
+import { safeJsonParse } from '../../utils/json';
 import type {
   LabResult,
   LabResultWithPatient,
@@ -148,8 +149,8 @@ export class LabService {
 
     return {
       ...result,
-      allResults: result.allResults ? JSON.parse(result.allResults) : null,
-      outOfRangeMarkers: result.outOfRangeMarkers ? JSON.parse(result.outOfRangeMarkers) : null,
+      allResults: safeJsonParse(result.allResults, null, 'lab.getById.allResults'),
+      outOfRangeMarkers: safeJsonParse<string[]>(result.outOfRangeMarkers, [], 'lab.getById.outOfRangeMarkers'),
     } as LabResult;
   }
 
@@ -193,8 +194,8 @@ export class LabService {
     return {
       data: results.map((r) => ({
         ...r,
-        allResults: r.allResults ? JSON.parse(r.allResults) : null,
-        outOfRangeMarkers: r.outOfRangeMarkers ? JSON.parse(r.outOfRangeMarkers) : null,
+        allResults: safeJsonParse(r.allResults, null, 'lab.listByPatient.allResults'),
+        outOfRangeMarkers: safeJsonParse<string[]>(r.outOfRangeMarkers, [], 'lab.listByPatient.outOfRangeMarkers'),
       })) as LabResult[],
       total: countResult?.count || 0,
     };
@@ -216,8 +217,8 @@ export class LabService {
 
     return {
       ...result,
-      allResults: result.allResults ? JSON.parse(result.allResults) : null,
-      outOfRangeMarkers: result.outOfRangeMarkers ? JSON.parse(result.outOfRangeMarkers) : null,
+      allResults: safeJsonParse(result.allResults, null, 'lab.getLatestByPatient.allResults'),
+      outOfRangeMarkers: safeJsonParse<string[]>(result.outOfRangeMarkers, [], 'lab.getLatestByPatient.outOfRangeMarkers'),
     } as LabResult;
   }
 

@@ -18,7 +18,7 @@ import { healthcarePatients, healthcareConsultations, healthcareExaminations } f
  */
 export const cardiologyEcgRecords = sqliteTable('cardiology_ecg_records', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   examinationId: text('examination_id').references(() => healthcareExaminations.id, { onDelete: 'set null' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
@@ -90,17 +90,17 @@ export const cardiologyEcgRecords = sqliteTable('cardiology_ecg_records', {
 
 /**
  * Cardiology Echocardiograms
- * Cardiac ultrasound examinations
+ * Matches actual database structure
  */
 export const cardiologyEchocardiograms = sqliteTable('cardiology_echocardiograms', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   examinationId: text('examination_id').references(() => healthcareExaminations.id, { onDelete: 'set null' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
   echoNumber: text('echo_number').notNull(),
-  studyDate: integer('study_date', { mode: 'timestamp' }).notNull(),
+  studyDate: integer('study_date').notNull(), // Unix timestamp
 
   // Echo Type
   echoType: text('echo_type', { enum: ['tte', 'tee', 'stress', 'contrast', 'strain'] }).notNull(),
@@ -131,47 +131,23 @@ export const cardiologyEchocardiograms = sqliteTable('cardiology_echocardiograms
   raArea: real('ra_area'), // cm²
   raPressure: real('ra_pressure'), // mmHg (estimated)
 
-  // Valves - Mitral
+  // Valves
   mitralRegurgitation: text('mitral_regurgitation', { enum: ['none', 'trivial', 'mild', 'moderate', 'severe'] }),
   mitralStenosis: text('mitral_stenosis', { enum: ['none', 'mild', 'moderate', 'severe'] }),
-  mitralArea: real('mitral_area'), // cm²
-  mitralMeanGradient: real('mitral_mean_gradient'), // mmHg
-  mitralEVelocity: real('mitral_e_velocity'), // m/s
-  mitralAVelocity: real('mitral_a_velocity'), // m/s
-  mitralEARatio: real('mitral_ea_ratio'),
-  ePrime: real('e_prime'), // cm/s (tissue Doppler)
-  eOverEPrime: real('e_over_e_prime'), // E/e' ratio
-
-  // Valves - Aortic
   aorticRegurgitation: text('aortic_regurgitation', { enum: ['none', 'trivial', 'mild', 'moderate', 'severe'] }),
   aorticStenosis: text('aortic_stenosis', { enum: ['none', 'mild', 'moderate', 'severe'] }),
-  aorticValveArea: real('aortic_valve_area'), // cm²
-  aorticMeanGradient: real('aortic_mean_gradient'), // mmHg
-  aorticPeakGradient: real('aortic_peak_gradient'), // mmHg
-  aorticPeakVelocity: real('aortic_peak_velocity'), // m/s
-
-  // Valves - Tricuspid
   tricuspidRegurgitation: text('tricuspid_regurgitation', { enum: ['none', 'trivial', 'mild', 'moderate', 'severe'] }),
-  tricuspidRegurgitationVelocity: real('tricuspid_regurgitation_velocity'), // m/s
-
-  // Valves - Pulmonic
   pulmonicRegurgitation: text('pulmonic_regurgitation', { enum: ['none', 'trivial', 'mild', 'moderate', 'severe'] }),
 
   // Aorta
   aorticRootDiameter: real('aortic_root_diameter'), // mm
   ascendingAortaDiameter: real('ascending_aorta_diameter'), // mm
-  aorticArchDiameter: real('aortic_arch_diameter'), // mm
 
   // Pericardium
   pericardialEffusion: text('pericardial_effusion', { enum: ['none', 'trivial', 'small', 'moderate', 'large'] }),
-  pericardialEffusionLocation: text('pericardial_effusion_location'),
 
   // Diastolic Function
   diastolicFunction: text('diastolic_function', { enum: ['normal', 'grade_1', 'grade_2', 'grade_3', 'indeterminate'] }),
-
-  // IVC
-  ivcDiameter: real('ivc_diameter'), // mm
-  ivcCollapsibility: real('ivc_collapsibility'), // %
 
   // All measurements (JSON for extensibility)
   allMeasurements: text('all_measurements'),
@@ -197,17 +173,17 @@ export const cardiologyEchocardiograms = sqliteTable('cardiology_echocardiograms
   reportUrl: text('report_url'),
 
   // Provider
-  sonographer: text('sonographer').references(() => employees.id, { onDelete: 'set null' }),
-  interpretedBy: text('interpreted_by').references(() => employees.id, { onDelete: 'set null' }),
-  interpretedAt: integer('interpreted_at', { mode: 'timestamp' }),
+  sonographer: text('sonographer'),
+  interpretedBy: text('interpreted_by'),
+  interpretedAt: integer('interpreted_at'),
 
   status: text('status', { enum: ['pending', 'preliminary', 'final', 'amended'] }).default('pending'),
   urgency: text('urgency', { enum: ['routine', 'urgent', 'stat'] }).default('routine'),
 
   notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
 });
 
 // ============================================================================
@@ -220,7 +196,7 @@ export const cardiologyEchocardiograms = sqliteTable('cardiology_echocardiograms
  */
 export const cardiologyHolterRecords = sqliteTable('cardiology_holter_records', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   examinationId: text('examination_id').references(() => healthcareExaminations.id, { onDelete: 'set null' }),
 
@@ -328,89 +304,46 @@ export const cardiologyHolterRecords = sqliteTable('cardiology_holter_records', 
 
 /**
  * Cardiology Pacemakers
- * Pacemakers, ICDs, and CRT devices
+ * Matches actual database structure
  */
 export const cardiologyPacemakers = sqliteTable('cardiology_pacemakers', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
-
-  deviceNumber: text('device_number').notNull(),
-
-  // Device type
-  deviceType: text('device_type', { enum: ['single_chamber_pacemaker', 'dual_chamber_pacemaker', 'crt_p', 'single_chamber_icd', 'dual_chamber_icd', 'crt_d', 'leadless'] }).notNull(),
-  indication: text('indication').notNull(),
+  companyId: text('company_id').notNull(),
 
   // Device info
   manufacturer: text('manufacturer').notNull(),
   model: text('model').notNull(),
-  serialNumber: text('serial_number').notNull(),
+  serialNumber: text('serial_number'),
 
   // Implantation
-  implantDate: integer('implant_date', { mode: 'timestamp' }).notNull(),
-  implantedBy: text('implanted_by').references(() => employees.id, { onDelete: 'set null' }),
-  implantCenter: text('implant_center'),
-  implantProcedure: text('implant_procedure'),
+  implantDate: text('implant_date').notNull(), // TEXT in DB
+  implantingDoctor: text('implanting_doctor'),
+  implantingHospital: text('implanting_hospital'),
 
-  // Leads
-  leads: text('leads'), // JSON array of lead details
-
-  // Programming
-  mode: text('mode'), // e.g., DDD, VVI, etc.
-  lowerRate: integer('lower_rate'), // bpm
-  upperRate: integer('upper_rate'), // bpm
-  avDelay: integer('av_delay'), // ms
-  outputSettings: text('output_settings'), // JSON
-
-  // ICD-specific
-  vtZone: text('vt_zone'), // JSON - VT zone settings
-  vfZone: text('vf_zone'), // JSON - VF zone settings
-  therapySettings: text('therapy_settings'), // JSON - ATP, shock settings
-
-  // CRT-specific
-  lvLead: text('lv_lead'), // JSON - LV lead details
-  lvPacingVector: text('lv_pacing_vector'),
+  // Device type
+  deviceType: text('device_type'),
+  leadsCount: integer('leads_count').default(1),
 
   // Battery
-  batteryStatus: text('battery_status', { enum: ['ok', 'elective_replacement', 'end_of_life'] }).default('ok'),
-  batteryVoltage: real('battery_voltage'), // V
-  batteryImpedance: integer('battery_impedance'), // Ohms
+  batteryStatus: text('battery_status').default('good'),
+  batteryVoltage: real('battery_voltage'),
   estimatedLongevity: text('estimated_longevity'),
 
-  // Lead measurements (latest)
-  raPacing: text('ra_pacing'), // JSON - threshold, impedance, sensing
-  rvPacing: text('rv_pacing'), // JSON
-  lvPacing: text('lv_pacing'), // JSON
-
-  // Events since last check
-  pacingPercentage: text('pacing_percentage'), // JSON - RA, RV, LV percentages
-  episodesSinceLastCheck: text('episodes_since_last_check'), // JSON - AT/AF, VT, VF counts
-  therapiesDelivered: text('therapies_delivered'), // JSON - ATP, shocks
-
-  // Status
-  status: text('status', { enum: ['active', 'replaced', 'explanted', 'end_of_life'] }).default('active'),
-  statusDate: integer('status_date', { mode: 'timestamp' }),
-  statusReason: text('status_reason'),
-
-  // Replacement
-  replacedById: text('replaced_by_id'),
-  replacementDate: integer('replacement_date', { mode: 'timestamp' }),
-  replacementReason: text('replacement_reason'),
-
   // Follow-up
-  lastInterrogationDate: integer('last_interrogation_date', { mode: 'timestamp' }),
-  nextInterrogationDate: integer('next_interrogation_date', { mode: 'timestamp' }),
-  remoteMonitoringEnabled: integer('remote_monitoring_enabled', { mode: 'boolean' }).default(false),
-  remoteMonitoringPlatform: text('remote_monitoring_platform'),
+  lastInterrogationDate: text('last_interrogation_date'),
+  nextInterrogationDate: text('next_interrogation_date'),
 
-  // MRI compatibility
-  mriConditional: integer('mri_conditional', { mode: 'boolean' }).default(false),
-  mriConditions: text('mri_conditions'),
+  // Programming
+  pacingMode: text('pacing_mode'),
+  lowerRate: integer('lower_rate'),
+  upperRate: integer('upper_rate'),
+
+  status: text('status').default('active'),
 
   notes: text('notes'),
-  createdBy: text('created_by').notNull().references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: text('created_at'),
+  updatedAt: text('updated_at'),
 });
 
 /**
@@ -419,7 +352,7 @@ export const cardiologyPacemakers = sqliteTable('cardiology_pacemakers', {
  */
 export const cardiologyPacemakerInterrogations = sqliteTable('cardiology_pacemaker_interrogations', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   pacemakerId: text('pacemaker_id').notNull().references(() => cardiologyPacemakers.id, { onDelete: 'cascade' }),
 
   interrogationNumber: text('interrogation_number').notNull(),
@@ -491,7 +424,7 @@ export const cardiologyPacemakerInterrogations = sqliteTable('cardiology_pacemak
  */
 export const cardiologyStents = sqliteTable('cardiology_stents', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   stentNumber: text('stent_number').notNull(),
@@ -574,7 +507,7 @@ export const cardiologyStents = sqliteTable('cardiology_stents', {
  */
 export const cardiologyRiskScores = sqliteTable('cardiology_risk_scores', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 
@@ -621,7 +554,7 @@ export const cardiologyRiskScores = sqliteTable('cardiology_risk_scores', {
  */
 export const cardiologyCardiacEvents = sqliteTable('cardiology_cardiac_events', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
 
   eventNumber: text('event_number').notNull(),
@@ -679,7 +612,7 @@ export const cardiologyCardiacEvents = sqliteTable('cardiology_cardiac_events', 
  */
 export const cardiologyMedications = sqliteTable('cardiology_medications', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyId: text('company_id').notNull(),
   patientId: text('patient_id').notNull().references(() => healthcarePatients.id, { onDelete: 'cascade' }),
   consultationId: text('consultation_id').references(() => healthcareConsultations.id, { onDelete: 'set null' }),
 

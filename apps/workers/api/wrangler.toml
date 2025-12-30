@@ -2,7 +2,7 @@
 name = "perfex-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-24"
-account_id = "6435a77d3ce17b7de468c6618e7b2b14"
+# account_id is set via CLOUDFLARE_ACCOUNT_ID environment variable
 
 # Node.js compatibility
 compatibility_flags = ["nodejs_compat"]
@@ -42,7 +42,7 @@ crons = [
 ]
 
 # ===============================================
-# STAGING ENVIRONMENT
+# STAGING ENVIRONMENT (Perfex Health - Santé)
 # ===============================================
 [env.staging]
 name = "perfex-api-staging"
@@ -51,16 +51,16 @@ vars = { ENVIRONMENT = "staging", LOG_LEVEL = "info" }
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "perfex-db-staging"
-database_id = "23e79bcb-34c8-467c-a582-4f363fa1779c"
+database_id = "3c3e455c-82ec-45f0-9353-3519cb47d2a0"
 migrations_dir = "../../../packages/database/migrations"
 
 [[env.staging.kv_namespaces]]
 binding = "SESSIONS"
-id = "7a0c3cb3fbf047ca9d7f8977c9b98004"
+id = "56e331308c3e4e008d8e0f50b3f0c2cf"
 
 [[env.staging.kv_namespaces]]
 binding = "CACHE"
-id = "db57371d4269410bb4459e519f5c33c3"
+id = "8196619e43724dc3a80f93a2e9cdc8cd"
 
 [env.staging.ai]
 binding = "AI"

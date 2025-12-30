@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginInput } from '@perfex/shared';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
-import { Eye, EyeOff, Mail, Lock, Sparkles, BarChart3, Users, Shield } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, BarChart3, Users, Shield } from 'lucide-react';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -27,16 +27,10 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
-
-  const fillDemoCredentials = () => {
-    setValue('email', 'demo@perfex.io');
-    setValue('password', 'DemoPass@123');
-  };
 
   const onSubmit = async (data: LoginInput) => {
     try {
@@ -201,33 +195,6 @@ export function LoginPage() {
               </div>
             </div>
           )}
-
-          {/* Demo Credentials Card */}
-          <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                  Compte démo disponible
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                  Email: <code className="bg-amber-200/50 px-1 rounded">demo@perfex.io</code>
-                  <br />
-                  Mot de passe: <code className="bg-amber-200/50 px-1 rounded">Demo@2024!</code>
-                </p>
-                <button
-                  type="button"
-                  onClick={fillDemoCredentials}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Remplir automatiquement
-                </button>
-              </div>
-            </div>
-          </div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

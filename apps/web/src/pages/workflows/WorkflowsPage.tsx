@@ -219,8 +219,8 @@ export function WorkflowsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('workflows.totalWorkflows')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalWorkflows}</p>
-                <p className="text-sm text-green-600 mt-1">{stats.activeWorkflows} {t('workflows.activeWorkflows')}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalWorkflows ?? 0}</p>
+                <p className="text-sm text-green-600 mt-1">{stats.activeWorkflows ?? 0} {t('workflows.activeWorkflows')}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,8 +234,8 @@ export function WorkflowsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('workflows.pendingApprovals')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.pendingApprovals}</p>
-                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalApprovals} {t('workflows.total')}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.pendingApprovals ?? 0}</p>
+                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalApprovals ?? 0} {t('workflows.total')}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,8 +249,8 @@ export function WorkflowsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('workflows.activeWebhooks')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.activeWebhooks}</p>
-                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalWebhooks} {t('workflows.total')}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.activeWebhooks ?? 0}</p>
+                <p className="text-sm text-gray-600 mt-1">{t('workflows.ofTotal')} {stats.totalWebhooks ?? 0} {t('workflows.total')}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,8 +264,8 @@ export function WorkflowsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{t('workflows.apiKeys')}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalApiKeys}</p>
-                <p className="text-sm text-gray-600 mt-1">{stats.totalTags} {t('workflows.tags')}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalApiKeys ?? 0}</p>
+                <p className="text-sm text-gray-600 mt-1">{stats.totalTags ?? 0} {t('workflows.tags')}</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

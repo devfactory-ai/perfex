@@ -4,45 +4,67 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { Eye, Pencil, Trash2, Plus, CreditCard } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { PageHeader, Button, StatsCard, SectionCard, InlineLoading } from '@/components/healthcare';
+
+// API returns snake_case - we map it in the query
+interface BillingRecordApi {
+  id: string;
+  invoice_number: string;
+  patient_id: string;
+  patient_medical_id: string;
+  patient_first_name: string;
+  patient_last_name: string;
+  session_id: string | null;
+  status: string;
+  billing_type: string;
+  amount: number;
+  insurance_amount: number;
+  patient_amount: number;
+  insurance_provider: string | null;
+  insurance_policy_number: string | null;
+  paid_amount: number;
+  paid_date: number | null;
+  billing_date: number;
+  session_date: number;
+  line_items: string | null;
+  notes: string | null;
+  created_at: number;
+}
 
 interface BillingRecord {
   id: string;
   invoiceNumber: string;
   patientId: string;
-  patient: {
-    medicalId: string;
-    contact: {
-      firstName: string;
-      lastName: string;
-    };
-  };
+  patientMedicalId: string;
+  patientFirstName: string;
+  patientLastName: string;
   sessionId: string | null;
-  session: {
-    sessionNumber: string;
-    sessionDate: string;
-  } | null;
   status: 'draft' | 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid';
   billingType: 'session' | 'monthly' | 'package' | 'other';
   insuranceProvider: string | null;
   insurancePolicyNumber: string | null;
   // Amounts
+  totalAmount: number;
+  insuranceCoverage: number;
+  patientResponsibility: number;
+  paidAmount: number;
+  // For backwards compatibility
   baseAmount: number;
   consumablesAmount: number;
   medicationsAmount: number;
   additionalCharges: number;
   discountAmount: number;
-  totalAmount: number;
-  insuranceCoverage: number;
-  patientResponsibility: number;
-  paidAmount: number;
   // Dates
   serviceDate: string;
   billingDate: string;
-  dueDate: string | null;
   paidDate: string | null;
   // Items
   lineItems: BillingLineItem[];
@@ -71,59 +93,86 @@ interface BillingStats {
   thisMonth: number;
 }
 
-interface BillingFormData {
-  patientId: string;
-  sessionId?: string;
-  billingType: string;
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  baseAmount: number;
-  consumablesAmount: number;
-  medicationsAmount: number;
-  additionalCharges: number;
-  discountAmount: number;
-  insuranceCoverage: number;
-  serviceDate: string;
-  dueDate?: string;
-  notes?: string;
-}
-
-interface Patient {
-  id: string;
-  medicalId: string;
-  contact: {
-    firstName: string;
-    lastName: string;
-  };
-}
-
 export function DialyseBillingPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('month');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBilling, setEditingBilling] = useState<BillingRecord | null>(null);
   const [viewingBilling, setViewingBilling] = useState<BillingRecord | null>(null);
-  const [selectedPatientId, setSelectedPatientId] = useState('');
+
+  // Transform API response to frontend format
+  const transformBillingRecord = (record: BillingRecordApi): BillingRecord => {
+    let lineItems: BillingLineItem[] = [];
+    try {
+      if (record.line_items) {
+        const parsed = JSON.parse(record.line_items);
+        lineItems = Array.isArray(parsed) ? parsed.map((item: any) => ({
+          description: item.description || '',
+          quantity: item.qty || item.quantity || 1,
+          unitPrice: item.price || item.unitPrice || 0,
+          totalPrice: (item.qty || item.quantity || 1) * (item.price || item.unitPrice || 0),
+          category: item.category || 'session',
+          code: item.code || null,
+        })) : [];
+      }
+    } catch (e) {
+      console.warn('Failed to parse line_items:', e);
+    }
+
+    return {
+      id: record.id,
+      invoiceNumber: record.invoice_number,
+      patientId: record.patient_id,
+      patientMedicalId: record.patient_medical_id || '',
+      patientFirstName: record.patient_first_name || '',
+      patientLastName: record.patient_last_name || '',
+      sessionId: record.session_id,
+      status: (record.status as BillingRecord['status']) || 'pending',
+      billingType: (record.billing_type as BillingRecord['billingType']) || 'session',
+      insuranceProvider: record.insurance_provider,
+      insurancePolicyNumber: record.insurance_policy_number,
+      totalAmount: record.amount || 0,
+      insuranceCoverage: record.insurance_amount || 0,
+      patientResponsibility: record.patient_amount || 0,
+      paidAmount: record.paid_amount || 0,
+      baseAmount: record.amount || 0,
+      consumablesAmount: 0,
+      medicationsAmount: 0,
+      additionalCharges: 0,
+      discountAmount: 0,
+      serviceDate: record.session_date ? new Date(record.session_date).toISOString() : '',
+      billingDate: record.billing_date ? new Date(record.billing_date).toISOString() : '',
+      paidDate: record.paid_date ? new Date(record.paid_date).toISOString() : null,
+      lineItems,
+      notes: record.notes,
+      createdAt: record.created_at ? new Date(record.created_at).toISOString() : '',
+    };
+  };
 
   // Fetch billing records
-  const { data: billingData, isLoading, error } = useQuery({
-    queryKey: ['dialyse-billing', searchTerm, statusFilter, typeFilter, dateRange],
+  const { data: response, isLoading, error } = useQuery({
+    queryKey: ['dialyse-billing', searchTerm, statusFilter, typeFilter, dateRange, currentPage, itemsPerPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (typeFilter !== 'all') params.append('type', typeFilter);
       if (dateRange !== 'all') params.append('dateRange', dateRange);
-      params.append('limit', '100');
+      params.append('offset', ((currentPage - 1) * itemsPerPage).toString());
+      params.append('limit', itemsPerPage.toString());
 
       const url = `/dialyse/billing${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await api.get<ApiResponse<BillingRecord[]>>(url);
-      return response.data;
+      const result = await api.get<{ success: boolean; data: BillingRecordApi[]; meta?: any }>(url);
+
+      // Transform API response
+      const transformedData = (result.data.data || []).map(transformBillingRecord);
+      return { data: transformedData, meta: result.data.meta };
     },
   });
 
@@ -136,50 +185,6 @@ export function DialyseBillingPage() {
     },
   });
 
-  // Fetch patients for dropdown
-  const { data: patientsData } = useQuery({
-    queryKey: ['dialyse-patients-list'],
-    queryFn: async () => {
-      const response = await api.get<ApiResponse<Patient[]>>('/dialyse/patients?status=active&limit=200');
-      return response.data.data || [];
-    },
-  });
-
-  // Create billing mutation
-  const createBilling = useMutation({
-    mutationFn: async (data: BillingFormData) => {
-      await api.post('/dialyse/billing', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dialyse-billing'] });
-      queryClient.invalidateQueries({ queryKey: ['dialyse-billing-stats'] });
-      setIsModalOpen(false);
-      resetForm();
-      window.alert('Facture créée avec succès');
-    },
-    onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
-    },
-  });
-
-  // Update billing mutation
-  const updateBilling = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<BillingFormData & { status: string }> }) => {
-      await api.put(`/dialyse/billing/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dialyse-billing'] });
-      queryClient.invalidateQueries({ queryKey: ['dialyse-billing-stats'] });
-      setIsModalOpen(false);
-      setEditingBilling(null);
-      resetForm();
-      window.alert('Facture mise à jour avec succès');
-    },
-    onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
-    },
-  });
-
   // Delete billing mutation
   const deleteBilling = useMutation({
     mutationFn: async (id: string) => {
@@ -188,10 +193,10 @@ export function DialyseBillingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-billing'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-billing-stats'] });
-      window.alert('Facture supprimée avec succès');
+      toast.success(t('dialyse.invoiceDeleted'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -203,27 +208,19 @@ export function DialyseBillingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-billing'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-billing-stats'] });
-      window.alert('Paiement enregistré avec succès');
+      toast.success(t('dialyse.paymentRecorded'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
-  const resetForm = () => {
-    setSelectedPatientId('');
-  };
-
   const handleAddBilling = () => {
-    setEditingBilling(null);
-    resetForm();
-    setIsModalOpen(true);
+    navigate('/dialyse/billing/new');
   };
 
   const handleEditBilling = (billing: BillingRecord) => {
-    setEditingBilling(billing);
-    setSelectedPatientId(billing.patientId);
-    setIsModalOpen(true);
+    navigate(`/dialyse/billing/${billing.id}/edit`);
   };
 
   const handleViewBilling = (billing: BillingRecord) => {
@@ -231,14 +228,14 @@ export function DialyseBillingPage() {
   };
 
   const handleDelete = (id: string, invoiceNumber: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer la facture "${invoiceNumber}" ?`)) {
+    if (confirm(`${t('dialyse.confirmDeleteInvoice')} "${invoiceNumber}" ?`)) {
       deleteBilling.mutate(id);
     }
   };
 
   const handleMarkAsPaid = (billing: BillingRecord) => {
     const outstanding = billing.totalAmount - billing.paidAmount;
-    const amount = prompt(`Montant payé (restant dû: ${formatCurrency(outstanding)}):`, outstanding.toString());
+    const amount = prompt(`${t('dialyse.enterPaidAmount')} (${t('dialyse.remainingDue')}: ${formatCurrency(outstanding)}):`, outstanding.toString());
     if (amount !== null) {
       const paidAmount = parseFloat(amount);
       if (!isNaN(paidAmount) && paidAmount > 0) {
@@ -247,78 +244,33 @@ export function DialyseBillingPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    const baseAmount = parseFloat(formData.get('baseAmount') as string) || 0;
-    const consumablesAmount = parseFloat(formData.get('consumablesAmount') as string) || 0;
-    const medicationsAmount = parseFloat(formData.get('medicationsAmount') as string) || 0;
-    const additionalCharges = parseFloat(formData.get('additionalCharges') as string) || 0;
-    const discountAmount = parseFloat(formData.get('discountAmount') as string) || 0;
-    const insuranceCoverage = parseFloat(formData.get('insuranceCoverage') as string) || 0;
-
-    const data: BillingFormData = {
-      patientId: selectedPatientId,
-      sessionId: formData.get('sessionId') as string || undefined,
-      billingType: formData.get('billingType') as string,
-      insuranceProvider: formData.get('insuranceProvider') as string || undefined,
-      insurancePolicyNumber: formData.get('insurancePolicyNumber') as string || undefined,
-      baseAmount,
-      consumablesAmount,
-      medicationsAmount,
-      additionalCharges,
-      discountAmount,
-      insuranceCoverage,
-      serviceDate: formData.get('serviceDate') as string,
-      dueDate: formData.get('dueDate') as string || undefined,
-      notes: formData.get('notes') as string || undefined,
-    };
-
-    if (editingBilling) {
-      updateBilling.mutate({
-        id: editingBilling.id,
-        data: {
-          ...data,
-          status: formData.get('status') as string,
-        },
-      });
-    } else {
-      createBilling.mutate(data);
-    }
-  };
-
   // Calculate paginated data
   const paginatedBilling = useMemo(() => {
-    const records = billingData?.data || [];
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const data = records.slice(startIndex, endIndex);
-    const total = records.length;
+    const items = response?.data || [];
+    const total = response?.meta?.total || 0;
     const totalPages = Math.ceil(total / itemsPerPage);
-
-    return { data, total, totalPages };
-  }, [billingData, currentPage, itemsPerPage]);
+    return { data: items, total, totalPages };
+  }, [response, itemsPerPage]);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      draft: 'bg-gray-100 text-gray-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      submitted: 'bg-blue-100 text-blue-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      paid: 'bg-emerald-100 text-emerald-800',
+      draft: 'bg-muted text-muted-foreground',
+      pending: 'bg-muted text-foreground',
+      submitted: 'bg-muted/70 text-foreground',
+      approved: 'bg-muted/50 text-foreground',
+      rejected: 'bg-muted text-muted-foreground',
+      paid: 'bg-muted/60 text-foreground',
     };
     const labels: Record<string, string> = {
-      draft: 'Brouillon',
-      pending: 'En attente',
-      submitted: 'Soumise',
-      approved: 'Approuvée',
-      rejected: 'Rejetée',
-      paid: 'Payée',
+      draft: t('dialyse.statusDraft'),
+      pending: t('dialyse.statusPending'),
+      submitted: t('dialyse.statusSubmitted'),
+      approved: t('dialyse.statusApproved'),
+      rejected: t('dialyse.statusRejected'),
+      paid: t('dialyse.statusPaid'),
     };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-muted text-muted-foreground'}`}>
         {labels[status] || status}
       </span>
     );
@@ -326,19 +278,19 @@ export function DialyseBillingPage() {
 
   const getTypeBadge = (type: string) => {
     const styles: Record<string, string> = {
-      session: 'bg-blue-100 text-blue-800',
-      monthly: 'bg-purple-100 text-purple-800',
-      package: 'bg-indigo-100 text-indigo-800',
-      other: 'bg-gray-100 text-gray-800',
+      session: 'bg-muted text-foreground',
+      monthly: 'bg-muted/70 text-foreground',
+      package: 'bg-muted/80 text-foreground',
+      other: 'bg-muted text-muted-foreground',
     };
     const labels: Record<string, string> = {
-      session: 'Séance',
-      monthly: 'Mensuelle',
-      package: 'Forfait',
-      other: 'Autre',
+      session: t('dialyse.typeSession'),
+      monthly: t('dialyse.typeMonthly'),
+      package: t('dialyse.typePackage'),
+      other: t('dialyse.typeOther'),
     };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[type] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[type] || 'bg-muted text-muted-foreground'}`}>
         {labels[type] || type}
       </span>
     );
@@ -359,51 +311,54 @@ export function DialyseBillingPage() {
   };
 
   const isOverdue = (billing: BillingRecord): boolean => {
-    if (billing.status === 'paid' || !billing.dueDate) return false;
-    return new Date(billing.dueDate) < new Date();
+    if (billing.status === 'paid') return false;
+    // Consider overdue if unpaid and billing date is more than 30 days ago
+    const billingDate = new Date(billing.billingDate);
+    const dueDate = new Date(billingDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    return dueDate < new Date() && billing.paidAmount < billing.totalAmount;
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Facturation</h1>
-          <p className="text-muted-foreground">
-            Gestion des factures et paiements des séances de dialyse
-          </p>
-        </div>
-        <button
-          onClick={handleAddBilling}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nouvelle Facture
-        </button>
-      </div>
+      <PageHeader
+        title={t('dialyse.billing')}
+        description={t('dialyse.billingSubtitle')}
+        module="dialyse"
+      >
+        <Button onClick={handleAddBilling}>
+          <Plus className="h-4 w-4" />
+          {t('dialyse.newInvoice')}
+        </Button>
+      </PageHeader>
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Facturé</div>
-            <div className="mt-2 text-2xl font-bold">{formatCurrency(stats.totalBilled)}</div>
-            <div className="text-xs text-muted-foreground">{stats.total} factures</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Total Payé</div>
-            <div className="mt-2 text-2xl font-bold text-green-600">{formatCurrency(stats.totalPaid)}</div>
-            <div className="text-xs text-muted-foreground">{stats.paid} factures payées</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">En Attente</div>
-            <div className="mt-2 text-2xl font-bold text-yellow-600">{formatCurrency(stats.totalOutstanding)}</div>
-            <div className="text-xs text-muted-foreground">{stats.pending} en attente</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Ce Mois</div>
-            <div className="mt-2 text-2xl font-bold text-blue-600">{stats.thisMonth}</div>
-            <div className="text-xs text-muted-foreground">factures générées</div>
-          </div>
+          <StatsCard
+            title={t('dialyse.totalBilled')}
+            value={formatCurrency(stats.totalBilled ?? 0)}
+            subtitle={`${stats.total ?? 0} ${t('dialyse.invoices')}`}
+            module="dialyse"
+          />
+          <StatsCard
+            title={t('dialyse.totalPaid')}
+            value={formatCurrency(stats.totalPaid ?? 0)}
+            subtitle={`${stats.paid ?? 0} ${t('dialyse.paidInvoices')}`}
+            module="dialyse"
+          />
+          <StatsCard
+            title={t('dialyse.outstanding')}
+            value={formatCurrency(stats.totalOutstanding ?? 0)}
+            subtitle={`${stats.pending ?? 0} ${t('dialyse.pending')}`}
+            module="dialyse"
+          />
+          <StatsCard
+            title={t('dialyse.thisMonth')}
+            value={stats.thisMonth ?? 0}
+            subtitle={t('dialyse.invoicesGenerated')}
+            module="dialyse"
+          />
         </div>
       )}
 
@@ -412,7 +367,7 @@ export function DialyseBillingPage() {
         <div className="flex-1 min-w-[200px]">
           <input
             type="text"
-            placeholder="Rechercher (N° facture, patient)..."
+            placeholder={t('dialyse.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -423,49 +378,44 @@ export function DialyseBillingPage() {
           onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Tous les statuts</option>
-          <option value="draft">Brouillon</option>
-          <option value="pending">En attente</option>
-          <option value="submitted">Soumise</option>
-          <option value="approved">Approuvée</option>
-          <option value="rejected">Rejetée</option>
-          <option value="paid">Payée</option>
+          <option value="all">{t('dialyse.allStatuses')}</option>
+          <option value="draft">{t('dialyse.statusDraft')}</option>
+          <option value="pending">{t('dialyse.statusPending')}</option>
+          <option value="submitted">{t('dialyse.statusSubmitted')}</option>
+          <option value="approved">{t('dialyse.statusApproved')}</option>
+          <option value="rejected">{t('dialyse.statusRejected')}</option>
+          <option value="paid">{t('dialyse.statusPaid')}</option>
         </select>
         <select
           value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Tous les types</option>
-          <option value="session">Séance</option>
-          <option value="monthly">Mensuelle</option>
-          <option value="package">Forfait</option>
-          <option value="other">Autre</option>
+          <option value="all">{t('dialyse.allTypes')}</option>
+          <option value="session">{t('dialyse.typeSession')}</option>
+          <option value="monthly">{t('dialyse.typeMonthly')}</option>
+          <option value="package">{t('dialyse.typePackage')}</option>
+          <option value="other">{t('dialyse.typeOther')}</option>
         </select>
         <select
           value={dateRange}
           onChange={(e) => { setDateRange(e.target.value as typeof dateRange); setCurrentPage(1); }}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">Toutes les dates</option>
-          <option value="today">Aujourd'hui</option>
-          <option value="week">Cette semaine</option>
-          <option value="month">Ce mois</option>
+          <option value="all">{t('dialyse.allDates')}</option>
+          <option value="today">{t('dialyse.today')}</option>
+          <option value="week">{t('dialyse.thisWeek')}</option>
+          <option value="month">{t('dialyse.thisMonth')}</option>
         </select>
       </div>
 
       {/* Billing List */}
-      <div className="rounded-lg border bg-card">
+      <SectionCard module="dialyse">
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement des factures...</p>
-            </div>
-          </div>
+          <InlineLoading message={t('dialyse.loadingBilling')} />
         ) : error ? (
           <div className="p-12 text-center">
-            <p className="text-destructive">Erreur: {getErrorMessage(error)}</p>
+            <p className="text-destructive">{t('dialyse.error')}: {getErrorMessage(error)}</p>
           </div>
         ) : paginatedBilling.data.length > 0 ? (
           <>
@@ -473,35 +423,35 @@ export function DialyseBillingPage() {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">N° Facture</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Patient</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date Service</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Montant</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Assurance</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Statut</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.invoiceNumber')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.patient')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.type')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.serviceDate')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.amount')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.insurance')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t('dialyse.status')}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t('dialyse.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {paginatedBilling.data.map((billing) => (
-                    <tr key={billing.id} className={`hover:bg-muted/50 ${isOverdue(billing) ? 'bg-red-50' : ''}`}>
+                    <tr key={billing.id} className={`hover:bg-muted/50 ${isOverdue(billing) ? 'bg-slate-50 dark:bg-slate-800/30' : ''}`}>
                       <td className="px-6 py-4">
                         <div className="font-mono text-sm font-medium">{billing.invoiceNumber}</div>
-                        {billing.session && (
-                          <div className="text-xs text-muted-foreground">Séance: {billing.session.sessionNumber}</div>
+                        {billing.sessionId && (
+                          <div className="text-xs text-muted-foreground">{t('dialyse.linkedSession')}</div>
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium">{billing.patient.contact.firstName} {billing.patient.contact.lastName}</div>
-                        <div className="text-sm text-muted-foreground font-mono">{billing.patient.medicalId}</div>
+                        <div className="font-medium">{billing.patientFirstName} {billing.patientLastName}</div>
+                        <div className="text-sm text-muted-foreground font-mono">{billing.patientMedicalId}</div>
                       </td>
                       <td className="px-6 py-4">{getTypeBadge(billing.billingType)}</td>
                       <td className="px-6 py-4">
                         <div className="text-sm">{formatDate(billing.serviceDate)}</div>
-                        {billing.dueDate && (
-                          <div className={`text-xs ${isOverdue(billing) ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                            Éch: {formatDate(billing.dueDate)}
+                        {isOverdue(billing) && (
+                          <div className="text-xs text-slate-800 dark:text-slate-300 font-medium">
+                            {t('dialyse.overdue')}
                           </div>
                         )}
                       </td>
@@ -509,7 +459,7 @@ export function DialyseBillingPage() {
                         <div className="text-sm font-medium">{formatCurrency(billing.totalAmount)}</div>
                         {billing.paidAmount > 0 && billing.paidAmount < billing.totalAmount && (
                           <div className="text-xs text-muted-foreground">
-                            Payé: {formatCurrency(billing.paidAmount)}
+                            {t('dialyse.paid')}: {formatCurrency(billing.paidAmount)}
                           </div>
                         )}
                       </td>
@@ -524,33 +474,39 @@ export function DialyseBillingPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">{getStatusBadge(billing.status)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-1">
-                        <button
-                          onClick={() => handleViewBilling(billing)}
-                          className="text-primary hover:text-primary/80 font-medium"
-                        >
-                          Voir
-                        </button>
-                        {billing.status !== 'paid' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleMarkAsPaid(billing)}
-                            className="text-green-600 hover:text-green-800 font-medium"
+                            onClick={() => handleViewBilling(billing)}
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.view')}
                           >
-                            Payer
+                            <Eye className="h-4 w-4" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleEditBilling(billing)}
-                          className="text-primary hover:text-primary/80 font-medium"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDelete(billing.id, billing.invoiceNumber)}
-                          className="text-destructive hover:text-destructive/80 font-medium"
-                        >
-                          Supprimer
-                        </button>
+                          {billing.status !== 'paid' && (
+                            <button
+                              onClick={() => handleMarkAsPaid(billing)}
+                              className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                              title={t('dialyse.pay')}
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEditBilling(billing)}
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors"
+                            title={t('dialyse.edit')}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(billing.id, billing.invoiceNumber)}
+                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            title={t('dialyse.delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -569,16 +525,16 @@ export function DialyseBillingPage() {
           </>
         ) : (
           <EmptyState
-            title="Aucune facture trouvée"
-            description="Créez votre première facture"
+            title={t('dialyse.noBillingFound')}
+            description={t('dialyse.createFirstInvoice')}
             icon="invoice"
             action={{
-              label: 'Nouvelle Facture',
+              label: t('dialyse.newInvoice'),
               onClick: handleAddBilling,
             }}
           />
         )}
-      </div>
+      </SectionCard>
 
       {/* View Billing Modal */}
       {viewingBilling && (
@@ -588,11 +544,11 @@ export function DialyseBillingPage() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold">Facture {viewingBilling.invoiceNumber}</h2>
+                    <h2 className="text-xl font-semibold">{t('dialyse.invoice')} {viewingBilling.invoiceNumber}</h2>
                     {getStatusBadge(viewingBilling.status)}
                   </div>
                   <p className="text-muted-foreground">
-                    {viewingBilling.patient.contact.firstName} {viewingBilling.patient.contact.lastName} ({viewingBilling.patient.medicalId})
+                    {viewingBilling.patientFirstName} {viewingBilling.patientLastName} ({viewingBilling.patientMedicalId})
                   </p>
                 </div>
                 <button
@@ -608,30 +564,30 @@ export function DialyseBillingPage() {
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Billing Info */}
                 <div className="rounded-lg border p-4">
-                  <h3 className="font-semibold mb-3">Informations</h3>
+                  <h3 className="font-semibold mb-3">{t('dialyse.information')}</h3>
                   <dl className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Type</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.type')}</dt>
                       <dd>{getTypeBadge(viewingBilling.billingType)}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Date service</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.serviceDate')}</dt>
                       <dd>{formatDate(viewingBilling.serviceDate)}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Date facturation</dt>
+                      <dt className="text-muted-foreground">{t('dialyse.billingDate')}</dt>
                       <dd>{formatDate(viewingBilling.billingDate)}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Échéance</dt>
-                      <dd className={isOverdue(viewingBilling) ? 'text-red-600 font-medium' : ''}>
-                        {formatDate(viewingBilling.dueDate)}
+                      <dt className="text-muted-foreground">{t('dialyse.dueDate')}</dt>
+                      <dd className={isOverdue(viewingBilling) ? 'text-slate-800 dark:text-slate-300 font-medium' : ''}>
+                        {viewingBilling.billingDate ? formatDate(new Date(new Date(viewingBilling.billingDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()) : '-'}
                       </dd>
                     </div>
-                    {viewingBilling.session && (
+                    {viewingBilling.sessionId && (
                       <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Séance</dt>
-                        <dd>{viewingBilling.session.sessionNumber}</dd>
+                        <dt className="text-muted-foreground">{t('dialyse.session')}</dt>
+                        <dd>#{viewingBilling.sessionId.slice(0, 8)}</dd>
                       </div>
                     )}
                   </dl>
@@ -639,83 +595,83 @@ export function DialyseBillingPage() {
 
                 {/* Insurance */}
                 <div className="rounded-lg border p-4">
-                  <h3 className="font-semibold mb-3">Assurance</h3>
+                  <h3 className="font-semibold mb-3">{t('dialyse.insurance')}</h3>
                   {viewingBilling.insuranceProvider ? (
                     <dl className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Fournisseur</dt>
+                        <dt className="text-muted-foreground">{t('dialyse.provider')}</dt>
                         <dd>{viewingBilling.insuranceProvider}</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="text-muted-foreground">N° Police</dt>
+                        <dt className="text-muted-foreground">{t('dialyse.policyNumber')}</dt>
                         <dd className="font-mono">{viewingBilling.insurancePolicyNumber}</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Couverture</dt>
+                        <dt className="text-muted-foreground">{t('dialyse.coverage')}</dt>
                         <dd className="font-medium">{formatCurrency(viewingBilling.insuranceCoverage)}</dd>
                       </div>
                     </dl>
                   ) : (
-                    <p className="text-muted-foreground text-sm">Pas d'assurance</p>
+                    <p className="text-muted-foreground text-sm">{t('dialyse.noInsurance')}</p>
                   )}
                 </div>
               </div>
 
               {/* Amounts Breakdown */}
               <div className="mt-6 rounded-lg border p-4">
-                <h3 className="font-semibold mb-3">Détail des montants</h3>
+                <h3 className="font-semibold mb-3">{t('dialyse.amountBreakdown')}</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Montant de base</span>
+                    <span>{t('dialyse.baseAmount')}</span>
                     <span>{formatCurrency(viewingBilling.baseAmount)}</span>
                   </div>
                   {viewingBilling.consumablesAmount > 0 && (
                     <div className="flex justify-between">
-                      <span>Consommables</span>
+                      <span>{t('dialyse.consumables')}</span>
                       <span>{formatCurrency(viewingBilling.consumablesAmount)}</span>
                     </div>
                   )}
                   {viewingBilling.medicationsAmount > 0 && (
                     <div className="flex justify-between">
-                      <span>Médicaments</span>
+                      <span>{t('dialyse.medications')}</span>
                       <span>{formatCurrency(viewingBilling.medicationsAmount)}</span>
                     </div>
                   )}
                   {viewingBilling.additionalCharges > 0 && (
                     <div className="flex justify-between">
-                      <span>Frais supplémentaires</span>
+                      <span>{t('dialyse.additionalCharges')}</span>
                       <span>{formatCurrency(viewingBilling.additionalCharges)}</span>
                     </div>
                   )}
                   {viewingBilling.discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Remise</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <span>{t('dialyse.discount')}</span>
                       <span>-{formatCurrency(viewingBilling.discountAmount)}</span>
                     </div>
                   )}
                   <div className="border-t pt-2 font-semibold flex justify-between">
-                    <span>Total</span>
+                    <span>{t('dialyse.total')}</span>
                     <span>{formatCurrency(viewingBilling.totalAmount)}</span>
                   </div>
                   {viewingBilling.insuranceCoverage > 0 && (
-                    <div className="flex justify-between text-blue-600">
-                      <span>Prise en charge assurance</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <span>{t('dialyse.insuranceCoverage')}</span>
                       <span>-{formatCurrency(viewingBilling.insuranceCoverage)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-medium">
-                    <span>Reste à charge patient</span>
+                    <span>{t('dialyse.patientResponsibility')}</span>
                     <span>{formatCurrency(viewingBilling.patientResponsibility)}</span>
                   </div>
                   {viewingBilling.paidAmount > 0 && (
                     <>
-                      <div className="flex justify-between text-green-600">
-                        <span>Déjà payé</span>
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>{t('dialyse.alreadyPaid')}</span>
                         <span>{formatCurrency(viewingBilling.paidAmount)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg">
-                        <span>Restant dû</span>
-                        <span className={viewingBilling.totalAmount - viewingBilling.paidAmount > 0 ? 'text-red-600' : 'text-green-600'}>
+                        <span>{t('dialyse.remainingDue')}</span>
+                        <span className={viewingBilling.totalAmount - viewingBilling.paidAmount > 0 ? 'text-slate-800 dark:text-slate-300' : 'text-slate-600 dark:text-slate-400'}>
                           {formatCurrency(viewingBilling.totalAmount - viewingBilling.paidAmount)}
                         </span>
                       </div>
@@ -727,14 +683,14 @@ export function DialyseBillingPage() {
               {/* Line Items */}
               {viewingBilling.lineItems && viewingBilling.lineItems.length > 0 && (
                 <div className="mt-6 rounded-lg border p-4">
-                  <h3 className="font-semibold mb-3">Lignes de facturation</h3>
+                  <h3 className="font-semibold mb-3">{t('dialyse.billingLines')}</h3>
                   <table className="w-full text-sm">
                     <thead className="border-b">
                       <tr>
-                        <th className="text-left py-2">Description</th>
-                        <th className="text-center py-2">Qté</th>
-                        <th className="text-right py-2">P.U.</th>
-                        <th className="text-right py-2">Total</th>
+                        <th className="text-left py-2">{t('dialyse.description')}</th>
+                        <th className="text-center py-2">{t('dialyse.quantity')}</th>
+                        <th className="text-right py-2">{t('dialyse.unitPrice')}</th>
+                        <th className="text-right py-2">{t('dialyse.total')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -756,7 +712,7 @@ export function DialyseBillingPage() {
 
               {viewingBilling.notes && (
                 <div className="mt-6 rounded-lg border p-4">
-                  <h3 className="font-semibold mb-2">Notes</h3>
+                  <h3 className="font-semibold mb-2">{t('dialyse.notes')}</h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewingBilling.notes}</p>
                 </div>
               )}
@@ -765,239 +721,24 @@ export function DialyseBillingPage() {
                 {viewingBilling.status !== 'paid' && (
                   <button
                     onClick={() => { setViewingBilling(null); handleMarkAsPaid(viewingBilling); }}
-                    className="px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+                    className="px-4 py-2 rounded-md bg-slate-600 text-white text-sm font-medium hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-600"
                   >
-                    Enregistrer paiement
+                    {t('dialyse.recordPayment')}
                   </button>
                 )}
                 <button
                   onClick={() => { setViewingBilling(null); handleEditBilling(viewingBilling); }}
                   className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
                 >
-                  Modifier
+                  {t('dialyse.edit')}
                 </button>
                 <button
                   onClick={() => setViewingBilling(null)}
                   className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
                 >
-                  Fermer
+                  {t('dialyse.close')}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Billing Form Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                {editingBilling ? 'Modifier la Facture' : 'Nouvelle Facture'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Patient Selection */}
-                <div>
-                  <label className="block text-sm font-medium mb-1">Patient *</label>
-                  <select
-                    value={selectedPatientId}
-                    onChange={(e) => setSelectedPatientId(e.target.value)}
-                    required
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Sélectionner un patient</option>
-                    {patientsData?.map((patient) => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.contact.firstName} {patient.contact.lastName} ({patient.medicalId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Type *</label>
-                    <select
-                      name="billingType"
-                      defaultValue={editingBilling?.billingType || 'session'}
-                      required
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="session">Séance</option>
-                      <option value="monthly">Mensuelle</option>
-                      <option value="package">Forfait</option>
-                      <option value="other">Autre</option>
-                    </select>
-                  </div>
-                  {editingBilling && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Statut *</label>
-                      <select
-                        name="status"
-                        defaultValue={editingBilling.status}
-                        required
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="draft">Brouillon</option>
-                        <option value="pending">En attente</option>
-                        <option value="submitted">Soumise</option>
-                        <option value="approved">Approuvée</option>
-                        <option value="rejected">Rejetée</option>
-                        <option value="paid">Payée</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Date service *</label>
-                    <input
-                      type="date"
-                      name="serviceDate"
-                      defaultValue={editingBilling?.serviceDate?.split('T')[0] || new Date().toISOString().split('T')[0]}
-                      required
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Date échéance</label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      defaultValue={editingBilling?.dueDate?.split('T')[0] || ''}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Insurance */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Assurance</label>
-                    <input
-                      type="text"
-                      name="insuranceProvider"
-                      defaultValue={editingBilling?.insuranceProvider || ''}
-                      placeholder="Nom de l'assurance"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">N° Police</label>
-                    <input
-                      type="text"
-                      name="insurancePolicyNumber"
-                      defaultValue={editingBilling?.insurancePolicyNumber || ''}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Amounts */}
-                <div className="space-y-3 p-4 border rounded-lg">
-                  <h3 className="font-medium">Montants</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Base (EUR) *</label>
-                      <input
-                        type="number"
-                        name="baseAmount"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.baseAmount || ''}
-                        required
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Consommables</label>
-                      <input
-                        type="number"
-                        name="consumablesAmount"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.consumablesAmount || ''}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Médicaments</label>
-                      <input
-                        type="number"
-                        name="medicationsAmount"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.medicationsAmount || ''}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Frais suppl.</label>
-                      <input
-                        type="number"
-                        name="additionalCharges"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.additionalCharges || ''}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Remise</label>
-                      <input
-                        type="number"
-                        name="discountAmount"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.discountAmount || ''}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Couverture assurance</label>
-                      <input
-                        type="number"
-                        name="insuranceCoverage"
-                        step="0.01"
-                        min="0"
-                        defaultValue={editingBilling?.insuranceCoverage || ''}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Notes</label>
-                  <textarea
-                    name="notes"
-                    defaultValue={editingBilling?.notes || ''}
-                    rows={2}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => { setIsModalOpen(false); setEditingBilling(null); resetForm(); }}
-                    className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!selectedPatientId}
-                    className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {editingBilling ? 'Mettre à jour' : 'Créer'}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>

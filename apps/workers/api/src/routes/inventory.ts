@@ -5,6 +5,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, requirePermissions } from '../middleware/auth';
 import { inventoryService } from '../services/inventory.service';
+import { logger } from '../utils/logger';
 import {
   createInventoryItemSchema,
   updateInventoryItemSchema,
@@ -27,21 +28,32 @@ app.use('*', authMiddleware);
  * List all inventory items with optional filters
  */
 app.get('/items', requirePermissions('inventory:read'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const category = c.req.query('category');
-  const active = c.req.query('active');
-  const search = c.req.query('search');
+  try {
+    const organizationId = c.get('organizationId');
+    const category = c.req.query('category');
+    const active = c.req.query('active');
+    const search = c.req.query('search');
 
-  const items = await inventoryService.listItems(organizationId, {
-    category,
-    active,
-    search,
-  });
+    const items = await inventoryService.listItems(organizationId, {
+      category,
+      active,
+      search,
+    });
 
-  return c.json({
-    success: true,
-    data: items,
-  });
+    return c.json({
+      success: true,
+      data: items,
+    });
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
+  }
 });
 
 /**
@@ -49,13 +61,24 @@ app.get('/items', requirePermissions('inventory:read'), async (c) => {
  * Get inventory statistics
  */
 app.get('/items/stats', requirePermissions('inventory:read'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const stats = await inventoryService.getStats(organizationId);
+  try {
+    const organizationId = c.get('organizationId');
+    const stats = await inventoryService.getStats(organizationId);
 
-  return c.json({
-    success: true,
-    data: stats,
-  });
+    return c.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
+  }
 });
 
 /**
@@ -63,28 +86,39 @@ app.get('/items/stats', requirePermissions('inventory:read'), async (c) => {
  * Get single inventory item by ID
  */
 app.get('/items/:id', requirePermissions('inventory:read'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const itemId = c.req.param('id');
+  try {
+    const organizationId = c.get('organizationId');
+    const itemId = c.req.param('id');
 
-  const item = await inventoryService.getItemById(organizationId, itemId);
+    const item = await inventoryService.getItemById(organizationId, itemId);
 
-  if (!item) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'ITEM_NOT_FOUND',
-          message: 'Inventory item not found',
+    if (!item) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'ITEM_NOT_FOUND',
+            message: 'Inventory item not found',
+          },
         },
-      },
-      404
-    );
-  }
+        404
+      );
+    }
 
-  return c.json({
-    success: true,
-    data: item,
-  });
+    return c.json({
+      success: true,
+      data: item,
+    });
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
+  }
 });
 
 /**
@@ -92,35 +126,46 @@ app.get('/items/:id', requirePermissions('inventory:read'), async (c) => {
  * Create new inventory item
  */
 app.post('/items', requirePermissions('inventory:create'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const userId = c.get('userId');
-  const body = await c.req.json();
+  try {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const body = await c.req.json();
 
-  // Validate input
-  const validation = createInventoryItemSchema.safeParse(body);
-  if (!validation.success) {
+    // Validate input
+    const validation = createInventoryItemSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: validation.error.errors,
+          },
+        },
+        400
+      );
+    }
+
+    const item = await inventoryService.createItem(organizationId, userId, validation.data);
+
     return c.json(
       {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid input',
-          details: validation.error.errors,
-        },
+        success: true,
+        data: item,
       },
-      400
+      201
     );
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
-
-  const item = await inventoryService.createItem(organizationId, userId, validation.data);
-
-  return c.json(
-    {
-      success: true,
-      data: item,
-    },
-    201
-  );
 });
 
 /**
@@ -128,27 +173,27 @@ app.post('/items', requirePermissions('inventory:create'), async (c) => {
  * Update inventory item
  */
 app.put('/items/:id', requirePermissions('inventory:update'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const itemId = c.req.param('id');
-  const body = await c.req.json();
-
-  // Validate input
-  const validation = updateInventoryItemSchema.safeParse(body);
-  if (!validation.success) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid input',
-          details: validation.error.errors,
-        },
-      },
-      400
-    );
-  }
-
   try {
+    const organizationId = c.get('organizationId');
+    const itemId = c.req.param('id');
+    const body = await c.req.json();
+
+    // Validate input
+    const validation = updateInventoryItemSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: validation.error.errors,
+          },
+        },
+        400
+      );
+    }
+
     const item = await inventoryService.updateItem(organizationId, itemId, validation.data);
 
     return c.json({
@@ -168,7 +213,14 @@ app.put('/items/:id', requirePermissions('inventory:update'), async (c) => {
         404
       );
     }
-    throw error;
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
 });
 
@@ -177,10 +229,10 @@ app.put('/items/:id', requirePermissions('inventory:update'), async (c) => {
  * Delete inventory item
  */
 app.delete('/items/:id', requirePermissions('inventory:delete'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const itemId = c.req.param('id');
-
   try {
+    const organizationId = c.get('organizationId');
+    const itemId = c.req.param('id');
+
     await inventoryService.deleteItem(organizationId, itemId);
 
     return c.json({
@@ -200,7 +252,14 @@ app.delete('/items/:id', requirePermissions('inventory:delete'), async (c) => {
         404
       );
     }
-    throw error;
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
 });
 
@@ -213,17 +272,28 @@ app.delete('/items/:id', requirePermissions('inventory:delete'), async (c) => {
  * List all warehouses with optional filters
  */
 app.get('/warehouses', requirePermissions('inventory:read'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const active = c.req.query('active');
+  try {
+    const organizationId = c.get('organizationId');
+    const active = c.req.query('active');
 
-  const warehouses = await inventoryService.listWarehouses(organizationId, {
-    active,
-  });
+    const warehouses = await inventoryService.listWarehouses(organizationId, {
+      active,
+    });
 
-  return c.json({
-    success: true,
-    data: warehouses,
-  });
+    return c.json({
+      success: true,
+      data: warehouses,
+    });
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
+  }
 });
 
 /**
@@ -231,28 +301,39 @@ app.get('/warehouses', requirePermissions('inventory:read'), async (c) => {
  * Get single warehouse by ID
  */
 app.get('/warehouses/:id', requirePermissions('inventory:read'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const warehouseId = c.req.param('id');
+  try {
+    const organizationId = c.get('organizationId');
+    const warehouseId = c.req.param('id');
 
-  const warehouse = await inventoryService.getWarehouseById(organizationId, warehouseId);
+    const warehouse = await inventoryService.getWarehouseById(organizationId, warehouseId);
 
-  if (!warehouse) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'WAREHOUSE_NOT_FOUND',
-          message: 'Warehouse not found',
+    if (!warehouse) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'WAREHOUSE_NOT_FOUND',
+            message: 'Warehouse not found',
+          },
         },
-      },
-      404
-    );
-  }
+        404
+      );
+    }
 
-  return c.json({
-    success: true,
-    data: warehouse,
-  });
+    return c.json({
+      success: true,
+      data: warehouse,
+    });
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
+  }
 });
 
 /**
@@ -260,35 +341,46 @@ app.get('/warehouses/:id', requirePermissions('inventory:read'), async (c) => {
  * Create new warehouse
  */
 app.post('/warehouses', requirePermissions('inventory:create'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const userId = c.get('userId');
-  const body = await c.req.json();
+  try {
+    const organizationId = c.get('organizationId');
+    const userId = c.get('userId');
+    const body = await c.req.json();
 
-  // Validate input
-  const validation = createWarehouseSchema.safeParse(body);
-  if (!validation.success) {
+    // Validate input
+    const validation = createWarehouseSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: validation.error.errors,
+          },
+        },
+        400
+      );
+    }
+
+    const warehouse = await inventoryService.createWarehouse(organizationId, userId, validation.data);
+
     return c.json(
       {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid input',
-          details: validation.error.errors,
-        },
+        success: true,
+        data: warehouse,
       },
-      400
+      201
     );
+  } catch (error) {
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
-
-  const warehouse = await inventoryService.createWarehouse(organizationId, userId, validation.data);
-
-  return c.json(
-    {
-      success: true,
-      data: warehouse,
-    },
-    201
-  );
 });
 
 /**
@@ -296,27 +388,27 @@ app.post('/warehouses', requirePermissions('inventory:create'), async (c) => {
  * Update warehouse
  */
 app.put('/warehouses/:id', requirePermissions('inventory:update'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const warehouseId = c.req.param('id');
-  const body = await c.req.json();
-
-  // Validate input
-  const validation = updateWarehouseSchema.safeParse(body);
-  if (!validation.success) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid input',
-          details: validation.error.errors,
-        },
-      },
-      400
-    );
-  }
-
   try {
+    const organizationId = c.get('organizationId');
+    const warehouseId = c.req.param('id');
+    const body = await c.req.json();
+
+    // Validate input
+    const validation = updateWarehouseSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid input',
+            details: validation.error.errors,
+          },
+        },
+        400
+      );
+    }
+
     const warehouse = await inventoryService.updateWarehouse(organizationId, warehouseId, validation.data);
 
     return c.json({
@@ -336,7 +428,14 @@ app.put('/warehouses/:id', requirePermissions('inventory:update'), async (c) => 
         404
       );
     }
-    throw error;
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
 });
 
@@ -345,10 +444,10 @@ app.put('/warehouses/:id', requirePermissions('inventory:update'), async (c) => 
  * Delete warehouse
  */
 app.delete('/warehouses/:id', requirePermissions('inventory:delete'), async (c) => {
-  const organizationId = c.get('organizationId');
-  const warehouseId = c.req.param('id');
-
   try {
+    const organizationId = c.get('organizationId');
+    const warehouseId = c.req.param('id');
+
     await inventoryService.deleteWarehouse(organizationId, warehouseId);
 
     return c.json({
@@ -368,7 +467,14 @@ app.delete('/warehouses/:id', requirePermissions('inventory:delete'), async (c) 
         404
       );
     }
-    throw error;
+    logger.error('Route error', error, { route: 'inventory' });
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }
+    }, 500);
   }
 });
 

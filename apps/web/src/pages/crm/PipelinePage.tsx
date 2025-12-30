@@ -118,22 +118,22 @@ export function PipelinePage() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('crm.totalValue')}</p>
-            <p className="text-2xl font-bold">€{stats.totalValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.totalCount} {t('crm.opportunities')}</p>
+            <p className="text-2xl font-bold">€{(stats.totalValue ?? 0).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.totalCount ?? 0} {t('crm.opportunities')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('crm.openPipeline')}</p>
-            <p className="text-2xl font-bold text-blue-600">€{stats.openValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.openCount} {t('crm.deals')}</p>
+            <p className="text-2xl font-bold text-blue-600">€{(stats.openValue ?? 0).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.openCount ?? 0} {t('crm.deals')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('crm.won')}</p>
-            <p className="text-2xl font-bold text-green-600">€{stats.wonValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.wonCount} {t('crm.deals')}</p>
+            <p className="text-2xl font-bold text-green-600">€{(stats.wonValue ?? 0).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.wonCount ?? 0} {t('crm.deals')}</p>
           </div>
           <div className="rounded-lg border bg-card p-6">
             <p className="text-sm text-muted-foreground">{t('crm.lost')}</p>
-            <p className="text-2xl font-bold text-red-600">{stats.lostCount}</p>
+            <p className="text-2xl font-bold text-red-600">{stats.lostCount ?? 0}</p>
             <p className="text-xs text-muted-foreground mt-1">{t('crm.opportunities')}</p>
           </div>
         </div>

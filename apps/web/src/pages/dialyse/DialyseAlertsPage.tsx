@@ -6,8 +6,29 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { Bell, AlertTriangle } from 'lucide-react';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  PageHeader,
+  FilterBar,
+  SectionCard,
+  StatsCard,
+  EmptyState,
+  InlineLoading,
+  Button,
+} from '@/components/healthcare';
+
+interface PaginatedResponse<T> {
+  data: T;
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
 
 interface ClinicalAlert {
   id: string;
@@ -44,6 +65,8 @@ interface AlertStats {
 
 export function DialyseAlertsPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -53,18 +76,19 @@ export function DialyseAlertsPage() {
   const [resolvingAlertId, setResolvingAlertId] = useState<string | null>(null);
 
   // Fetch alerts
-  const { data: alertsData, isLoading } = useQuery({
-    queryKey: ['dialyse-alerts', statusFilter, severityFilter, typeFilter],
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['dialyse-alerts', statusFilter, severityFilter, typeFilter, currentPage, itemsPerPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (severityFilter !== 'all') params.append('severity', severityFilter);
       if (typeFilter !== 'all') params.append('type', typeFilter);
-      params.append('limit', '100');
+      params.append('offset', ((currentPage - 1) * itemsPerPage).toString());
+      params.append('limit', itemsPerPage.toString());
 
       const url = `/dialyse/alerts${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await api.get<ApiResponse<ClinicalAlert[]>>(url);
-      return response.data;
+      const result = await api.get<PaginatedResponse<ClinicalAlert[]>>(url);
+      return result.data;
     },
   });
 
@@ -87,7 +111,7 @@ export function DialyseAlertsPage() {
       queryClient.invalidateQueries({ queryKey: ['dialyse-alerts-stats'] });
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -103,7 +127,7 @@ export function DialyseAlertsPage() {
       setResolutionNotes('');
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
@@ -115,24 +139,20 @@ export function DialyseAlertsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-alerts-stats'] });
-      window.alert('Alertes automatiques générées avec succès');
+      toast.success(t('dialyse.alertsGenerated'));
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
   // Calculate paginated data
   const paginatedAlerts = useMemo(() => {
-    const alerts = alertsData?.data || [];
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const data = alerts.slice(startIndex, endIndex);
-    const total = alerts.length;
+    const items = response?.data || [];
+    const total = response?.meta?.total || 0;
     const totalPages = Math.ceil(total / itemsPerPage);
-
-    return { data, total, totalPages };
-  }, [alertsData, currentPage, itemsPerPage]);
+    return { data: items, total, totalPages };
+  }, [response, itemsPerPage]);
 
   const getSeverityBadge = (severity: string) => {
     const styles: Record<string, string> = {
@@ -141,9 +161,9 @@ export function DialyseAlertsPage() {
       info: 'bg-blue-100 text-blue-800 border-blue-200',
     };
     const labels: Record<string, string> = {
-      critical: 'Critique',
-      warning: 'Attention',
-      info: 'Info',
+      critical: t('dialyse.critical'),
+      warning: t('dialyse.warning'),
+      info: t('dialyse.info'),
     };
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${styles[severity] || 'bg-gray-100 text-gray-800'}`}>
@@ -160,10 +180,10 @@ export function DialyseAlertsPage() {
       dismissed: 'bg-gray-100 text-gray-800',
     };
     const labels: Record<string, string> = {
-      active: 'Active',
-      acknowledged: 'Prise en compte',
-      resolved: 'Résolue',
-      dismissed: 'Ignorée',
+      active: t('dialyse.active'),
+      acknowledged: t('dialyse.acknowledged'),
+      resolved: t('dialyse.resolved'),
+      dismissed: t('dialyse.dismissed'),
     };
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
@@ -174,13 +194,13 @@ export function DialyseAlertsPage() {
 
   const getAlertTypeName = (type: string) => {
     const names: Record<string, string> = {
-      prescription_renewal: 'Renouvellement prescription',
-      lab_due: 'Bilan à faire',
-      vaccination: 'Vaccination',
-      vascular_access: 'Accès vasculaire',
-      serology_update: 'Mise à jour sérologie',
-      weight_deviation: 'Écart de poids',
-      custom: 'Personnalisée',
+      prescription_renewal: t('dialyse.prescriptionRenewal'),
+      lab_due: t('dialyse.labDue'),
+      vaccination: t('dialyse.vaccination'),
+      vascular_access: t('dialyse.vascularAccess'),
+      serology_update: t('dialyse.serologyUpdate'),
+      weight_deviation: t('dialyse.weightDeviation'),
+      custom: t('dialyse.custom'),
     };
     return names[type] || type;
   };
@@ -206,93 +226,103 @@ export function DialyseAlertsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Alertes Cliniques</h1>
-          <p className="text-muted-foreground">
-            Gestion des alertes et rappels pour les patients dialysés
-          </p>
-        </div>
-        <button
-          onClick={() => generateAlertsMutation.mutate()}
-          disabled={generateAlertsMutation.isPending}
-          className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
-        >
-          {generateAlertsMutation.isPending ? 'Génération en cours...' : 'Générer les alertes automatiques'}
-        </button>
-      </div>
+      <PageHeader
+        title={t('dialyse.clinicalAlerts')}
+        subtitle={t('dialyse.clinicalAlertsSubtitle')}
+        icon={Bell}
+        module="dialyse"
+        actions={
+          <Button
+            module="dialyse"
+            variant="outline"
+            onClick={() => generateAlertsMutation.mutate()}
+            disabled={generateAlertsMutation.isPending}
+            loading={generateAlertsMutation.isPending}
+          >
+            {generateAlertsMutation.isPending ? t('dialyse.generatingAlerts') : t('dialyse.generateAutomaticAlerts')}
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Alertes actives</div>
-            <div className="mt-2 text-2xl font-bold text-red-600">{stats.active}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Critiques</div>
-            <div className="mt-2 text-2xl font-bold text-red-600">{stats.critical}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Prises en compte</div>
-            <div className="mt-2 text-2xl font-bold text-yellow-600">{stats.acknowledged}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="text-sm font-medium text-muted-foreground">Résolues</div>
-            <div className="mt-2 text-2xl font-bold text-green-600">{stats.resolved}</div>
-          </div>
+          <StatsCard
+            label={t('dialyse.activeAlerts')}
+            value={stats.active ?? 0}
+            icon={Bell}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.critical')}
+            value={stats.critical ?? 0}
+            icon={AlertTriangle}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.acknowledged')}
+            value={stats.acknowledged ?? 0}
+            module="dialyse"
+          />
+          <StatsCard
+            label={t('dialyse.resolved')}
+            value={stats.resolved ?? 0}
+            module="dialyse"
+          />
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">Tous les statuts</option>
-          <option value="active">Actives</option>
-          <option value="acknowledged">Prises en compte</option>
-          <option value="resolved">Résolues</option>
-          <option value="dismissed">Ignorées</option>
-        </select>
-
-        <select
-          value={severityFilter}
-          onChange={(e) => { setSeverityFilter(e.target.value); setCurrentPage(1); }}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">Toutes sévérités</option>
-          <option value="critical">Critique</option>
-          <option value="warning">Attention</option>
-          <option value="info">Info</option>
-        </select>
-
-        <select
-          value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">Tous les types</option>
-          <option value="prescription_renewal">Renouvellement prescription</option>
-          <option value="lab_due">Bilan à faire</option>
-          <option value="vaccination">Vaccination</option>
-          <option value="vascular_access">Accès vasculaire</option>
-          <option value="serology_update">Mise à jour sérologie</option>
-          <option value="weight_deviation">Écart de poids</option>
-        </select>
-      </div>
+      <FilterBar
+        searchTerm=""
+        onSearchChange={() => {}}
+        searchPlaceholder={t('dialyse.searchAlerts')}
+        module="dialyse"
+        filters={[
+          {
+            name: 'status',
+            value: statusFilter,
+            onChange: (value) => { setStatusFilter(value); setCurrentPage(1); },
+            options: [
+              { value: 'all', label: t('dialyse.allStatuses') },
+              { value: 'active', label: t('dialyse.active') },
+              { value: 'acknowledged', label: t('dialyse.acknowledged') },
+              { value: 'resolved', label: t('dialyse.resolved') },
+              { value: 'dismissed', label: t('dialyse.dismissed') },
+            ],
+          },
+          {
+            name: 'severity',
+            value: severityFilter,
+            onChange: (value) => { setSeverityFilter(value); setCurrentPage(1); },
+            options: [
+              { value: 'all', label: t('dialyse.allSeverities') },
+              { value: 'critical', label: t('dialyse.critical') },
+              { value: 'warning', label: t('dialyse.warning') },
+              { value: 'info', label: t('dialyse.info') },
+            ],
+          },
+          {
+            name: 'type',
+            value: typeFilter,
+            onChange: (value) => { setTypeFilter(value); setCurrentPage(1); },
+            options: [
+              { value: 'all', label: t('dialyse.allTypes') },
+              { value: 'prescription_renewal', label: t('dialyse.prescriptionRenewal') },
+              { value: 'lab_due', label: t('dialyse.labDue') },
+              { value: 'vaccination', label: t('dialyse.vaccination') },
+              { value: 'vascular_access', label: t('dialyse.vascularAccess') },
+              { value: 'serology_update', label: t('dialyse.serologyUpdate') },
+              { value: 'weight_deviation', label: t('dialyse.weightDeviation') },
+            ],
+          },
+        ]}
+      />
 
       {/* Alerts List */}
-      <div className="rounded-lg border bg-card">
+      <SectionCard>
         {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-sm text-muted-foreground">Chargement des alertes...</p>
-            </div>
-          </div>
+          <InlineLoading rows={5} message={t('dialyse.loadingAlerts')} />
         ) : paginatedAlerts.data.length > 0 ? (
           <>
             <div className="divide-y">
@@ -325,11 +355,11 @@ export function DialyseAlertsPage() {
                         )}
                         {alert.dueDate && (
                           <span className="text-muted-foreground">
-                            Échéance: {formatDate(alert.dueDate)}
+                            {t('dialyse.dueDate')}: {formatDate(alert.dueDate)}
                           </span>
                         )}
                         <span className="text-muted-foreground">
-                          Créée: {formatDateTime(alert.createdAt)}
+                          {t('dialyse.created')}: {formatDateTime(alert.createdAt)}
                         </span>
                       </div>
 
@@ -339,7 +369,7 @@ export function DialyseAlertsPage() {
                           <textarea
                             value={resolutionNotes}
                             onChange={(e) => setResolutionNotes(e.target.value)}
-                            placeholder="Notes de résolution (optionnel)..."
+                            placeholder={t('dialyse.resolutionNotesPlaceholder')}
                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             rows={2}
                           />
@@ -349,7 +379,7 @@ export function DialyseAlertsPage() {
                       {/* Resolution info */}
                       {alert.status === 'resolved' && alert.resolutionNotes && (
                         <div className="mt-2 p-2 bg-green-50 rounded text-sm">
-                          <span className="font-medium">Résolution:</span> {alert.resolutionNotes}
+                          <span className="font-medium">{t('dialyse.resolution')}:</span> {alert.resolutionNotes}
                         </div>
                       )}
                     </div>
@@ -357,30 +387,35 @@ export function DialyseAlertsPage() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       {alert.status === 'active' && (
-                        <button
+                        <Button
+                          module="dialyse"
+                          variant="outline"
+                          size="sm"
                           onClick={() => acknowledgeMutation.mutate(alert.id)}
                           disabled={acknowledgeMutation.isPending}
-                          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
                         >
-                          Prendre en compte
-                        </button>
+                          {t('dialyse.acknowledge')}
+                        </Button>
                       )}
                       {(alert.status === 'active' || alert.status === 'acknowledged') && (
                         <>
-                          <button
+                          <Button
+                            module="dialyse"
+                            variant="primary"
+                            size="sm"
                             onClick={() => handleResolve(alert.id)}
                             disabled={resolveMutation.isPending}
-                            className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
                           >
-                            {resolvingAlertId === alert.id ? 'Confirmer' : 'Résoudre'}
-                          </button>
+                            {resolvingAlertId === alert.id ? t('dialyse.confirm') : t('dialyse.resolve')}
+                          </Button>
                           {resolvingAlertId === alert.id && (
-                            <button
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => { setResolvingAlertId(null); setResolutionNotes(''); }}
-                              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
                             >
-                              Annuler
-                            </button>
+                              {t('dialyse.cancel')}
+                            </Button>
                           )}
                         </>
                       )}
@@ -400,19 +435,18 @@ export function DialyseAlertsPage() {
             />
           </>
         ) : (
-          <div className="p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="mt-4 text-lg font-medium">Aucune alerte</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {statusFilter === 'active'
-                ? 'Aucune alerte active pour le moment'
-                : 'Aucune alerte correspondant aux filtres'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Bell}
+            title={t('dialyse.noAlerts')}
+            description={
+              statusFilter === 'active'
+                ? t('dialyse.noActiveAlerts')
+                : t('dialyse.noAlertsMatchingFilters')
+            }
+            module="dialyse"
+          />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

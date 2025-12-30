@@ -18,6 +18,7 @@ import {
   auditSchedules,
   auditConfiguration,
 } from '@perfex/database';
+import { logger } from '../utils/logger';
 import { AIClient } from '@perfex/ai-core';
 import type {
   CreateAuditTaskInput,
@@ -296,7 +297,7 @@ Respond in JSON format:
         aiRecommendations = parsed.recommendations;
       }
     } catch (error) {
-      console.error('AI analysis failed:', error);
+      logger.error('AI analysis failed', { error });
     }
 
     const finding = {
@@ -426,7 +427,7 @@ Provide your analysis in JSON format:
         return JSON.parse(result.response);
       }
     } catch (error) {
-      console.error('AI risk analysis failed:', error);
+      logger.error('AI risk analysis failed', { error });
     }
 
     // Return default values if AI fails
@@ -540,7 +541,7 @@ Generate tasks in JSON format:
         return JSON.parse(result.response);
       }
     } catch (error) {
-      console.error('AI task generation failed:', error);
+      logger.error('AI task generation failed', { error });
     }
 
     return [];
@@ -765,7 +766,7 @@ Provide your analysis in JSON format:
         return JSON.parse(result.response);
       }
     } catch (error) {
-      console.error('AI compliance check failed:', error);
+      logger.error('AI compliance check failed', { error });
     }
 
     return {
@@ -848,7 +849,7 @@ Provide your analysis in JSON format:
     try {
       embedding = await this.aiClient.embed(data.content);
     } catch (error) {
-      console.error('Failed to generate embedding:', error);
+      logger.error('Failed to generate embedding', { error });
     }
 
     // Generate summary if not provided
@@ -861,7 +862,7 @@ Provide your analysis in JSON format:
         ]);
         summary = result.response;
       } catch (error) {
-        console.error('Failed to generate summary:', error);
+        logger.error('Failed to generate summary', { error });
       }
     }
 

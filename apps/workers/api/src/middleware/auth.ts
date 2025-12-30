@@ -7,9 +7,9 @@ import { Context, Next } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { verifyToken } from '../utils/crypto';
-import type { Env } from '../index';
+import type { Env } from '../types';
 import type { AccessTokenPayload } from '@perfex/shared';
-import { organizationMembers } from '@perfex/database';
+import { organizationMembers, companies } from '@perfex/database';
 
 /**
  * Extend Hono context with user data
@@ -19,6 +19,8 @@ declare module 'hono' {
     userId: string;
     userEmail: string;
     organizationId: string | null;
+    realOrganizationId: string | null; // The actual organization ID (org-xxx)
+    companyIds: string[];
     user: {
       id: string;
       email: string;
@@ -69,39 +71,93 @@ export async function authMiddleware(
       );
     }
 
-    // Fetch organization ID from database based on user membership
-    let organizationId: string | null = c.req.header('x-organization-id') || null;
+    // Fetch organization ID - validate user membership for security
+    const requestedOrgId = c.req.header('x-organization-id') || null;
+    let organizationId: string | null = null;
 
-    // If no header provided, look up from organization_members table
-    if (!organizationId) {
+    // Always lookup user's organization memberships for validation
+    try {
+      const db = drizzle(c.env.DB);
+      const memberships = await db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, payload.sub));
+
+      // If a specific organization is requested via header, validate membership
+      if (requestedOrgId) {
+        const hasAccess = memberships.some(m => m.organizationId === requestedOrgId);
+        if (hasAccess) {
+          organizationId = requestedOrgId;
+        } else {
+          // SECURITY: User doesn't belong to the requested organization
+          return c.json(
+            {
+              error: {
+                code: 'FORBIDDEN',
+                message: 'Access denied to this organization',
+              },
+            },
+            403
+          );
+        }
+      } else if (memberships.length > 0) {
+        // No specific org requested - use user's first organization
+        organizationId = memberships[0].organizationId;
+      }
+    } catch {
+      // Continue without organization - some routes may not require it
+    }
+
+    // Fetch company IDs for this organization
+    let companyIds: string[] = [];
+    if (organizationId) {
       try {
         const db = drizzle(c.env.DB);
-        const membership = await db
-          .select({ organizationId: organizationMembers.organizationId })
-          .from(organizationMembers)
-          .where(eq(organizationMembers.userId, payload.sub))
-          .limit(1);
-
-        if (membership.length > 0) {
-          organizationId = membership[0].organizationId;
-        }
-      } catch (error) {
-        console.error('Failed to fetch organization membership:', error);
-        // Continue without organization - some routes may not require it
+        const orgCompanies = await db
+          .select({ id: companies.id })
+          .from(companies)
+          .where(eq(companies.organizationId, organizationId));
+        companyIds = orgCompanies.map((c) => c.id);
+      } catch {
+        // Continue if company lookup fails
       }
     }
 
     // Add user data to context
     c.set('userId', payload.sub);
     c.set('userEmail', payload.email);
-    c.set('organizationId', organizationId);
+    // Store the real organization ID for modules that need it (like dialyse)
+    c.set('realOrganizationId', organizationId);
+    // For healthcare modules that use company_id, use the first company ID
+    // This provides backward compatibility with routes using organizationId as company filter
+    c.set('organizationId', companyIds.length > 0 ? companyIds[0] : organizationId);
+    c.set('companyIds', companyIds);
 
-    // Set user object with admin role (for now, until we implement proper RBAC)
+    // Fetch user's actual role from organization membership
+    let userRole = 'member'; // Default role
+    if (organizationId) {
+      try {
+        const db = drizzle(c.env.DB);
+        const membership = await db
+          .select({ role: organizationMembers.role })
+          .from(organizationMembers)
+          .where(eq(organizationMembers.userId, payload.sub))
+          .limit(1);
+
+        if (membership.length > 0 && membership[0].role) {
+          userRole = membership[0].role;
+        }
+      } catch (error) {
+        // Continue with default role if lookup fails
+      }
+    }
+
+    // Set user object with actual role from database
     c.set('user', {
       id: payload.sub,
       email: payload.email,
-      role: 'admin', // Grant admin access to all authenticated users for now
-      permissions: [], // Will be populated when RBAC is fully implemented
+      role: userRole,
+      permissions: [], // Will be populated by RBAC middleware when checking specific permissions
     });
 
     await next();

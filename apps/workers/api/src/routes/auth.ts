@@ -5,9 +5,13 @@
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import type { Env } from '../index';
+import type { Env } from '../types';
 import { AuthService } from '../services/auth.service';
 import { authMiddleware } from '../middleware/auth';
+import {
+  authRateLimitMiddleware,
+  RATE_LIMITS,
+} from '../utils/rate-limit';
 import {
   registerSchema,
   loginSchema,
@@ -25,8 +29,9 @@ const auth = new Hono<{ Bindings: Env }>();
  * POST /auth/register
  * Register a new user
  * AUTH-051
+ * Rate limited: 3 attempts per hour
  */
-auth.post('/register', async (c) => {
+auth.post('/register', authRateLimitMiddleware(RATE_LIMITS.REGISTER), async (c) => {
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
 
   try {
@@ -63,8 +68,9 @@ auth.post('/register', async (c) => {
  * POST /auth/login
  * Login user
  * AUTH-052
+ * Rate limited: 5 attempts per 15 minutes
  */
-auth.post('/login', async (c) => {
+auth.post('/login', authRateLimitMiddleware(RATE_LIMITS.LOGIN), async (c) => {
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
   const userAgent = c.req.header('user-agent');
 
@@ -234,8 +240,9 @@ auth.put('/me', authMiddleware, zValidator('json', updateProfileSchema), async (
  * POST /auth/forgot-password
  * Request password reset
  * AUTH-057
+ * Rate limited: 3 attempts per hour
  */
-auth.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
+auth.post('/forgot-password', authRateLimitMiddleware(RATE_LIMITS.PASSWORD_RESET), zValidator('json', forgotPasswordSchema), async (c) => {
   const { email } = c.req.valid('json');
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
 
@@ -301,8 +308,9 @@ auth.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) 
  * POST /auth/passwordless/request
  * Request a passwordless login link via email
  * AUTH-059
+ * Rate limited: 5 attempts per 15 minutes
  */
-auth.post('/passwordless/request', async (c) => {
+auth.post('/passwordless/request', authRateLimitMiddleware(RATE_LIMITS.PASSWORDLESS), async (c) => {
   const ipAddress = c.req.header('cf-connecting-ip') || 'unknown';
 
   try {

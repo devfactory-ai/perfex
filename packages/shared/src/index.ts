@@ -38,7 +38,17 @@ export * from './validators/workflows';
 export * from './validators/audit';
 export * from './validators/dialyse';
 
-// Note: Organization types and validators are intentionally not exported here
-// to avoid conflicts with auth exports. Import them directly from:
-// - @perfex/shared/types/organizations
-// - @perfex/shared/validators/organizations
+// Organization types - exported selectively to avoid conflicts
+export type {
+  Organization,
+  OrganizationMemberWithUser,
+  OrganizationWithStats,
+  Invitation,
+  Permission,
+  PermissionKey,
+} from './types/organizations';
+
+export {
+  PERMISSIONS,
+  DEFAULT_ROLE_PERMISSIONS,
+} from './types/organizations';

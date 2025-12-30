@@ -64,7 +64,6 @@ export function AIPage() {
 
   const handleCreateInvoice = (data: unknown) => {
     // Navigate to invoice creation with pre-filled data
-    console.log('Create invoice with data:', data);
     // Store in sessionStorage and redirect
     sessionStorage.setItem('prefillInvoice', JSON.stringify(data));
     window.location.href = '/finance/invoices?action=create';

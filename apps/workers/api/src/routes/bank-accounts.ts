@@ -11,6 +11,7 @@ import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
 import { BankAccountService } from '../services/bank-account.service';
+import { logger } from '../utils/logger';
 
 const bankAccountsRouter = new Hono<{ Bindings: Env }>();
 
@@ -25,21 +26,32 @@ bankAccountsRouter.get(
   '/',
   checkPermission('finance:bank_accounts:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const activeParam = c.req.query('active');
+      const active = activeParam ? activeParam === 'true' : undefined;
+
+      const bankAccountService = new BankAccountService(c.env.DB);
+      const bankAccountsList = await bankAccountService.list(organizationId, { active });
+
+      return c.json({ data: bankAccountsList });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const activeParam = c.req.query('active');
-    const active = activeParam ? activeParam === 'true' : undefined;
-
-    const bankAccountService = new BankAccountService(c.env.DB);
-    const bankAccountsList = await bankAccountService.list(organizationId, { active });
-
-    return c.json({ data: bankAccountsList });
   }
 );
 
@@ -51,19 +63,30 @@ bankAccountsRouter.get(
   '/:id',
   checkPermission('finance:bank_accounts:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const bankAccountId = c.req.param('id');
+      const bankAccountService = new BankAccountService(c.env.DB);
+      const bankAccount = await bankAccountService.getById(bankAccountId, organizationId);
+
+      return c.json({ data: bankAccount });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const bankAccountId = c.req.param('id');
-    const bankAccountService = new BankAccountService(c.env.DB);
-    const bankAccount = await bankAccountService.getById(bankAccountId, organizationId);
-
-    return c.json({ data: bankAccount });
   }
 );
 
@@ -76,19 +99,30 @@ bankAccountsRouter.post(
   checkPermission('finance:bank_accounts:create'),
   zValidator('json', createBankAccountSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const data = c.req.valid('json');
+      const bankAccountService = new BankAccountService(c.env.DB);
+      const bankAccount = await bankAccountService.create(organizationId, data);
+
+      return c.json({ data: bankAccount }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const data = c.req.valid('json');
-    const bankAccountService = new BankAccountService(c.env.DB);
-    const bankAccount = await bankAccountService.create(organizationId, data);
-
-    return c.json({ data: bankAccount }, 201);
   }
 );
 
@@ -101,20 +135,31 @@ bankAccountsRouter.put(
   checkPermission('finance:bank_accounts:update'),
   zValidator('json', updateBankAccountSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const bankAccountId = c.req.param('id');
+      const data = c.req.valid('json');
+      const bankAccountService = new BankAccountService(c.env.DB);
+      const bankAccount = await bankAccountService.update(bankAccountId, organizationId, data);
+
+      return c.json({ data: bankAccount });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const bankAccountId = c.req.param('id');
-    const data = c.req.valid('json');
-    const bankAccountService = new BankAccountService(c.env.DB);
-    const bankAccount = await bankAccountService.update(bankAccountId, organizationId, data);
-
-    return c.json({ data: bankAccount });
   }
 );
 
@@ -129,20 +174,31 @@ bankAccountsRouter.patch(
     balance: z.number(),
   })),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const bankAccountId = c.req.param('id');
+      const { balance } = c.req.valid('json');
+      const bankAccountService = new BankAccountService(c.env.DB);
+      const bankAccount = await bankAccountService.updateBalance(bankAccountId, organizationId, balance);
+
+      return c.json({ data: bankAccount });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const bankAccountId = c.req.param('id');
-    const { balance } = c.req.valid('json');
-    const bankAccountService = new BankAccountService(c.env.DB);
-    const bankAccount = await bankAccountService.updateBalance(bankAccountId, organizationId, balance);
-
-    return c.json({ data: bankAccount });
   }
 );
 
@@ -154,19 +210,30 @@ bankAccountsRouter.delete(
   '/:id',
   checkPermission('finance:bank_accounts:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const bankAccountId = c.req.param('id');
+      const bankAccountService = new BankAccountService(c.env.DB);
+      await bankAccountService.delete(bankAccountId, organizationId);
+
+      return c.json({ data: { message: 'Bank account deleted successfully' } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'bank-accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const bankAccountId = c.req.param('id');
-    const bankAccountService = new BankAccountService(c.env.DB);
-    await bankAccountService.delete(bankAccountId, organizationId);
-
-    return c.json({ data: { message: 'Bank account deleted successfully' } });
   }
 );
 

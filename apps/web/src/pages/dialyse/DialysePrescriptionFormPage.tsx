@@ -6,7 +6,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FileText, Save } from 'lucide-react';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  PageHeader,
+  FormSection,
+  FormGrid,
+  FormActions,
+  Button,
+  Input,
+  Select,
+  Textarea
+} from '@/components/healthcare';
 
 interface Patient {
   id: string;
@@ -65,6 +78,8 @@ export function DialysePrescriptionFormPage() {
   const patientIdParam = searchParams.get('patientId');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useLanguage();
   const isEditing = !!id;
 
   const [formData, setFormData] = useState<PrescriptionFormData>({
@@ -154,7 +169,7 @@ export function DialysePrescriptionFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dialyse-prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['dialyse-patient-prescriptions'] });
-      window.alert(isEditing ? 'Prescription mise à jour' : 'Prescription créée');
+      toast.success(isEditing ? t('dialyse.prescriptionUpdated') : t('dialyse.prescriptionCreated'));
       if (patientIdParam) {
         navigate(`/dialyse/patients/${patientIdParam}`);
       } else {
@@ -162,14 +177,14 @@ export function DialysePrescriptionFormPage() {
       }
     },
     onError: (error) => {
-      window.alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(getErrorMessage(error));
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patientId) {
-      window.alert('Veuillez sélectionner un patient');
+      toast.warning(t('dialyse.pleaseSelectPatient'));
       return;
     }
     savePrescription.mutate(formData);
@@ -181,309 +196,272 @@ export function DialysePrescriptionFormPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {isEditing ? 'Modifier la Prescription' : 'Nouvelle Prescription de Dialyse'}
-          </h1>
-          <p className="text-muted-foreground">
-            {patient ? `Patient: ${patient.contact.firstName} ${patient.contact.lastName} (${patient.medicalId})` : 'Définir les paramètres de dialyse'}
-          </p>
-        </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          Retour
-        </button>
-      </div>
+      <PageHeader
+        title={isEditing ? t('dialyse.editPrescription') : t('dialyse.newDialysisPrescription')}
+        subtitle={patient ? `${t('dialyse.patient')}: ${patient.contact.firstName} ${patient.contact.lastName} (${patient.medicalId})` : t('dialyse.defineDialysisParameters')}
+        icon={FileText}
+        module="dialyse"
+        onBack={() => navigate(-1)}
+      />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Patient Selection */}
         {!patientIdParam && (
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="font-semibold mb-4">Patient</h3>
-            <select
-              value={formData.patientId}
-              onChange={(e) => handleChange('patientId', e.target.value)}
-              required
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Sélectionner un patient</option>
-              {patients?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.contact.firstName} {p.contact.lastName} ({p.medicalId})
-                </option>
-              ))}
-            </select>
-          </div>
+          <FormSection title={t('dialyse.patient')} module="dialyse">
+            <FormGrid columns={1}>
+              <Select
+                label={t('dialyse.patient')}
+                value={formData.patientId}
+                onChange={(e) => handleChange('patientId', e.target.value)}
+                options={[
+                  { value: '', label: t('dialyse.selectPatient') },
+                  ...(patients?.map((p) => ({
+                    value: p.id,
+                    label: `${p.contact.firstName} ${p.contact.lastName} (${p.medicalId})`
+                  })) || [])
+                ]}
+                required
+                module="dialyse"
+              />
+            </FormGrid>
+          </FormSection>
         )}
 
         {/* Basic Parameters */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Paramètres de base</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">Type de dialyse *</label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="hemodialysis">Hémodialyse</option>
-                <option value="hemodiafiltration">Hémodiafiltration</option>
-                <option value="hemofiltration">Hémofiltration</option>
-              </select>
-            </div>
+        <FormSection title={t('dialyse.basicParameters')} module="dialyse">
+          <FormGrid columns={3}>
+            <Select
+              label={t('dialyse.dialysisType')}
+              value={formData.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              options={[
+                { value: 'hemodialysis', label: t('dialyse.hemodialysis') },
+                { value: 'hemodiafiltration', label: t('dialyse.hemodiafiltration') },
+                { value: 'hemofiltration', label: t('dialyse.hemofiltration') }
+              ]}
+              required
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Durée (minutes) *</label>
-              <input
-                type="number"
-                value={formData.durationMinutes}
-                onChange={(e) => handleChange('durationMinutes', parseInt(e.target.value))}
-                required
-                min={60}
-                max={480}
-                step={15}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+            <Input
+              type="number"
+              label={t('dialyse.durationMinutes')}
+              value={formData.durationMinutes.toString()}
+              onChange={(e) => handleChange('durationMinutes', parseInt(e.target.value))}
+              min={60}
+              max={480}
+              step={15}
+              required
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Fréquence (par semaine) *</label>
-              <select
-                value={formData.frequencyPerWeek}
-                onChange={(e) => handleChange('frequencyPerWeek', parseInt(e.target.value))}
-                required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value={2}>2x par semaine</option>
-                <option value={3}>3x par semaine</option>
-                <option value={4}>4x par semaine</option>
-                <option value={5}>5x par semaine</option>
-                <option value={6}>6x par semaine</option>
-              </select>
-            </div>
-          </div>
-        </div>
+            <Select
+              label={t('dialyse.frequencyPerWeek')}
+              value={formData.frequencyPerWeek.toString()}
+              onChange={(e) => handleChange('frequencyPerWeek', parseInt(e.target.value))}
+              options={[
+                { value: '2', label: t('dialyse.timesPerWeek2') },
+                { value: '3', label: t('dialyse.timesPerWeek3') },
+                { value: '4', label: t('dialyse.timesPerWeek4') },
+                { value: '5', label: t('dialyse.timesPerWeek5') },
+                { value: '6', label: t('dialyse.timesPerWeek6') }
+              ]}
+              required
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Dialyzer Parameters */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Dialyseur</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">Type de dialyseur</label>
-              <input
-                type="text"
-                value={formData.dialyzerType}
-                onChange={(e) => handleChange('dialyzerType', e.target.value)}
-                placeholder="Ex: FX800, Polyflux 210H"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+        <FormSection title={t('dialyse.dialyzer')} module="dialyse">
+          <FormGrid columns={3}>
+            <Input
+              label={t('dialyse.dialyzerType')}
+              value={formData.dialyzerType}
+              onChange={(e) => handleChange('dialyzerType', e.target.value)}
+              placeholder={t('dialyse.dialyzerTypePlaceholder')}
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Surface (m²)</label>
-              <input
-                type="number"
-                value={formData.dialyzerSurface || ''}
-                onChange={(e) => handleChange('dialyzerSurface', e.target.value ? parseFloat(e.target.value) : null)}
-                step={0.1}
-                min={0.5}
-                max={3}
-                placeholder="1.8"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+            <Input
+              type="number"
+              label={t('dialyse.surfaceM2')}
+              value={formData.dialyzerSurface?.toString() || ''}
+              onChange={(e) => handleChange('dialyzerSurface', e.target.value ? parseFloat(e.target.value) : null)}
+              step={0.1}
+              min={0.5}
+              max={3}
+              placeholder="1.8"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Débit sanguin (mL/min)</label>
-              <input
-                type="number"
-                value={formData.bloodFlowRate || ''}
-                onChange={(e) => handleChange('bloodFlowRate', e.target.value ? parseInt(e.target.value) : null)}
-                min={100}
-                max={500}
-                step={10}
-                placeholder="300"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
+            <Input
+              type="number"
+              label={t('dialyse.bloodFlowRate')}
+              value={formData.bloodFlowRate?.toString() || ''}
+              onChange={(e) => handleChange('bloodFlowRate', e.target.value ? parseInt(e.target.value) : null)}
+              min={100}
+              max={500}
+              step={10}
+              placeholder="300"
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Dialysate Parameters */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Dialysat</h3>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Débit (mL/min)</label>
-              <input
-                type="number"
-                value={formData.dialysateFlowRate || ''}
-                onChange={(e) => handleChange('dialysateFlowRate', e.target.value ? parseInt(e.target.value) : null)}
-                min={300}
-                max={800}
-                step={50}
-                placeholder="500"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+        <FormSection title={t('dialyse.dialysate')} module="dialyse">
+          <FormGrid columns={4}>
+            <Input
+              type="number"
+              label={t('dialyse.flowRateMLMin')}
+              value={formData.dialysateFlowRate?.toString() || ''}
+              onChange={(e) => handleChange('dialysateFlowRate', e.target.value ? parseInt(e.target.value) : null)}
+              min={300}
+              max={800}
+              step={50}
+              placeholder="500"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Calcium (mmol/L)</label>
-              <input
-                type="number"
-                value={formData.dialysateCalcium || ''}
-                onChange={(e) => handleChange('dialysateCalcium', e.target.value ? parseFloat(e.target.value) : null)}
-                step={0.25}
-                min={1}
-                max={2}
-                placeholder="1.5"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+            <Input
+              type="number"
+              label={t('dialyse.calciumMmolL')}
+              value={formData.dialysateCalcium?.toString() || ''}
+              onChange={(e) => handleChange('dialysateCalcium', e.target.value ? parseFloat(e.target.value) : null)}
+              step={0.25}
+              min={1}
+              max={2}
+              placeholder="1.5"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Potassium (mmol/L)</label>
-              <input
-                type="number"
-                value={formData.dialysatePotassium || ''}
-                onChange={(e) => handleChange('dialysatePotassium', e.target.value ? parseFloat(e.target.value) : null)}
-                step={0.5}
-                min={0}
-                max={4}
-                placeholder="2.0"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+            <Input
+              type="number"
+              label={t('dialyse.potassiumMmolL')}
+              value={formData.dialysatePotassium?.toString() || ''}
+              onChange={(e) => handleChange('dialysatePotassium', e.target.value ? parseFloat(e.target.value) : null)}
+              step={0.5}
+              min={0}
+              max={4}
+              placeholder="2.0"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Bicarbonate (mmol/L)</label>
-              <input
-                type="number"
-                value={formData.dialysateBicarbonate || ''}
-                onChange={(e) => handleChange('dialysateBicarbonate', e.target.value ? parseInt(e.target.value) : null)}
-                min={25}
-                max={40}
-                placeholder="35"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
+            <Input
+              type="number"
+              label={t('dialyse.bicarbonateMmolL')}
+              value={formData.dialysateBicarbonate?.toString() || ''}
+              onChange={(e) => handleChange('dialysateBicarbonate', e.target.value ? parseInt(e.target.value) : null)}
+              min={25}
+              max={40}
+              placeholder="35"
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Anticoagulation */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Anticoagulation</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium mb-2">Type</label>
-              <select
-                value={formData.anticoagulationType}
-                onChange={(e) => handleChange('anticoagulationType', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="heparin">Héparine non fractionnée</option>
-                <option value="lmwh">HBPM (Héparine bas poids moléculaire)</option>
-                <option value="citrate">Citrate</option>
-                <option value="none">Sans anticoagulation</option>
-              </select>
-            </div>
+        <FormSection title={t('dialyse.anticoagulation')} module="dialyse">
+          <FormGrid columns={2}>
+            <Select
+              label={t('dialyse.type')}
+              value={formData.anticoagulationType}
+              onChange={(e) => handleChange('anticoagulationType', e.target.value)}
+              options={[
+                { value: 'heparin', label: t('dialyse.unfractedHeparin') },
+                { value: 'lmwh', label: t('dialyse.lmwh') },
+                { value: 'citrate', label: t('dialyse.citrate') },
+                { value: 'none', label: t('dialyse.noAnticoagulation') }
+              ]}
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Posologie</label>
-              <input
-                type="text"
-                value={formData.anticoagulationDose}
-                onChange={(e) => handleChange('anticoagulationDose', e.target.value)}
-                placeholder="Ex: 50 UI/kg bolus puis 1000 UI/h"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
+            <Input
+              label={t('dialyse.dosage')}
+              value={formData.anticoagulationDose}
+              onChange={(e) => handleChange('anticoagulationDose', e.target.value)}
+              placeholder={t('dialyse.dosagePlaceholder')}
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Ultrafiltration */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Ultrafiltration</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium mb-2">Poids sec (kg)</label>
-              <input
-                type="number"
-                value={formData.dryWeight || ''}
-                onChange={(e) => handleChange('dryWeight', e.target.value ? parseFloat(e.target.value) : null)}
-                step={0.1}
-                min={30}
-                max={200}
-                placeholder="70.0"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+        <FormSection title={t('dialyse.ultrafiltration')} module="dialyse">
+          <FormGrid columns={3}>
+            <Input
+              type="number"
+              label={t('dialyse.dryWeightKg')}
+              value={formData.dryWeight?.toString() || ''}
+              onChange={(e) => handleChange('dryWeight', e.target.value ? parseFloat(e.target.value) : null)}
+              step={0.1}
+              min={30}
+              max={200}
+              placeholder="70.0"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Objectif UF (mL)</label>
-              <input
-                type="number"
-                value={formData.ufGoal || ''}
-                onChange={(e) => handleChange('ufGoal', e.target.value ? parseInt(e.target.value) : null)}
-                min={0}
-                max={5000}
-                step={100}
-                placeholder="2000"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+            <Input
+              type="number"
+              label={t('dialyse.ufGoalML')}
+              value={formData.ufGoal?.toString() || ''}
+              onChange={(e) => handleChange('ufGoal', e.target.value ? parseInt(e.target.value) : null)}
+              min={0}
+              max={5000}
+              step={100}
+              placeholder="2000"
+              module="dialyse"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Profil sodium</label>
-              <select
-                value={formData.sodiumProfile}
-                onChange={(e) => handleChange('sodiumProfile', e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="constant">Constant</option>
-                <option value="linear_decreasing">Linéaire décroissant</option>
-                <option value="step">Par paliers</option>
-              </select>
-            </div>
-          </div>
-        </div>
+            <Select
+              label={t('dialyse.sodiumProfile')}
+              value={formData.sodiumProfile}
+              onChange={(e) => handleChange('sodiumProfile', e.target.value)}
+              options={[
+                { value: 'constant', label: t('dialyse.constant') },
+                { value: 'linear_decreasing', label: t('dialyse.linearDecreasing') },
+                { value: 'step', label: t('dialyse.stepwise') }
+              ]}
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Notes */}
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="font-semibold mb-4">Notes</h3>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
-            rows={4}
-            placeholder="Instructions particulières, précautions..."
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-        </div>
+        <FormSection title={t('dialyse.notes')} module="dialyse">
+          <FormGrid columns={1}>
+            <Textarea
+              label={t('dialyse.notes')}
+              value={formData.notes}
+              onChange={(e) => handleChange('notes', e.target.value)}
+              rows={4}
+              placeholder={t('dialyse.notesPlaceholder')}
+              module="dialyse"
+            />
+          </FormGrid>
+        </FormSection>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
+        <FormActions>
+          <Button
+            variant="outline"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-accent"
           >
-            Annuler
-          </button>
-          <button
+            {t('dialyse.cancel')}
+          </Button>
+          <Button
             type="submit"
+            variant="primary"
+            module="dialyse"
             disabled={savePrescription.isPending}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            loading={savePrescription.isPending}
+            icon={Save}
           >
-            {savePrescription.isPending ? 'Enregistrement...' : isEditing ? 'Mettre à jour' : 'Créer la prescription'}
-          </button>
-        </div>
+            {savePrescription.isPending ? t('dialyse.saving') : isEditing ? t('dialyse.update') : t('dialyse.createPrescription')}
+          </Button>
+        </FormActions>
       </form>
     </div>
   );

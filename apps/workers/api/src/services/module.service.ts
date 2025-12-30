@@ -10,6 +10,7 @@ import {
   organizationModules,
   DEFAULT_MODULES,
 } from '@perfex/database';
+import { logger } from '../utils/logger';
 
 export class ModuleService {
   private db: ReturnType<typeof drizzle>;
@@ -214,7 +215,7 @@ export class ModuleService {
     const existing = await this.db.select().from(moduleRegistry).limit(1);
 
     if (existing.length > 0) {
-      console.log('Module registry already seeded');
+      logger.info('Module registry already seeded');
       return;
     }
 
@@ -234,7 +235,7 @@ export class ModuleService {
       });
     }
 
-    console.log(`Seeded ${DEFAULT_MODULES.length} modules`);
+    logger.info(`Seeded ${DEFAULT_MODULES.length} modules`);
   }
 
   /**

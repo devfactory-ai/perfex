@@ -122,20 +122,6 @@ export function IntegrationsPage() {
     },
   });
 
-  // Fetch stats (prepared for future dashboard use)
-  const { data: _stats } = useQuery({
-    queryKey: ['integration-stats'],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/integrations/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const data = await response.json();
-      return data.data;
-    },
-  });
-  void _stats; // Prevents TS6133 - will be used in dashboard
-
   // Test connection mutation
   const testConnectionMutation = useMutation({
     mutationFn: async (configId: string) => {

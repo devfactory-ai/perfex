@@ -546,3 +546,226 @@ export type InsertLabResult = typeof labResults.$inferInsert;
 
 export type ClinicalAlert = typeof clinicalAlerts.$inferSelect;
 export type InsertClinicalAlert = typeof clinicalAlerts.$inferInsert;
+
+// ============================================================================
+// EXTENDED TABLES (Protocols, Staff, Billing, Transport, Consumables)
+// ============================================================================
+
+/**
+ * Dialyse Protocols
+ * Treatment protocol templates
+ */
+export const dialyseProtocols = sqliteTable('dialyse_protocols', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+
+  name: text('name').notNull(),
+  code: text('code'),
+  description: text('description'),
+  type: text('type', { enum: ['hemodialysis', 'hemodiafiltration', 'peritoneal'] }).default('hemodialysis'),
+  isTemplate: integer('is_template', { mode: 'boolean' }).default(true),
+
+  // Dialyzer settings
+  dialyzerType: text('dialyzer_type'),
+  dialyzerSurface: real('dialyzer_surface'),
+  bloodFlowRate: integer('blood_flow_rate'),
+  dialysateFlowRate: integer('dialysate_flow_rate'),
+  sessionDurationMinutes: integer('session_duration_minutes'),
+  ufGoal: real('uf_goal'),
+
+  // Anticoagulation
+  anticoagulationType: text('anticoagulation_type'),
+  anticoagulationDose: text('anticoagulation_dose'),
+  anticoagulationProtocol: text('anticoagulation_protocol'),
+
+  // Dialysate composition
+  dialysateSodium: integer('dialysate_sodium'),
+  dialysatePotassium: real('dialysate_potassium'),
+  dialysateBicarbonate: integer('dialysate_bicarbonate'),
+  dialysateCalcium: real('dialysate_calcium'),
+  dialysateGlucose: real('dialysate_glucose'),
+  dialysateTemperature: real('dialysate_temperature'),
+
+  accessTypePreference: text('access_type_preference'),
+  specialInstructions: text('special_instructions'),
+  contraindications: text('contraindications'),
+
+  status: text('status', { enum: ['active', 'inactive'] }).default('active'),
+
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Dialyse Staff
+ * Staff members in the dialysis unit
+ */
+export const dialyseStaff = sqliteTable('dialyse_staff', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+
+  employeeId: text('employee_id'),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name').notNull(),
+  role: text('role', { enum: ['nephrologist', 'nurse', 'technician', 'admin', 'receptionist'] }).notNull(),
+  specialty: text('specialty'),
+
+  licenseNumber: text('license_number'),
+  licenseExpiry: integer('license_expiry', { mode: 'timestamp' }),
+
+  phone: text('phone'),
+  email: text('email'),
+  status: text('status', { enum: ['active', 'inactive'] }).default('active'),
+  schedule: text('schedule'), // JSON
+
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Dialyse Billing
+ * Billing records for dialysis sessions
+ */
+export const dialyseBilling = sqliteTable('dialyse_billing', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  patientId: text('patient_id').notNull().references(() => dialysePatients.id, { onDelete: 'cascade' }),
+  sessionId: text('session_id').references(() => dialysisSessions.id, { onDelete: 'set null' }),
+
+  invoiceNumber: text('invoice_number').notNull(),
+  billingDate: integer('billing_date', { mode: 'timestamp' }).notNull(),
+  sessionDate: integer('session_date', { mode: 'timestamp' }),
+  billingType: text('billing_type', { enum: ['session', 'monthly', 'emergency'] }).default('session'),
+
+  amount: real('amount').default(0),
+  insuranceAmount: real('insurance_amount').default(0),
+  patientAmount: real('patient_amount').default(0),
+  paidAmount: real('paid_amount').default(0),
+  paidDate: integer('paid_date', { mode: 'timestamp' }),
+
+  insuranceProvider: text('insurance_provider'),
+  insurancePolicyNumber: text('insurance_policy_number'),
+
+  status: text('status', { enum: ['pending', 'paid', 'overdue', 'cancelled'] }).default('pending'),
+  lineItems: text('line_items'), // JSON
+
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Dialyse Transport
+ * Patient transport records
+ */
+export const dialyseTransport = sqliteTable('dialyse_transport', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  patientId: text('patient_id').notNull().references(() => dialysePatients.id, { onDelete: 'cascade' }),
+  sessionId: text('session_id').references(() => dialysisSessions.id, { onDelete: 'set null' }),
+
+  transportDate: integer('transport_date', { mode: 'timestamp' }).notNull(),
+  direction: text('direction', { enum: ['pickup', 'dropoff', 'both'] }).notNull(),
+  transportType: text('transport_type', { enum: ['ambulance', 'taxi', 'private', 'public', 'family'] }).notNull(),
+
+  providerName: text('provider_name'),
+  providerPhone: text('provider_phone'),
+  vehicleNumber: text('vehicle_number'),
+  driverName: text('driver_name'),
+
+  pickupAddress: text('pickup_address'),
+  dropoffAddress: text('dropoff_address'),
+  scheduledTime: text('scheduled_time'),
+  actualTime: text('actual_time'),
+
+  specialNeeds: text('special_needs'),
+  wheelchairRequired: integer('wheelchair_required', { mode: 'boolean' }).default(false),
+  stretcherRequired: integer('stretcher_required', { mode: 'boolean' }).default(false),
+  oxygenRequired: integer('oxygen_required', { mode: 'boolean' }).default(false),
+  escortRequired: integer('escort_required', { mode: 'boolean' }).default(false),
+  escortName: text('escort_name'),
+
+  status: text('status', { enum: ['scheduled', 'confirmed', 'in_transit', 'completed', 'cancelled'] }).default('scheduled'),
+  cost: real('cost').default(0),
+
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Dialyse Consumables
+ * Consumable items for dialysis
+ */
+export const dialyseConsumables = sqliteTable('dialyse_consumables', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  inventoryItemId: text('inventory_item_id').references(() => inventoryItems.id, { onDelete: 'set null' }),
+
+  name: text('name').notNull(),
+  code: text('code'),
+  category: text('category', { enum: ['dialyzers', 'lines', 'needles', 'solutions', 'medications', 'disposables', 'other'] }).notNull(),
+  description: text('description'),
+  unit: text('unit').notNull(),
+
+  currentStock: integer('current_stock').default(0),
+  minStock: integer('min_stock').default(0),
+  maxStock: integer('max_stock'),
+  reorderPoint: integer('reorder_point'),
+  unitCost: real('unit_cost').default(0),
+
+  supplier: text('supplier'),
+  manufacturer: text('manufacturer'),
+  expiryTracking: integer('expiry_tracking', { mode: 'boolean' }).default(true),
+  lotTracking: integer('lot_tracking', { mode: 'boolean' }).default(true),
+
+  status: text('status', { enum: ['active', 'inactive'] }).default('active'),
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+/**
+ * Dialyse Consumable Movements
+ * Stock movement records for consumables
+ */
+export const dialyseConsumableMovements = sqliteTable('dialyse_consumable_movements', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  consumableId: text('consumable_id').notNull().references(() => dialyseConsumables.id, { onDelete: 'cascade' }),
+
+  movementType: text('movement_type', { enum: ['in', 'out'] }).notNull(),
+  quantity: integer('quantity').notNull(),
+  lotNumber: text('lot_number'),
+  expiryDate: integer('expiry_date', { mode: 'timestamp' }),
+  reference: text('reference'),
+  sessionId: text('session_id').references(() => dialysisSessions.id, { onDelete: 'set null' }),
+
+  notes: text('notes'),
+  createdBy: text('created_by').notNull().references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// Extended type exports
+export type DialyseProtocol = typeof dialyseProtocols.$inferSelect;
+export type InsertDialyseProtocol = typeof dialyseProtocols.$inferInsert;
+
+export type DialyseStaff = typeof dialyseStaff.$inferSelect;
+export type InsertDialyseStaff = typeof dialyseStaff.$inferInsert;
+
+export type DialyseBilling = typeof dialyseBilling.$inferSelect;
+export type InsertDialyseBilling = typeof dialyseBilling.$inferInsert;
+
+export type DialyseTransport = typeof dialyseTransport.$inferSelect;
+export type InsertDialyseTransport = typeof dialyseTransport.$inferInsert;
+
+export type DialyseConsumable = typeof dialyseConsumables.$inferSelect;
+export type InsertDialyseConsumable = typeof dialyseConsumables.$inferInsert;
+
+export type DialyseConsumableMovement = typeof dialyseConsumableMovements.$inferSelect;
+export type InsertDialyseConsumableMovement = typeof dialyseConsumableMovements.$inferInsert;

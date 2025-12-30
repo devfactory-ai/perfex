@@ -13,6 +13,7 @@ import {
   organizations,
 } from '@perfex/database';
 import type { Env } from '../types';
+import { logger } from '../utils/logger';
 
 export class ScheduledService {
   private db: ReturnType<typeof drizzle>;
@@ -28,7 +29,7 @@ export class ScheduledService {
    */
   async handleScheduledEvent(event: ScheduledEvent): Promise<void> {
     const cronTime = event.cron;
-    console.log(`[Scheduler] Running scheduled task: ${cronTime}`);
+    logger.info(`[Scheduler] Running scheduled task: ${cronTime}`);
 
     try {
       switch (cronTime) {
@@ -58,10 +59,10 @@ export class ScheduledService {
           break;
 
         default:
-          console.log(`[Scheduler] Unknown cron pattern: ${cronTime}`);
+          logger.info(`[Scheduler] Unknown cron pattern: ${cronTime}`);
       }
     } catch (error) {
-      console.error(`[Scheduler] Error in scheduled task ${cronTime}:`, error);
+      logger.error(`[Scheduler] Error in scheduled task ${cronTime}`, { error });
     }
   }
 
@@ -69,7 +70,7 @@ export class ScheduledService {
    * Clean up expired sessions
    */
   async cleanupExpiredSessions(): Promise<void> {
-    console.log('[Scheduler] Cleaning up expired sessions...');
+    logger.info('[Scheduler] Cleaning up expired sessions...');
 
     const now = new Date();
 
@@ -77,14 +78,14 @@ export class ScheduledService {
       .delete(sessions)
       .where(lt(sessions.expiresAt, now));
 
-    console.log(`[Scheduler] Session cleanup completed`);
+    logger.info(`[Scheduler] Session cleanup completed`);
   }
 
   /**
    * Run daily automated risk assessments for active organizations
    */
   async runDailyRiskAssessments(): Promise<void> {
-    console.log('[Scheduler] Running daily risk assessments...');
+    logger.info('[Scheduler] Running daily risk assessments...');
 
     // Get all active organizations with audit enabled
     const activeOrgs = await this.db
@@ -108,23 +109,23 @@ export class ScheduledService {
           );
 
         if (schedules.length > 0) {
-          console.log(`[Scheduler] Running risk assessment for org: ${org.id}`);
+          logger.info(`[Scheduler] Running risk assessment for org: ${org.id}`);
           // Risk assessment would be triggered here
           // In production, this would call the AI service
         }
       } catch (error) {
-        console.error(`[Scheduler] Error for org ${org.id}:`, error);
+        logger.error(`[Scheduler] Error for org ${org.id}`, { error });
       }
     }
 
-    console.log('[Scheduler] Daily risk assessments completed');
+    logger.info('[Scheduler] Daily risk assessments completed');
   }
 
   /**
    * Check for overdue audit tasks and update their status
    */
   async checkOverdueTasks(): Promise<void> {
-    console.log('[Scheduler] Checking overdue tasks...');
+    logger.info('[Scheduler] Checking overdue tasks...');
 
     const now = new Date();
 
@@ -152,17 +153,17 @@ export class ScheduledService {
       }
 
       // TODO: Send notification to assigned user
-      console.log(`[Scheduler] Task ${task.taskNumber} is overdue`);
+      logger.info(`[Scheduler] Task ${task.taskNumber} is overdue`);
     }
 
-    console.log(`[Scheduler] Found ${overdueTasks.length} overdue tasks`);
+    logger.info(`[Scheduler] Found ${overdueTasks.length} overdue tasks`);
   }
 
   /**
    * Generate weekly summary reports
    */
   async generateWeeklyReports(): Promise<void> {
-    console.log('[Scheduler] Generating weekly reports...');
+    logger.info('[Scheduler] Generating weekly reports...');
 
     const activeOrgs = await this.db
       .select({ id: organizations.id })
@@ -209,7 +210,7 @@ export class ScheduledService {
             )
           );
 
-        console.log(`[Scheduler] Org ${org.id} weekly stats:`, {
+        logger.info(`[Scheduler] Org ${org.id} weekly stats:`, {
           tasks: tasksThisWeek[0]?.count || 0,
           completed: completedThisWeek[0]?.count || 0,
           assessments: assessmentsThisWeek[0]?.count || 0,
@@ -217,18 +218,18 @@ export class ScheduledService {
 
         // TODO: Store report or send email notification
       } catch (error) {
-        console.error(`[Scheduler] Error generating report for org ${org.id}:`, error);
+        logger.error(`[Scheduler] Error generating report for org ${org.id}`, { error });
       }
     }
 
-    console.log('[Scheduler] Weekly reports completed');
+    logger.info('[Scheduler] Weekly reports completed');
   }
 
   /**
    * Process scheduled audits
    */
   async processScheduledAudits(): Promise<void> {
-    console.log('[Scheduler] Processing scheduled audits...');
+    logger.info('[Scheduler] Processing scheduled audits...');
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -245,7 +246,7 @@ export class ScheduledService {
         const shouldRun = this.shouldScheduleRun(schedule, today);
 
         if (shouldRun) {
-          console.log(`[Scheduler] Executing schedule: ${schedule.id} (${schedule.scheduleType})`);
+          logger.info(`[Scheduler] Executing schedule: ${schedule.id} (${schedule.scheduleType})`);
 
           // Update last run time
           await this.db
@@ -260,28 +261,28 @@ export class ScheduledService {
           switch (schedule.scheduleType) {
             case 'risk_assessment':
               // Trigger risk assessment
-              console.log(`[Scheduler] Triggering risk assessment for ${schedule.organizationId}`);
+              logger.info(`[Scheduler] Triggering risk assessment for ${schedule.organizationId}`);
               break;
             case 'compliance_check':
               // Trigger compliance check
-              console.log(`[Scheduler] Triggering compliance check for ${schedule.organizationId}`);
+              logger.info(`[Scheduler] Triggering compliance check for ${schedule.organizationId}`);
               break;
             case 'commonality_study':
               // Trigger commonality study
-              console.log(`[Scheduler] Triggering commonality study for ${schedule.organizationId}`);
+              logger.info(`[Scheduler] Triggering commonality study for ${schedule.organizationId}`);
               break;
             case 'report':
               // Generate report
-              console.log(`[Scheduler] Generating report for ${schedule.organizationId}`);
+              logger.info(`[Scheduler] Generating report for ${schedule.organizationId}`);
               break;
           }
         }
       } catch (error) {
-        console.error(`[Scheduler] Error processing schedule ${schedule.id}:`, error);
+        logger.error(`[Scheduler] Error processing schedule ${schedule.id}`, { error });
       }
     }
 
-    console.log('[Scheduler] Scheduled audits processing completed');
+    logger.info('[Scheduler] Scheduled audits processing completed');
   }
 
   /**

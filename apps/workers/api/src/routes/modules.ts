@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import type { Env } from '../index';
+import type { Env } from '../types';
 import { ModuleService } from '../services/module.service';
 import { authMiddleware } from '../middleware/auth';
 

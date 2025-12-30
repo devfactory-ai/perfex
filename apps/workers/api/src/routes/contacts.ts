@@ -8,6 +8,7 @@ import { zValidator } from '@hono/zod-validator';
 import { createContactSchema, updateContactSchema } from '@perfex/shared';
 import { contactService } from '../services/contact.service';
 import { requireAuth, requirePermission } from '../middleware/auth';
+import { logger } from '../utils/logger';
 import type { Env } from '../types';
 
 const contacts = new Hono<{ Bindings: Env }>();
@@ -23,28 +24,39 @@ contacts.get(
   '/',
   requirePermission('crm:contacts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const companyId = c.req.query('companyId');
-    const status = c.req.query('status');
-    const assignedTo = c.req.query('assignedTo');
-    const search = c.req.query('search');
-    const includeCompany = c.req.query('includeCompany') === 'true';
+    try {
+      const organizationId = c.get('organizationId');
+      const companyId = c.req.query('companyId');
+      const status = c.req.query('status');
+      const assignedTo = c.req.query('assignedTo');
+      const search = c.req.query('search');
+      const includeCompany = c.req.query('includeCompany') === 'true';
 
-    const filters = {
-      companyId,
-      status,
-      assignedTo,
-      search,
-    };
+      const filters = {
+        companyId,
+        status,
+        assignedTo,
+        search,
+      };
 
-    const result = includeCompany
-      ? await contactService.listWithCompany(organizationId, filters)
-      : await contactService.list(organizationId, filters);
+      const result = includeCompany
+        ? await contactService.listWithCompany(organizationId, filters)
+        : await contactService.list(organizationId, filters);
 
-    return c.json({
-      success: true,
-      data: result,
-    });
+      return c.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'contacts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -56,22 +68,33 @@ contacts.get(
   '/:id',
   requirePermission('crm:contacts:read'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const contactId = c.req.param('id');
-    const includeCompany = c.req.query('includeCompany') === 'true';
+    try {
+      const organizationId = c.get('organizationId');
+      const contactId = c.req.param('id');
+      const includeCompany = c.req.query('includeCompany') === 'true';
 
-    const contact = includeCompany
-      ? await contactService.getByIdWithCompany(organizationId, contactId)
-      : await contactService.getById(organizationId, contactId);
+      const contact = includeCompany
+        ? await contactService.getByIdWithCompany(organizationId, contactId)
+        : await contactService.getById(organizationId, contactId);
 
-    if (!contact) {
-      return c.json({ success: false, error: 'Contact not found' }, 404);
+      if (!contact) {
+        return c.json({ success: false, error: 'Contact not found' }, 404);
+      }
+
+      return c.json({
+        success: true,
+        data: contact,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'contacts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    return c.json({
-      success: true,
-      data: contact,
-    });
   }
 );
 
@@ -84,16 +107,27 @@ contacts.post(
   requirePermission('crm:contacts:create'),
   zValidator('json', createContactSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
+    try {
+      const organizationId = c.get('organizationId');
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
 
-    const contact = await contactService.create(organizationId, userId, data);
+      const contact = await contactService.create(organizationId, userId, data);
 
-    return c.json({
-      success: true,
-      data: contact,
-    }, 201);
+      return c.json({
+        success: true,
+        data: contact,
+      }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'contacts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -106,16 +140,27 @@ contacts.put(
   requirePermission('crm:contacts:update'),
   zValidator('json', updateContactSchema),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const contactId = c.req.param('id');
-    const data = c.req.valid('json');
+    try {
+      const organizationId = c.get('organizationId');
+      const contactId = c.req.param('id');
+      const data = c.req.valid('json');
 
-    const contact = await contactService.update(organizationId, contactId, data);
+      const contact = await contactService.update(organizationId, contactId, data);
 
-    return c.json({
-      success: true,
-      data: contact,
-    });
+      return c.json({
+        success: true,
+        data: contact,
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'contacts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 
@@ -127,15 +172,26 @@ contacts.delete(
   '/:id',
   requirePermission('crm:contacts:delete'),
   async (c) => {
-    const organizationId = c.get('organizationId');
-    const contactId = c.req.param('id');
+    try {
+      const organizationId = c.get('organizationId');
+      const contactId = c.req.param('id');
 
-    await contactService.delete(organizationId, contactId);
+      await contactService.delete(organizationId, contactId);
 
-    return c.json({
-      success: true,
-      data: { message: 'Contact deleted successfully' },
-    });
+      return c.json({
+        success: true,
+        data: { message: 'Contact deleted successfully' },
+      });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'contacts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
+    }
   }
 );
 

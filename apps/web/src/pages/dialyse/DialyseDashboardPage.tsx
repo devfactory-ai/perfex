@@ -7,6 +7,29 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type ApiResponse } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  PageHeader,
+  Button,
+  StatsCard,
+  SectionCard,
+  QuickActionCard,
+  InlineLoading
+} from '@/components/healthcare';
+import {
+  Users,
+  Calendar,
+  Cpu,
+  Bell,
+  Plus,
+  Activity,
+  AlertTriangle,
+  Settings,
+  FileText,
+  UserCheck,
+  CreditCard,
+  Truck,
+  BarChart3
+} from 'lucide-react';
 
 interface DashboardData {
   patients: {
@@ -65,7 +88,7 @@ interface DashboardData {
 }
 
 export function DialyseDashboardPage() {
-  const { t: _t } = useLanguage();
+  const { t } = useLanguage();
 
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['dialyse-dashboard'],
@@ -77,41 +100,36 @@ export function DialyseDashboardPage() {
   });
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-muted-foreground">Chargement du tableau de bord...</p>
-        </div>
-      </div>
-    );
+    return <InlineLoading rows={8} />;
   }
 
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-destructive">Erreur lors du chargement du tableau de bord</p>
-      </div>
+      <SectionCard>
+        <div className="p-6 text-center">
+          <p className="text-destructive">{t('dialyse.error')}</p>
+        </div>
+      </SectionCard>
     );
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'scheduled': return 'bg-blue-100 text-blue-800';
-      case 'checked_in': return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'scheduled': return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+      case 'checked_in': return 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200';
+      case 'in_progress': return 'bg-gray-300 dark:bg-gray-500 text-gray-900 dark:text-white';
+      case 'completed': return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+      case 'cancelled': return 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300';
+      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'critical': return 'bg-slate-800 text-white border-slate-700 dark:bg-slate-600';
+      case 'high': return 'bg-slate-500 text-white border-slate-400 dark:bg-slate-500';
+      case 'medium': return 'bg-slate-400 text-white border-slate-300 dark:bg-slate-500';
+      case 'low': return 'bg-slate-200 text-slate-800 border-slate-200 dark:bg-slate-700 dark:text-slate-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -120,135 +138,99 @@ export function DialyseDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Centre de Dialyse</h1>
-          <p className="text-muted-foreground">
-            Vue d'ensemble de l'activité du centre de dialyse
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            to="/dialyse/patients/new"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Nouveau Patient
-          </Link>
-          <Link
-            to="/dialyse/sessions/new"
-            className="rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Nouvelle Séance
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title={t('dialyse.dashboard')}
+        subtitle={t('dialyse.dashboardSubtitle')}
+        icon={Activity}
+        module="dialyse"
+        actions={
+          <div className="flex gap-2">
+            <Link to="/dialyse/patients/new">
+              <Button module="dialyse" icon={Plus}>
+                {t('dialyse.newPatient')}
+              </Button>
+            </Link>
+            <Link to="/dialyse/sessions/new">
+              <Button module="dialyse" variant="outline" icon={Plus}>
+                {t('dialyse.newSession')}
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       {/* Critical Alerts Banner */}
       {dashboard?.criticalAlerts && dashboard.criticalAlerts.length > 0 && (
-        <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h3 className="font-semibold text-red-800">Alertes Critiques ({dashboard.criticalAlerts.length})</h3>
-          </div>
-          <div className="space-y-2">
-            {dashboard.criticalAlerts.slice(0, 3).map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between bg-white rounded p-2 border border-red-100">
-                <div>
-                  <span className="font-medium">{alert.title}</span>
-                  {alert.patient?.contact && (
-                    <span className="text-sm text-muted-foreground ml-2">
-                      - {alert.patient.contact.firstName} {alert.patient.contact.lastName}
-                    </span>
-                  )}
-                </div>
-                <Link
-                  to={`/dialyse/alerts/${alert.id}`}
-                  className="text-sm text-red-600 hover:text-red-800"
-                >
-                  Voir
-                </Link>
+        <SectionCard>
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                <AlertTriangle className="h-5 w-5 text-gray-900 dark:text-white" />
               </div>
-            ))}
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                {t('dialyse.criticalAlerts')} ({dashboard.criticalAlerts.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {dashboard.criticalAlerts.slice(0, 3).map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">{alert.title}</span>
+                    {alert.patient?.contact && (
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                        - {alert.patient.contact.firstName} {alert.patient.contact.lastName}
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    to={`/dialyse/alerts/${alert.id}`}
+                    className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                  >
+                    {t('dialyse.view')}
+                  </Link>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Patients */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-muted-foreground">Patients Actifs</div>
-            <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div className="mt-2 text-2xl font-bold">{dashboard?.patients.activePatients || 0}</div>
-          <div className="flex items-center text-xs text-muted-foreground mt-1">
-            <span className="text-orange-600 font-medium">{dashboard?.patients.isolationPatients || 0}</span>
-            <span className="ml-1">en isolation</span>
-          </div>
-        </div>
-
-        {/* Today's Sessions */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-muted-foreground">Séances Aujourd'hui</div>
-            <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div className="mt-2 text-2xl font-bold">{dashboard?.todaySessions?.length || 0}</div>
-          <div className="flex items-center text-xs text-muted-foreground mt-1">
-            <span className="text-green-600 font-medium">{dashboard?.sessions.inProgressSessions || 0}</span>
-            <span className="ml-1">en cours</span>
-          </div>
-        </div>
-
-        {/* Machines */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-muted-foreground">Machines Disponibles</div>
-            <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-            </svg>
-          </div>
-          <div className="mt-2 text-2xl font-bold text-green-600">{dashboard?.machines.availableMachines || 0}</div>
-          <div className="flex items-center text-xs text-muted-foreground mt-1">
-            <span>sur {dashboard?.machines.totalMachines || 0} machines</span>
-          </div>
-        </div>
-
-        {/* Alerts */}
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-muted-foreground">Alertes Actives</div>
-            <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
-          <div className="mt-2 text-2xl font-bold">{dashboard?.alerts.active || 0}</div>
-          <div className="flex items-center gap-2 text-xs mt-1">
-            {(dashboard?.alerts.critical || 0) > 0 && (
-              <span className="text-red-600 font-medium">{dashboard?.alerts.critical} critiques</span>
-            )}
-            {(dashboard?.alerts.high || 0) > 0 && (
-              <span className="text-orange-600 font-medium">{dashboard?.alerts.high} hautes</span>
-            )}
-          </div>
-        </div>
+        <StatsCard
+          label={t('dialyse.activePatients')}
+          value={dashboard?.patients.activePatients || 0}
+          icon={Users}
+          module="dialyse"
+        />
+        <StatsCard
+          label={t('dialyse.todaySessions')}
+          value={dashboard?.todaySessions?.length || 0}
+          icon={Calendar}
+          module="dialyse"
+        />
+        <StatsCard
+          label={t('dialyse.availableMachines')}
+          value={dashboard?.machines.availableMachines || 0}
+          icon={Cpu}
+          module="dialyse"
+        />
+        <StatsCard
+          label={t('dialyse.activeAlerts')}
+          value={dashboard?.alerts.active || 0}
+          icon={Bell}
+          module="dialyse"
+        />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Today's Sessions */}
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-semibold">Séances du Jour</h3>
+            <h3 className="font-semibold">{t('dialyse.todaysSessionsTitle')}</h3>
             <Link to="/dialyse/planning" className="text-sm text-primary hover:underline">
-              Voir le planning
+              {t('dialyse.viewPlanning')}
             </Link>
           </div>
           <div className="p-4">
@@ -263,233 +245,147 @@ export function DialyseDashboardPage() {
                       <span className="font-medium">{session.sessionNumber}</span>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(session.status)}`}>
-                      {session.status === 'scheduled' && 'Planifiée'}
-                      {session.status === 'checked_in' && 'Arrivé'}
-                      {session.status === 'in_progress' && 'En cours'}
-                      {session.status === 'completed' && 'Terminée'}
-                      {session.status === 'cancelled' && 'Annulée'}
+                      {session.status === 'scheduled' && t('dialyse.status.scheduled')}
+                      {session.status === 'checked_in' && t('dialyse.status.checkedIn')}
+                      {session.status === 'in_progress' && t('dialyse.status.inProgress')}
+                      {session.status === 'completed' && t('dialyse.status.completed')}
+                      {session.status === 'cancelled' && t('dialyse.status.cancelled')}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <p>Aucune séance programmée aujourd'hui</p>
+                <p>{t('dialyse.noSessionsToday')}</p>
               </div>
             )}
           </div>
-        </div>
+        </SectionCard>
 
         {/* Machine Status */}
-        <div className="rounded-lg border bg-card">
+        <SectionCard>
           <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="font-semibold">État des Machines</h3>
+            <h3 className="font-semibold">{t('dialyse.machineStatus')}</h3>
             <Link to="/dialyse/machines" className="text-sm text-primary hover:underline">
-              Gérer les machines
+              {t('dialyse.manageMachines')}
             </Link>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                <div className="text-2xl font-bold text-green-600">{dashboard?.machines.availableMachines || 0}</div>
-                <div className="text-sm text-green-700">Disponibles</div>
+              <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.machines.availableMachines || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('dialyse.available')}</div>
               </div>
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-2xl font-bold text-blue-600">{dashboard?.machines.inUseMachines || 0}</div>
-                <div className="text-sm text-blue-700">En Utilisation</div>
+              <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.machines.inUseMachines || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('dialyse.inUse')}</div>
               </div>
-              <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                <div className="text-2xl font-bold text-yellow-600">{dashboard?.machines.maintenanceMachines || 0}</div>
-                <div className="text-sm text-yellow-700">En Maintenance</div>
+              <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.machines.maintenanceMachines || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{t('dialyse.inMaintenance')}</div>
               </div>
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
-                <div className="text-2xl font-bold text-red-600">{dashboard?.machines.outOfServiceMachines || 0}</div>
-                <div className="text-sm text-red-700">Hors Service</div>
+              <div className="p-3 rounded-lg bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.machines.outOfServiceMachines || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">{t('dialyse.outOfService')}</div>
               </div>
             </div>
             {(dashboard?.machines.isolationMachines || 0) > 0 && (
-              <div className="mt-4 p-3 rounded-lg bg-orange-50 border border-orange-200">
+              <div className="mt-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-orange-700">Machines d'isolation</span>
-                  <span className="font-bold text-orange-600">{dashboard?.machines.isolationMachines}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('dialyse.isolationMachines')}</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{dashboard?.machines.isolationMachines}</span>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="font-semibold mb-4">Accès Rapide</h3>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-          <Link
-            to="/dialyse/patients"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-blue-100">
-              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Patients</div>
-              <div className="text-xs text-muted-foreground">Gérer les patients</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/planning"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-green-100">
-              <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Planning</div>
-              <div className="text-xs text-muted-foreground">Séances et créneaux</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/machines"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-purple-100">
-              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Machines</div>
-              <div className="text-xs text-muted-foreground">Équipements</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/alerts"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-red-100">
-              <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Alertes</div>
-              <div className="text-xs text-muted-foreground">Alertes cliniques</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/consumables"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-orange-100">
-              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Consommables</div>
-              <div className="text-xs text-muted-foreground">Stocks et inventaire</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/reports"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-teal-100">
-              <svg className="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Rapports</div>
-              <div className="text-xs text-muted-foreground">Statistiques</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/maintenance"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-yellow-100">
-              <svg className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Maintenance</div>
-              <div className="text-xs text-muted-foreground">Interventions</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/protocols"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Protocoles</div>
-              <div className="text-xs text-muted-foreground">Modèles traitement</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/staff"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-pink-100">
-              <svg className="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Personnel</div>
-              <div className="text-xs text-muted-foreground">Médecins & staff</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/billing"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-emerald-100">
-              <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Facturation</div>
-              <div className="text-xs text-muted-foreground">Paiements</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/dialyse/transport"
-            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-cyan-100">
-              <svg className="h-5 w-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-medium">Transport</div>
-              <div className="text-xs text-muted-foreground">VSL & ambulances</div>
-            </div>
-          </Link>
+      <SectionCard>
+        <div className="p-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t('dialyse.quickAccess')}</h3>
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+            <QuickActionCard
+              title={t('dialyse.patients')}
+              description={t('dialyse.managePatients')}
+              icon={Users}
+              module="dialyse"
+              to="/dialyse/patients"
+            />
+            <QuickActionCard
+              title={t('dialyse.planning')}
+              description={t('dialyse.sessionsAndSlots')}
+              icon={Calendar}
+              module="dialyse"
+              to="/dialyse/planning"
+            />
+            <QuickActionCard
+              title={t('dialyse.machines')}
+              description={t('dialyse.equipment')}
+              icon={Cpu}
+              module="dialyse"
+              to="/dialyse/machines"
+            />
+            <QuickActionCard
+              title={t('dialyse.alerts')}
+              description={t('dialyse.clinicalAlerts')}
+              icon={Bell}
+              module="dialyse"
+              to="/dialyse/alerts"
+            />
+            <QuickActionCard
+              title={t('dialyse.consumables')}
+              description={t('dialyse.stocksAndInventory')}
+              icon={Activity}
+              module="dialyse"
+              to="/dialyse/consumables"
+            />
+            <QuickActionCard
+              title={t('dialyse.reports')}
+              description={t('dialyse.statistics')}
+              icon={BarChart3}
+              module="dialyse"
+              to="/dialyse/reports"
+            />
+            <QuickActionCard
+              title={t('dialyse.maintenance')}
+              description={t('dialyse.interventions')}
+              icon={Settings}
+              module="dialyse"
+              to="/dialyse/maintenance"
+            />
+            <QuickActionCard
+              title={t('dialyse.protocols')}
+              description={t('dialyse.treatmentTemplates')}
+              icon={FileText}
+              module="dialyse"
+              to="/dialyse/protocols"
+            />
+            <QuickActionCard
+              title={t('dialyse.staff')}
+              description={t('dialyse.doctorsAndStaff')}
+              icon={UserCheck}
+              module="dialyse"
+              to="/dialyse/staff"
+            />
+            <QuickActionCard
+              title={t('dialyse.billing')}
+              description={t('dialyse.payments')}
+              icon={CreditCard}
+              module="dialyse"
+              to="/dialyse/billing"
+            />
+            <QuickActionCard
+              title={t('dialyse.transport')}
+              description={t('dialyse.vslAndAmbulances')}
+              icon={Truck}
+              module="dialyse"
+              to="/dialyse/transport"
+            />
+          </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }

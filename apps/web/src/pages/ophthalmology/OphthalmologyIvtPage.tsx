@@ -9,15 +9,21 @@ import { useNavigate } from 'react-router-dom';
 import {
   Syringe,
   Plus,
-  Search,
   Calendar,
-  ChevronRight,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  FilterBar,
+  SectionCard,
+  Button,
+  EmptyState,
+  InlineLoading,
+} from '../../components/healthcare';
 
 export default function OphthalmologyIvtPage() {
-  useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [drugFilter, setDrugFilter] = useState<string>('all');
@@ -33,18 +39,21 @@ export default function OphthalmologyIvtPage() {
     },
   });
 
-  const getDrugColor = (drug: string) => {
+  const getDrugColor = (drug: string | undefined | null) => {
+    if (!drug) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
     if (drug.includes('Eylea') || drug.includes('aflibercept')) {
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      return 'bg-slate-800 text-white dark:bg-slate-600';
     }
     if (drug.includes('Lucentis') || drug.includes('ranibizumab')) {
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      return 'bg-slate-400 text-white dark:bg-slate-500';
     }
     if (drug.includes('Avastin') || drug.includes('bevacizumab')) {
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+      return 'bg-slate-500 text-white dark:bg-slate-500';
     }
     if (drug.includes('Vabysmo') || drug.includes('faricimab')) {
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      return 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300';
     }
     return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
   };
@@ -52,90 +61,88 @@ export default function OphthalmologyIvtPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Syringe className="h-7 w-7 text-blue-500" />
-            Injections Intravitréennes (IVT)
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Anti-VEGF et corticoïdes intravitréens
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/ophthalmology/ivt-injections/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Nouvelle IVT
-        </button>
-      </div>
+      <PageHeader
+        title={t('ophthalmology.ivtTitle')}
+        subtitle={t('ophthalmology.ivtSubtitle')}
+        icon={Syringe}
+        module="ophthalmology"
+        actions={
+          <Button
+            module="ophthalmology"
+            icon={Plus}
+            onClick={() => navigate('/ophthalmology/ivt-injections/new')}
+          >
+            {t('ophthalmology.newIvt')}
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher un patient..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <select
-            value={drugFilter}
-            onChange={(e) => setDrugFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">Tous les médicaments</option>
-            <option value="aflibercept">Aflibercept (Eylea)</option>
-            <option value="ranibizumab">Ranibizumab (Lucentis)</option>
-            <option value="bevacizumab">Bevacizumab (Avastin)</option>
-            <option value="faricimab">Faricimab (Vabysmo)</option>
-            <option value="dexamethasone">Dexaméthasone (Ozurdex)</option>
-          </select>
-        </div>
-      </div>
+      <FilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder={t('common.searchPatient')}
+        module="ophthalmology"
+        filters={[
+          {
+            name: 'drug',
+            value: drugFilter,
+            options: [
+              { value: 'all', label: t('ophthalmology.allDrugs') },
+              { value: 'aflibercept', label: 'Aflibercept (Eylea)' },
+              { value: 'ranibizumab', label: 'Ranibizumab (Lucentis)' },
+              { value: 'bevacizumab', label: 'Bevacizumab (Avastin)' },
+              { value: 'faricimab', label: 'Faricimab (Vabysmo)' },
+              { value: 'dexamethasone', label: 'Dexaméthasone (Ozurdex)' },
+            ],
+            onChange: setDrugFilter,
+          },
+        ]}
+      />
 
       {/* IVT List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <SectionCard>
         {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          </div>
+          <InlineLoading rows={5} />
         ) : injections?.length === 0 ? (
-          <div className="p-8 text-center">
-            <Syringe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Aucune injection IVT trouvée</p>
-          </div>
+          <EmptyState
+            icon={Syringe}
+            title={t('ophthalmology.noIvtFound')}
+            module="ophthalmology"
+            action={{
+              label: t('ophthalmology.newIvt'),
+              icon: Plus,
+              onClick: () => navigate('/ophthalmology/ivt-injections/new'),
+            }}
+          />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {injections?.map((injection: any) => (
               <div
                 key={injection.id}
-                onClick={() => navigate(`/ophthalmology/ivt-injections/${injection.id}`)}
+                onClick={() => navigate(`/ophthalmology/ivt-injections/${injection.id}/edit`)}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <Syringe className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                      <Syringe className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
                           {injection.patientName}
                         </h3>
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
                           {injection.eye === 'OD' ? 'OD' : 'OG'}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDrugColor(injection.drug)}`}>
-                          {injection.drug}
-                        </span>
+                        {injection.drug && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDrugColor(injection.drug)}`}>
+                            {injection.drug}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 mt-1">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {new Date(injection.injectionDate).toLocaleDateString('fr-FR')}
@@ -144,25 +151,22 @@ export default function OphthalmologyIvtPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-4 text-sm">
-                      <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">Injection #</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{injection.injectionNumber}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-gray-500 dark:text-gray-400">Lot</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{injection.lotNumber || '-'}</p>
-                      </div>
+                  <div className="hidden md:flex items-center gap-4 text-sm ml-4">
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400">Injection #</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{injection.injectionNumber}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400">Lot</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{injection.lotNumber || '-'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
 import { InvoiceService } from '../services/invoice.service';
+import { logger } from '../utils/logger';
 
 const invoicesRouter = new Hono<{ Bindings: Env }>();
 
@@ -25,33 +26,44 @@ invoicesRouter.get(
   '/',
   checkPermission('finance:invoices:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const customerId = c.req.query('customerId');
+      const status = c.req.query('status');
+      const startDateStr = c.req.query('startDate');
+      const endDateStr = c.req.query('endDate');
+      const limitStr = c.req.query('limit');
+      const offsetStr = c.req.query('offset');
+
+      const options: any = {};
+      if (customerId) options.customerId = customerId;
+      if (status) options.status = status;
+      if (startDateStr) options.startDate = new Date(startDateStr);
+      if (endDateStr) options.endDate = new Date(endDateStr);
+      if (limitStr) options.limit = parseInt(limitStr, 10);
+      if (offsetStr) options.offset = parseInt(offsetStr, 10);
+
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoicesList = await invoiceService.list(organizationId, options);
+
+      return c.json({ data: invoicesList });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const customerId = c.req.query('customerId');
-    const status = c.req.query('status');
-    const startDateStr = c.req.query('startDate');
-    const endDateStr = c.req.query('endDate');
-    const limitStr = c.req.query('limit');
-    const offsetStr = c.req.query('offset');
-
-    const options: any = {};
-    if (customerId) options.customerId = customerId;
-    if (status) options.status = status;
-    if (startDateStr) options.startDate = new Date(startDateStr);
-    if (endDateStr) options.endDate = new Date(endDateStr);
-    if (limitStr) options.limit = parseInt(limitStr, 10);
-    if (offsetStr) options.offset = parseInt(offsetStr, 10);
-
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoicesList = await invoiceService.list(organizationId, options);
-
-    return c.json({ data: invoicesList });
   }
 );
 
@@ -63,19 +75,30 @@ invoicesRouter.get(
   '/:id',
   checkPermission('finance:invoices:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.getById(invoiceId, organizationId);
+
+      return c.json({ data: invoice });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.getById(invoiceId, organizationId);
-
-    return c.json({ data: invoice });
   }
 );
 
@@ -88,20 +111,31 @@ invoicesRouter.post(
   checkPermission('finance:invoices:create'),
   zValidator('json', createInvoiceSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const userId = c.get('userId');
+      const data = c.req.valid('json');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.create(organizationId, userId, data);
+
+      return c.json({ data: invoice }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const userId = c.get('userId');
-    const data = c.req.valid('json');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.create(organizationId, userId, data);
-
-    return c.json({ data: invoice }, 201);
   }
 );
 
@@ -114,20 +148,31 @@ invoicesRouter.put(
   checkPermission('finance:invoices:update'),
   zValidator('json', updateInvoiceSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const data = c.req.valid('json');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.update(invoiceId, organizationId, data);
+
+      return c.json({ data: invoice });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const data = c.req.valid('json');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.update(invoiceId, organizationId, data);
-
-    return c.json({ data: invoice });
   }
 );
 
@@ -139,19 +184,30 @@ invoicesRouter.post(
   '/:id/send',
   checkPermission('finance:invoices:update'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.markAsSent(invoiceId, organizationId);
+
+      return c.json({ data: invoice });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.markAsSent(invoiceId, organizationId);
-
-    return c.json({ data: invoice });
   }
 );
 
@@ -166,20 +222,31 @@ invoicesRouter.post(
     amount: z.number().min(0.01),
   })),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const { amount } = c.req.valid('json');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.recordPayment(invoiceId, organizationId, amount);
+
+      return c.json({ data: invoice });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const { amount } = c.req.valid('json');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.recordPayment(invoiceId, organizationId, amount);
-
-    return c.json({ data: invoice });
   }
 );
 
@@ -191,19 +258,30 @@ invoicesRouter.post(
   '/:id/cancel',
   checkPermission('finance:invoices:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const invoiceService = new InvoiceService(c.env.DB);
+      const invoice = await invoiceService.cancel(invoiceId, organizationId);
+
+      return c.json({ data: invoice });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const invoiceService = new InvoiceService(c.env.DB);
-    const invoice = await invoiceService.cancel(invoiceId, organizationId);
-
-    return c.json({ data: invoice });
   }
 );
 
@@ -215,19 +293,30 @@ invoicesRouter.delete(
   '/:id',
   checkPermission('finance:invoices:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const invoiceId = c.req.param('id');
+      const invoiceService = new InvoiceService(c.env.DB);
+      await invoiceService.delete(invoiceId, organizationId);
+
+      return c.json({ data: { message: 'Invoice deleted successfully' } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'invoices' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const invoiceId = c.req.param('id');
-    const invoiceService = new InvoiceService(c.env.DB);
-    await invoiceService.delete(invoiceId, organizationId);
-
-    return c.json({ data: { message: 'Invoice deleted successfully' } });
   }
 );
 

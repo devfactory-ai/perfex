@@ -11,6 +11,7 @@ import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
 import { AccountService } from '../services/account.service';
+import { logger } from '../utils/logger';
 
 const accounts = new Hono<{ Bindings: Env }>();
 
@@ -25,22 +26,33 @@ accounts.get(
   '/',
   checkPermission('finance:accounts:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const type = c.req.query('type');
+      const activeParam = c.req.query('active');
+      const active = activeParam ? activeParam === 'true' : undefined;
+
+      const accountService = new AccountService(c.env.DB);
+      const accountsList = await accountService.list(organizationId, { type, active });
+
+      return c.json({ data: accountsList });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const type = c.req.query('type');
-    const activeParam = c.req.query('active');
-    const active = activeParam ? activeParam === 'true' : undefined;
-
-    const accountService = new AccountService(c.env.DB);
-    const accountsList = await accountService.list(organizationId, { type, active });
-
-    return c.json({ data: accountsList });
   }
 );
 
@@ -52,18 +64,29 @@ accounts.get(
   '/hierarchy',
   checkPermission('finance:accounts:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const accountService = new AccountService(c.env.DB);
+      const hierarchy = await accountService.getHierarchy(organizationId);
+
+      return c.json({ data: hierarchy });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const accountService = new AccountService(c.env.DB);
-    const hierarchy = await accountService.getHierarchy(organizationId);
-
-    return c.json({ data: hierarchy });
   }
 );
 
@@ -75,26 +98,37 @@ accounts.post(
   '/import/:template',
   checkPermission('finance:accounts:create'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const template = c.req.param('template');
+      if (template !== 'french' && template !== 'syscohada') {
+        return c.json(
+          { error: { code: 'INVALID_TEMPLATE', message: 'Template must be "french" or "syscohada"' } },
+          400
+        );
+      }
+
+      const accountService = new AccountService(c.env.DB);
+      const count = await accountService.importTemplate(organizationId, template);
+
+      return c.json({ data: { count, message: `Imported ${count} accounts` } }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const template = c.req.param('template');
-    if (template !== 'french' && template !== 'syscohada') {
-      return c.json(
-        { error: { code: 'INVALID_TEMPLATE', message: 'Template must be "french" or "syscohada"' } },
-        400
-      );
-    }
-
-    const accountService = new AccountService(c.env.DB);
-    const count = await accountService.importTemplate(organizationId, template);
-
-    return c.json({ data: { count, message: `Imported ${count} accounts` } }, 201);
   }
 );
 
@@ -106,19 +140,30 @@ accounts.get(
   '/:id',
   checkPermission('finance:accounts:read'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const accountId = c.req.param('id');
+      const accountService = new AccountService(c.env.DB);
+      const account = await accountService.getById(accountId, organizationId);
+
+      return c.json({ data: account });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const accountId = c.req.param('id');
-    const accountService = new AccountService(c.env.DB);
-    const account = await accountService.getById(accountId, organizationId);
-
-    return c.json({ data: account });
   }
 );
 
@@ -131,19 +176,30 @@ accounts.post(
   checkPermission('finance:accounts:create'),
   zValidator('json', createAccountSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const data = c.req.valid('json');
+      const accountService = new AccountService(c.env.DB);
+      const account = await accountService.create(organizationId, data);
+
+      return c.json({ data: account }, 201);
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const data = c.req.valid('json');
-    const accountService = new AccountService(c.env.DB);
-    const account = await accountService.create(organizationId, data);
-
-    return c.json({ data: account }, 201);
   }
 );
 
@@ -156,20 +212,31 @@ accounts.put(
   checkPermission('finance:accounts:update'),
   zValidator('json', updateAccountSchema),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const accountId = c.req.param('id');
+      const data = c.req.valid('json');
+      const accountService = new AccountService(c.env.DB);
+      const account = await accountService.update(accountId, organizationId, data);
+
+      return c.json({ data: account });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const accountId = c.req.param('id');
-    const data = c.req.valid('json');
-    const accountService = new AccountService(c.env.DB);
-    const account = await accountService.update(accountId, organizationId, data);
-
-    return c.json({ data: account });
   }
 );
 
@@ -181,19 +248,30 @@ accounts.delete(
   '/:id',
   checkPermission('finance:accounts:delete'),
   async (c) => {
-    const organizationId = c.req.header('x-organization-id');
-    if (!organizationId) {
-      return c.json(
-        { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
-        400
-      );
+    try {
+      const organizationId = c.req.header('x-organization-id');
+      if (!organizationId) {
+        return c.json(
+          { error: { code: 'MISSING_ORGANIZATION', message: 'Organization ID is required' } },
+          400
+        );
+      }
+
+      const accountId = c.req.param('id');
+      const accountService = new AccountService(c.env.DB);
+      await accountService.delete(accountId, organizationId);
+
+      return c.json({ data: { message: 'Account deleted successfully' } });
+    } catch (error) {
+      logger.error('Route error', error, { route: 'accounts' });
+      return c.json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
+      }, 500);
     }
-
-    const accountId = c.req.param('id');
-    const accountService = new AccountService(c.env.DB);
-    await accountService.delete(accountId, organizationId);
-
-    return c.json({ data: { message: 'Account deleted successfully' } });
   }
 );
 
