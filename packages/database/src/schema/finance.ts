@@ -11,7 +11,7 @@ import { users, organizations } from './users';
  * Chart of accounts for general ledger
  */
 export const accounts = sqliteTable('accounts', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -20,12 +20,12 @@ export const accounts = sqliteTable('accounts', {
   type: text('type', {
     enum: ['asset', 'liability', 'equity', 'revenue', 'expense'],
   }).notNull(),
-  parentId: text('parent_id').references(() => accounts.id), // Hierarchical accounts
+  parentId: text('parent_id'), // Hierarchical accounts - self-reference handled manually
   currency: text('currency').notNull().default('EUR'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   system: integer('system', { mode: 'boolean' }).notNull().default(false), // System account, cannot be deleted
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -33,7 +33,7 @@ export const accounts = sqliteTable('accounts', {
  * Different journals for different types of transactions
  */
 export const journals = sqliteTable('journals', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -43,7 +43,7 @@ export const journals = sqliteTable('journals', {
     enum: ['general', 'sales', 'purchase', 'bank', 'cash'],
   }).notNull(),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -51,7 +51,7 @@ export const journals = sqliteTable('journals', {
  * Main accounting entries
  */
 export const journalEntries = sqliteTable('journal_entries', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -71,8 +71,8 @@ export const journalEntries = sqliteTable('journal_entries', {
     .references(() => users.id),
   postedAt: integer('posted_at', { mode: 'timestamp' }),
   postedBy: text('posted_by').references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -80,7 +80,7 @@ export const journalEntries = sqliteTable('journal_entries', {
  * Individual lines of journal entries (debits and credits)
  */
 export const journalEntryLines = sqliteTable('journal_entry_lines', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   entryId: text('entry_id')
     .notNull()
     .references(() => journalEntries.id),
@@ -92,7 +92,7 @@ export const journalEntryLines = sqliteTable('journal_entry_lines', {
   credit: real('credit').notNull().default(0),
   reconciled: integer('reconciled', { mode: 'boolean' }).notNull().default(false),
   reconciledAt: integer('reconciled_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -100,7 +100,7 @@ export const journalEntryLines = sqliteTable('journal_entry_lines', {
  * Financial year periods
  */
 export const fiscalYears = sqliteTable('fiscal_years', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -112,7 +112,7 @@ export const fiscalYears = sqliteTable('fiscal_years', {
   }).notNull().default('open'),
   closedAt: integer('closed_at', { mode: 'timestamp' }),
   closedBy: text('closed_by').references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -120,7 +120,7 @@ export const fiscalYears = sqliteTable('fiscal_years', {
  * VAT/GST rates
  */
 export const taxRates = sqliteTable('tax_rates', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -132,7 +132,7 @@ export const taxRates = sqliteTable('tax_rates', {
   }).notNull().default('both'),
   accountId: text('account_id').references(() => accounts.id), // Tax collection account
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -140,7 +140,7 @@ export const taxRates = sqliteTable('tax_rates', {
  * Customer invoices
  */
 export const invoices = sqliteTable('invoices', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -169,8 +169,8 @@ export const invoices = sqliteTable('invoices', {
     .references(() => users.id),
   sentAt: integer('sent_at', { mode: 'timestamp' }),
   paidAt: integer('paid_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -178,7 +178,7 @@ export const invoices = sqliteTable('invoices', {
  * Individual line items on invoices
  */
 export const invoiceLines = sqliteTable('invoice_lines', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   invoiceId: text('invoice_id')
     .notNull()
     .references(() => invoices.id),
@@ -190,7 +190,7 @@ export const invoiceLines = sqliteTable('invoice_lines', {
   taxAmount: real('tax_amount').notNull().default(0),
   total: real('total').notNull(),
   accountId: text('account_id').references(() => accounts.id), // Revenue account
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -198,7 +198,7 @@ export const invoiceLines = sqliteTable('invoice_lines', {
  * Payment records
  */
 export const payments = sqliteTable('payments', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -217,7 +217,7 @@ export const payments = sqliteTable('payments', {
   createdBy: text('created_by')
     .notNull()
     .references(() => users.id),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -225,7 +225,7 @@ export const payments = sqliteTable('payments', {
  * Link payments to invoices
  */
 export const paymentAllocations = sqliteTable('payment_allocations', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   paymentId: text('payment_id')
     .notNull()
     .references(() => payments.id),
@@ -233,7 +233,7 @@ export const paymentAllocations = sqliteTable('payment_allocations', {
     .notNull()
     .references(() => invoices.id),
   amount: real('amount').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 /**
@@ -241,7 +241,7 @@ export const paymentAllocations = sqliteTable('payment_allocations', {
  * Bank account management
  */
 export const bankAccounts = sqliteTable('bank_accounts', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey(),
   organizationId: text('organization_id')
     .notNull()
     .references(() => organizations.id),
@@ -254,8 +254,8 @@ export const bankAccounts = sqliteTable('bank_accounts', {
   balance: real('balance').notNull().default(0),
   accountId: text('account_id').references(() => accounts.id), // Linked GL account
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 // Type exports

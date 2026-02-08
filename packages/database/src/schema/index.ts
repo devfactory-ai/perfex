@@ -25,6 +25,11 @@ export * from './dialyse';
 export * from './healthcare';
 export * from './cardiology';
 export * from './ophthalmology';
+export * from './clinical-ai';
+export * from './patient-portal';
+export * from './rpm';
+export * from './imaging-ai';
+export * from './population-health';
 
 // Export all tables for drizzle-kit
 export {
@@ -282,3 +287,65 @@ export {
   ophthalmologyFundusPhotos,
   ophthalmologyOsdiScores,
 } from './ophthalmology';
+
+export {
+  clinicalDocumentation,
+  patientSummaries,
+  diagnosticSuggestions,
+  aiClinicalPrompts,
+  clinicalAiUsage,
+} from './clinical-ai';
+
+export {
+  portalUsers,
+  portalSessions,
+  appointmentRequests,
+  portalMessageThreads,
+  portalMessages,
+  symptomTracking,
+  medicationRefillRequests,
+  educationalContent,
+  patientEducationProgress,
+  portalNotifications,
+  patientDocumentAccess,
+} from './patient-portal';
+
+export {
+  iotDevices,
+  iotDeviceEvents,
+  iotReadings,
+  rpmPrograms,
+  rpmEnrollments,
+  rpmAlerts,
+  rpmAlertRules,
+  rpmCompliance,
+  rpmTimeLogs,
+  rpmBillingPeriods,
+} from './rpm';
+
+export {
+  imagingAnalysis,
+  ecgAnalysis,
+  octAnalysis,
+  fundusAnalysis,
+  echoAnalysis,
+  imagingReports,
+} from './imaging-ai';
+
+export {
+  riskModels,
+  patientRiskScores,
+  populationCohorts,
+  cohortMembership,
+  cohortSnapshots,
+  qualityIndicators,
+  qualityMeasurements,
+  outcomeDefinitions,
+  outcomeAnalytics,
+  patientOutcomes,
+  iqssReports,
+  careGapDefinitions,
+  patientCareGaps,
+  analyticsDashboards,
+  scheduledReports as phScheduledReports,
+} from './population-health';

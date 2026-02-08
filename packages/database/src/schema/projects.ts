@@ -80,7 +80,7 @@ export const projectTasks = sqliteTable('project_tasks', {
   assignedTo: text('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
   // Hierarchy
-  parentTaskId: text('parent_task_id').references(() => projectTasks.id, { onDelete: 'set null' }),
+  parentTaskId: text('parent_task_id'), // Self-reference handled manually
   order: integer('order').default(0),
 
   // Audit
