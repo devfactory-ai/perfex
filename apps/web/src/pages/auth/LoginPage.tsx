@@ -27,6 +27,7 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -368,6 +369,36 @@ export function LoginPage() {
               )}
             </div>
           )}
+
+          {/* Demo Credentials */}
+          <div className="mt-6 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
+            <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Compte de démonstration
+            </h4>
+            <div className="space-y-1 text-sm">
+              <p className="text-amber-700 dark:text-amber-300">
+                <span className="font-medium">Email:</span>{' '}
+                <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded text-xs">demo@perfex.io</code>
+              </p>
+              <p className="text-amber-700 dark:text-amber-300">
+                <span className="font-medium">Mot de passe:</span>{' '}
+                <code className="bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded text-xs">Demo@2024!</code>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setValue('email', 'demo@perfex.io');
+                setValue('password', 'Demo@2024!');
+              }}
+              className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 underline"
+            >
+              Remplir automatiquement
+            </button>
+          </div>
 
           {/* Register Link */}
           <p className="mt-8 text-center text-gray-600 dark:text-gray-400">

@@ -6,6 +6,7 @@ import { DashboardLayout } from './components/layouts/DashboardLayout';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { PasswordlessVerifyPage } from './pages/auth/PasswordlessVerifyPage';
@@ -180,6 +181,27 @@ const OphthalmologyIolImplantsFormPage = lazy(() => import('./pages/ophthalmolog
 const OphthalmologyOsdiFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyOsdiFormPage'));
 const OphthalmologyRefractionFormPage = lazy(() => import('./pages/ophthalmology/OphthalmologyRefractionFormPage'));
 
+// Clinical AI pages (AI Clinical Assistant)
+const ClinicalAIDashboardPage = lazy(() => import('./pages/clinical-ai/ClinicalAIDashboardPage').then(m => ({ default: m.ClinicalAIDashboardPage })));
+const ClinicalDocumentationPage = lazy(() => import('./pages/clinical-ai/ClinicalDocumentationPage').then(m => ({ default: m.ClinicalDocumentationPage })));
+const ClinicalDocumentFormPage = lazy(() => import('./pages/clinical-ai/ClinicalDocumentFormPage').then(m => ({ default: m.ClinicalDocumentFormPage })));
+const PatientSummaryPage = lazy(() => import('./pages/clinical-ai/PatientSummaryPage').then(m => ({ default: m.PatientSummaryPage })));
+const DiagnosticAssistantPage = lazy(() => import('./pages/clinical-ai/DiagnosticAssistantPage').then(m => ({ default: m.DiagnosticAssistantPage })));
+
+// Patient Portal pages
+const PortalLoginPage = lazy(() => import('./pages/patient-portal/PortalLoginPage').then(m => ({ default: m.PortalLoginPage })));
+const PortalDashboardPage = lazy(() => import('./pages/patient-portal/PortalDashboardPage').then(m => ({ default: m.PortalDashboardPage })));
+const PortalAppointmentsPage = lazy(() => import('./pages/patient-portal/PortalAppointmentsPage').then(m => ({ default: m.PortalAppointmentsPage })));
+const PortalMessagesPage = lazy(() => import('./pages/patient-portal/PortalMessagesPage').then(m => ({ default: m.PortalMessagesPage })));
+const PortalSymptomTrackerPage = lazy(() => import('./pages/patient-portal/PortalSymptomTrackerPage').then(m => ({ default: m.PortalSymptomTrackerPage })));
+
+// RPM (Remote Patient Monitoring) pages
+const RpmDashboardPage = lazy(() => import('./pages/rpm/RpmDashboardPage').then(m => ({ default: m.RpmDashboardPage })));
+const RpmDevicesPage = lazy(() => import('./pages/rpm/RpmDevicesPage').then(m => ({ default: m.RpmDevicesPage })));
+const RpmProgramsPage = lazy(() => import('./pages/rpm/RpmProgramsPage').then(m => ({ default: m.RpmProgramsPage })));
+const RpmEnrollmentsPage = lazy(() => import('./pages/rpm/RpmEnrollmentsPage').then(m => ({ default: m.RpmEnrollmentsPage })));
+const RpmCompliancePage = lazy(() => import('./pages/rpm/RpmCompliancePage').then(m => ({ default: m.RpmCompliancePage })));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -198,12 +220,13 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <LanguageProvider>
-          <ToastProvider>
-          <BrowserRouter>
-          <Routes>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <LanguageProvider>
+            <ToastProvider>
+              <BrowserRouter>
+                <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/passwordless" element={<PasswordlessVerifyPage />} />
@@ -397,14 +420,36 @@ function App() {
             <Route path="ophthalmology/osdi-scores/new" element={<Suspense fallback={<PageLoader />}><OphthalmologyOsdiFormPage /></Suspense>} />
             <Route path="ophthalmology/osdi-scores/:id/edit" element={<Suspense fallback={<PageLoader />}><OphthalmologyOsdiFormPage /></Suspense>} />
             <Route path="ophthalmology/alerts" element={<Suspense fallback={<PageLoader />}><OphthalmologyAlertsPage /></Suspense>} />
+            {/* Clinical AI (AI-powered Clinical Assistant) */}
+            <Route path="clinical-ai" element={<Suspense fallback={<PageLoader />}><ClinicalAIDashboardPage /></Suspense>} />
+            <Route path="clinical-ai/documentation" element={<Suspense fallback={<PageLoader />}><ClinicalDocumentationPage /></Suspense>} />
+            <Route path="clinical-ai/documentation/new" element={<Suspense fallback={<PageLoader />}><ClinicalDocumentFormPage /></Suspense>} />
+            <Route path="clinical-ai/documentation/:id" element={<Suspense fallback={<PageLoader />}><ClinicalDocumentFormPage /></Suspense>} />
+            <Route path="clinical-ai/documentation/:id/edit" element={<Suspense fallback={<PageLoader />}><ClinicalDocumentFormPage /></Suspense>} />
+            <Route path="clinical-ai/summaries" element={<Suspense fallback={<PageLoader />}><PatientSummaryPage /></Suspense>} />
+            <Route path="clinical-ai/summaries/new" element={<Suspense fallback={<PageLoader />}><PatientSummaryPage /></Suspense>} />
+            <Route path="clinical-ai/diagnostics" element={<Suspense fallback={<PageLoader />}><DiagnosticAssistantPage /></Suspense>} />
+            {/* RPM (Remote Patient Monitoring) */}
+            <Route path="rpm" element={<Suspense fallback={<PageLoader />}><RpmDashboardPage /></Suspense>} />
+            <Route path="rpm/devices" element={<Suspense fallback={<PageLoader />}><RpmDevicesPage /></Suspense>} />
+            <Route path="rpm/programs" element={<Suspense fallback={<PageLoader />}><RpmProgramsPage /></Suspense>} />
+            <Route path="rpm/enrollments" element={<Suspense fallback={<PageLoader />}><RpmEnrollmentsPage /></Suspense>} />
+            <Route path="rpm/compliance" element={<Suspense fallback={<PageLoader />}><RpmCompliancePage /></Suspense>} />
           </Route>
+          {/* Patient Portal routes (separate from main dashboard) */}
+          <Route path="/portal/login" element={<Suspense fallback={<PageLoader />}><PortalLoginPage /></Suspense>} />
+          <Route path="/portal" element={<Suspense fallback={<PageLoader />}><PortalDashboardPage /></Suspense>} />
+          <Route path="/portal/appointments" element={<Suspense fallback={<PageLoader />}><PortalAppointmentsPage /></Suspense>} />
+          <Route path="/portal/messages" element={<Suspense fallback={<PageLoader />}><PortalMessagesPage /></Suspense>} />
+          <Route path="/portal/symptom-tracker" element={<Suspense fallback={<PageLoader />}><PortalSymptomTrackerPage /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          </BrowserRouter>
-          </ToastProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+                </Routes>
+              </BrowserRouter>
+            </ToastProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
