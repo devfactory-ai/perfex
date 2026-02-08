@@ -226,16 +226,127 @@ Coverage cible: **80%+**
 
 ```
 src/
-├── index.ts              # Entry point
+├── index.ts                    # Entry point Hono.js
+├── types.ts                    # Types globaux
+├── openapi.ts                  # Documentation OpenAPI
+│
 ├── middleware/
-│   └── auth.ts          # JWT middleware
+│   ├── auth.ts                 # JWT middleware
+│   ├── csrf.ts                 # Protection CSRF
+│   └── healthcare-auth.ts      # Auth spécifique santé
+│
 ├── routes/
-│   └── auth.ts          # Auth routes
+│   ├── auth.ts                 # Authentification
+│   ├── accounts.ts             # Plan comptable
+│   ├── invoices.ts             # Factures
+│   ├── companies.ts            # Entreprises
+│   ├── contacts.ts             # Contacts
+│   ├── hr.ts                   # Ressources humaines
+│   ├── inventory.ts            # Inventaire
+│   ├── manufacturing.ts        # Production
+│   ├── projects.ts             # Projets
+│   ├── procurement.ts          # Achats
+│   ├── sales.ts                # Ventes
+│   ├── assets.ts               # Actifs
+│   ├── workflows.ts            # Workflows
+│   ├── documents.ts            # Documents
+│   ├── notifications.ts        # Notifications
+│   ├── audit.ts                # Audit
+│   ├── ai.ts                   # Intelligence Artificielle
+│   │
+│   │   # --- MODULES HEALTHCARE ---
+│   ├── dialyse.ts              # Dialyse (86KB, 150+ endpoints)
+│   ├── cardiology.ts           # Cardiologie (93KB)
+│   ├── ophthalmology.ts        # Ophtalmologie
+│   ├── clinical-ai.ts          # IA clinique
+│   ├── imaging-ai.ts           # IA imagerie
+│   ├── rpm.ts                  # Remote Patient Monitoring
+│   ├── patient-portal.ts       # Portail patient
+│   ├── population-health.ts    # Santé populationnelle
+│   ├── fhir.ts                 # Interopérabilité FHIR
+│   ├── cdss.ts                 # Aide décision clinique
+│   ├── healthcare-analytics.ts # Analytics santé
+│   ├── healthcare-calculators.ts # Calculateurs médicaux
+│   ├── healthcare-factory.ts   # Factory healthcare
+│   └── healthcare-integrations.ts # Intégrations santé
+│
 ├── services/
-│   └── auth.service.ts  # Auth business logic
+│   ├── auth.service.ts         # Authentification
+│   ├── account.service.ts      # Comptes
+│   ├── ai.service.ts           # IA générique
+│   ├── audit.service.ts        # Audit
+│   ├── cache.service.ts        # Cache
+│   │
+│   │   # --- SERVICES HEALTHCARE ---
+│   ├── dialyse/
+│   │   ├── patient.service.ts
+│   │   ├── session.service.ts
+│   │   ├── machine.service.ts
+│   │   ├── lab.service.ts
+│   │   ├── alert.service.ts
+│   │   ├── scheduling.service.ts
+│   │   └── ktv.calculator.ts   # Calcul Kt/V
+│   │
+│   ├── cardiology/
+│   │   ├── risk-score.service.ts
+│   │   ├── risk.calculator.ts
+│   │   └── workflow.service.ts
+│   │
+│   ├── ophthalmology/
+│   │   ├── iol.calculator.ts
+│   │   └── surgery-workflow.service.ts
+│   │
+│   ├── clinical-ai/
+│   │   └── healthcare-ai.service.ts
+│   │
+│   ├── imaging-ai/
+│   │   ├── ecg-analysis.service.ts
+│   │   ├── echo-analysis.service.ts
+│   │   ├── oct-analysis.service.ts
+│   │   └── imaging.service.ts
+│   │
+│   ├── rpm/
+│   │   ├── device.service.ts
+│   │   ├── reading.service.ts
+│   │   ├── program.service.ts
+│   │   └── compliance.service.ts
+│   │
+│   ├── patient-portal/
+│   │   ├── portal.service.ts
+│   │   └── portal-auth.service.ts
+│   │
+│   ├── population-health/
+│   │   ├── cohort.service.ts
+│   │   ├── quality-indicators.service.ts
+│   │   └── risk-score.service.ts
+│   │
+│   ├── fhir/
+│   │   └── fhir.service.ts
+│   │
+│   ├── cdss/
+│   │   ├── cdss.service.ts
+│   │   ├── clinical-protocols.service.ts
+│   │   └── drug-interactions.service.ts
+│   │
+│   └── ... (autres services)
+│
+├── docs/
+│   └── openapi.ts              # Spécification OpenAPI
+│
+├── __tests__/
+│   ├── setup.ts
+│   └── mocks/
+│       ├── database.mock.ts
+│       ├── fixtures.ts
+│       └── hono.mock.ts
+│
 └── utils/
-    ├── crypto.ts        # Hashing & JWT
-    └── rate-limit.ts    # Rate limiting
+    ├── crypto.ts               # Hashing & JWT
+    ├── email.ts                # Envoi emails
+    ├── validation.ts           # Validation Zod
+    ├── response.ts             # Réponses standardisées
+    ├── monitoring.ts           # Monitoring
+    └── soft-delete.ts          # Suppression logique
 ```
 
 ## 🔧 Développement
@@ -287,8 +398,66 @@ wrangler tail --format pretty
 - Global edge deployment
 - Auto-scaling
 
+## 🏥 Modules Healthcare
+
+L'API inclut des modules spécialisés pour le secteur de la santé :
+
+### Dialyse (`/api/v1/dialyse`)
+- Gestion des patients dialysés
+- Planification des séances
+- Suivi des machines
+- Résultats laboratoire
+- Calcul Kt/V automatique
+
+### Cardiologie (`/api/v1/cardiology`)
+- Score de Framingham
+- Score SCORE2
+- CHA2DS2-VASc
+- Gestion ECG/Echo
+
+### Ophtalmologie (`/api/v1/ophthalmology`)
+- Calculateur IOL
+- Analyse OCT
+- Workflow chirurgical
+
+### IA Clinique (`/api/v1/clinical-ai`)
+- Assistant diagnostic
+- Résumés patients
+- CDSS
+
+### IA Imagerie (`/api/v1/imaging-ai`)
+- Analyse ECG
+- Analyse échocardiogramme
+- Analyse OCT
+
+### RPM (`/api/v1/rpm`)
+- Appareils connectés
+- Collecte mesures
+- Programmes de suivi
+- Compliance patient
+
+### Portail Patient (`/api/v1/patient-portal`)
+- Authentification patient
+- Messagerie sécurisée
+- Prise de rendez-vous
+- Suivi symptômes
+
+### Santé Populationnelle (`/api/v1/population-health`)
+- Gestion cohortes
+- Indicateurs qualité
+- Stratification risques
+
+### FHIR (`/api/v1/fhir`)
+- API FHIR R4
+- Ressources Patient, Observation, etc.
+
+Pour plus de détails, voir [docs/HEALTHCARE.md](../../../docs/HEALTHCARE.md).
+
 ## 📖 Documentation
 
+- [Architecture](../../../docs/ARCHITECTURE.md)
+- [Healthcare](../../../docs/HEALTHCARE.md)
+- [Database](../../../docs/DATABASE.md)
 - [Hono.js Docs](https://hono.dev/)
 - [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
 - [Drizzle ORM Docs](https://orm.drizzle.team/)
@@ -300,3 +469,7 @@ Voir [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 ## 📄 License
 
 Proprietary - Perfex ERP
+
+---
+
+**Dernière mise à jour** : Février 2025

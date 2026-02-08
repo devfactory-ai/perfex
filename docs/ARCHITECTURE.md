@@ -1224,4 +1224,328 @@ app.onError((err, c) => {
 
 ---
 
-**Derniere mise a jour**: Decembre 2024
+## Modules Healthcare
+
+### Vue d'ensemble
+
+Perfex ERP intègre une suite complète de modules healthcare pour la gestion des établissements de santé.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         MODULES HEALTHCARE                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │   DIALYSE    │  │  CARDIOLOGY  │  │ OPHTHALMOLOGY│                 │
+│  │              │  │              │  │              │                 │
+│  │ - Patients   │  │ - ECG        │  │ - IOL Calc   │                 │
+│  │ - Sessions   │  │ - Echo       │  │ - OCT        │                 │
+│  │ - Machines   │  │ - Risk Score │  │ - Surgery    │                 │
+│  │ - Labs       │  │ - Workflow   │  │ - Workflow   │                 │
+│  │ - Alerts     │  │              │  │              │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │ CLINICAL AI  │  │  IMAGING AI  │  │     RPM      │                 │
+│  │              │  │              │  │              │                 │
+│  │ - Diagnostic │  │ - ECG Anal.  │  │ - Devices    │                 │
+│  │ - NLP        │  │ - Echo Anal. │  │ - Readings   │                 │
+│  │ - Summaries  │  │ - OCT Anal.  │  │ - Programs   │                 │
+│  │ - CDSS       │  │ - X-Ray      │  │ - Compliance │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │PATIENT PORTAL│  │ POP. HEALTH  │  │     FHIR     │                 │
+│  │              │  │              │  │              │                 │
+│  │ - Auth       │  │ - Cohorts    │  │ - R4 API     │                 │
+│  │ - Messages   │  │ - Quality    │  │ - Resources  │                 │
+│  │ - Appts      │  │ - Risk Score │  │ - Bundles    │                 │
+│  │ - Symptoms   │  │ - Analytics  │  │ - Search     │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Structure des Modules Healthcare
+
+```
+apps/workers/api/src/
+├── routes/
+│   ├── dialyse.ts              # Gestion dialyse (86KB)
+│   ├── cardiology.ts           # Cardiologie (93KB)
+│   ├── ophthalmology.ts        # Ophtalmologie
+│   ├── clinical-ai.ts          # IA clinique
+│   ├── imaging-ai.ts           # IA imagerie
+│   ├── patient-portal.ts       # Portail patient
+│   ├── population-health.ts    # Santé populationnelle
+│   ├── rpm.ts                  # Remote Patient Monitoring
+│   ├── fhir.ts                 # Interopérabilité FHIR
+│   ├── cdss.ts                 # Clinical Decision Support
+│   ├── healthcare-analytics.ts # Analytics santé
+│   ├── healthcare-calculators.ts # Calculateurs médicaux
+│   └── healthcare-integrations.ts # Intégrations
+│
+├── services/
+│   ├── dialyse/
+│   │   ├── patient.service.ts
+│   │   ├── session.service.ts
+│   │   ├── machine.service.ts
+│   │   ├── lab.service.ts
+│   │   ├── alert.service.ts
+│   │   ├── scheduling.service.ts
+│   │   └── ktv.calculator.ts   # Calcul Kt/V
+│   │
+│   ├── cardiology/
+│   │   ├── risk-score.service.ts   # Framingham, SCORE2
+│   │   ├── risk.calculator.ts
+│   │   └── workflow.service.ts
+│   │
+│   ├── ophthalmology/
+│   │   ├── iol.calculator.ts       # Calcul IOL
+│   │   └── surgery-workflow.service.ts
+│   │
+│   ├── clinical-ai/
+│   │   └── healthcare-ai.service.ts
+│   │
+│   ├── imaging-ai/
+│   │   ├── ecg-analysis.service.ts
+│   │   ├── echo-analysis.service.ts
+│   │   ├── oct-analysis.service.ts
+│   │   └── imaging.service.ts
+│   │
+│   ├── rpm/
+│   │   ├── device.service.ts
+│   │   ├── reading.service.ts
+│   │   ├── program.service.ts
+│   │   └── compliance.service.ts
+│   │
+│   ├── patient-portal/
+│   │   ├── portal.service.ts
+│   │   └── portal-auth.service.ts
+│   │
+│   ├── population-health/
+│   │   ├── cohort.service.ts
+│   │   ├── quality-indicators.service.ts
+│   │   └── risk-score.service.ts
+│   │
+│   ├── fhir/
+│   │   └── fhir.service.ts
+│   │
+│   └── cdss/
+│       ├── cdss.service.ts
+│       ├── clinical-protocols.service.ts
+│       └── drug-interactions.service.ts
+│
+packages/database/src/schema/
+├── dialyse.ts
+├── cardiology.ts
+├── ophthalmology.ts
+├── clinical-ai.ts
+├── imaging-ai.ts
+├── patient-portal.ts
+├── population-health.ts
+├── rpm.ts
+└── healthcare.ts
+```
+
+### Module Dialyse
+
+**Fonctionnalités principales :**
+- Gestion des patients dialysés avec dossiers complets
+- Planification et suivi des séances d'hémodialyse
+- Gestion du parc de machines de dialyse
+- Intégration des résultats de laboratoire
+- Système d'alertes cliniques
+- Calcul automatique Kt/V (efficacité de la dialyse)
+
+**Endpoints API :**
+```
+GET    /api/v1/dialyse/patients
+POST   /api/v1/dialyse/patients
+GET    /api/v1/dialyse/patients/:id
+PUT    /api/v1/dialyse/patients/:id
+DELETE /api/v1/dialyse/patients/:id
+
+GET    /api/v1/dialyse/sessions
+POST   /api/v1/dialyse/sessions
+GET    /api/v1/dialyse/sessions/:id/ktv  # Calcul Kt/V
+
+GET    /api/v1/dialyse/machines
+POST   /api/v1/dialyse/machines
+PUT    /api/v1/dialyse/machines/:id/maintenance
+
+GET    /api/v1/dialyse/labs
+GET    /api/v1/dialyse/alerts
+```
+
+### Module Cardiologie
+
+**Fonctionnalités principales :**
+- Calcul des scores de risque cardiovasculaire (Framingham, SCORE2, CHA2DS2-VASc)
+- Gestion des ECG avec interprétation
+- Suivi échocardiographique
+- Workflow de prise en charge cardiologique
+
+**Endpoints API :**
+```
+POST   /api/v1/cardiology/risk-score/framingham
+POST   /api/v1/cardiology/risk-score/score2
+POST   /api/v1/cardiology/risk-score/cha2ds2-vasc
+
+GET    /api/v1/cardiology/ecgs
+POST   /api/v1/cardiology/ecgs
+GET    /api/v1/cardiology/echos
+POST   /api/v1/cardiology/echos
+```
+
+### Module Ophtalmologie
+
+**Fonctionnalités principales :**
+- Calcul de puissance IOL (implants intraoculaires)
+- Analyse OCT (Tomographie par Cohérence Optique)
+- Workflow chirurgical ophtalmologique
+- Suivi post-opératoire
+
+**Endpoints API :**
+```
+POST   /api/v1/ophthalmology/iol/calculate
+GET    /api/v1/ophthalmology/patients/:id/oct
+POST   /api/v1/ophthalmology/surgeries
+GET    /api/v1/ophthalmology/surgeries/:id/workflow
+```
+
+### Module IA Clinique
+
+**Fonctionnalités principales :**
+- Assistant diagnostic basé sur l'IA
+- Résumés patients automatiques
+- Traitement du langage naturel médical (NLP)
+- Documentation clinique assistée
+- Aide à la décision clinique (CDSS)
+
+**Endpoints API :**
+```
+POST   /api/v1/clinical-ai/diagnostic-assist
+POST   /api/v1/clinical-ai/patient-summary
+POST   /api/v1/clinical-ai/clinical-documentation
+GET    /api/v1/clinical-ai/recommendations/:patientId
+```
+
+### Module IA Imagerie
+
+**Fonctionnalités principales :**
+- Analyse automatisée des ECG
+- Interprétation des échocardiogrammes
+- Analyse OCT ophtalmologique
+- Détection d'anomalies sur images médicales
+
+**Endpoints API :**
+```
+POST   /api/v1/imaging-ai/ecg/analyze
+POST   /api/v1/imaging-ai/echo/analyze
+POST   /api/v1/imaging-ai/oct/analyze
+GET    /api/v1/imaging-ai/studies/:id/results
+```
+
+### Module RPM (Remote Patient Monitoring)
+
+**Fonctionnalités principales :**
+- Gestion des appareils connectés (tensiomètres, glucomètres, oxymètres)
+- Collecte des mesures vitales
+- Programmes de télésurveillance
+- Suivi de la compliance patient
+- Alertes automatiques sur seuils
+
+**Endpoints API :**
+```
+GET    /api/v1/rpm/devices
+POST   /api/v1/rpm/devices
+PUT    /api/v1/rpm/devices/:id
+
+GET    /api/v1/rpm/readings
+POST   /api/v1/rpm/readings
+GET    /api/v1/rpm/readings/patient/:patientId
+
+GET    /api/v1/rpm/programs
+POST   /api/v1/rpm/programs
+GET    /api/v1/rpm/programs/:id/enrollments
+
+GET    /api/v1/rpm/compliance/:patientId
+```
+
+### Module Portail Patient
+
+**Fonctionnalités principales :**
+- Authentification patient sécurisée
+- Messagerie sécurisée avec l'équipe soignante
+- Prise de rendez-vous en ligne
+- Suivi des symptômes
+- Accès aux résultats d'examens
+- Gestion du consentement
+
+**Endpoints API :**
+```
+POST   /api/v1/patient-portal/auth/login
+POST   /api/v1/patient-portal/auth/register
+
+GET    /api/v1/patient-portal/messages
+POST   /api/v1/patient-portal/messages
+
+GET    /api/v1/patient-portal/appointments
+POST   /api/v1/patient-portal/appointments
+
+GET    /api/v1/patient-portal/symptoms
+POST   /api/v1/patient-portal/symptoms
+
+GET    /api/v1/patient-portal/results
+```
+
+### Module Santé Populationnelle
+
+**Fonctionnalités principales :**
+- Gestion des cohortes de patients
+- Indicateurs qualité (HAS, ROSP)
+- Scores de risque populationnels
+- Tableaux de bord analytiques
+- Suivi des programmes de prévention
+
+**Endpoints API :**
+```
+GET    /api/v1/population-health/cohorts
+POST   /api/v1/population-health/cohorts
+GET    /api/v1/population-health/cohorts/:id/patients
+
+GET    /api/v1/population-health/quality-indicators
+GET    /api/v1/population-health/quality-indicators/:code
+
+GET    /api/v1/population-health/risk-stratification
+POST   /api/v1/population-health/analytics/report
+```
+
+### Interopérabilité FHIR
+
+**Ressources supportées :**
+- Patient
+- Practitioner
+- Observation
+- DiagnosticReport
+- MedicationRequest
+- Appointment
+- Bundle
+
+**Endpoints API :**
+```
+GET    /api/v1/fhir/Patient
+GET    /api/v1/fhir/Patient/:id
+POST   /api/v1/fhir/Patient
+
+GET    /api/v1/fhir/Observation
+POST   /api/v1/fhir/Observation
+
+GET    /api/v1/fhir/Bundle
+POST   /api/v1/fhir/Bundle
+```
+
+---
+
+**Derniere mise a jour**: Février 2025

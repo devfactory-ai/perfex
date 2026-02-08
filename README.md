@@ -1,25 +1,50 @@
-# Perfex ERP
+# Perfex ERP Healthcare
 
-> A modern, cloud-native Enterprise Resource Planning system built on Cloudflare's edge network
+> A modern, cloud-native Enterprise Resource Planning system built on Cloudflare's edge network, with comprehensive Healthcare modules
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-blue.svg)](https://reactjs.org/)
 [![Hono](https://img.shields.io/badge/Hono-4.6-orange.svg)](https://hono.dev/)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com/)
 
-## 🌟 Overview
+## Overview
 
-Perfex ERP is a comprehensive, production-ready enterprise resource planning system featuring 12 fully-integrated business modules with 88 database tables. Built with modern web technologies and deployed on Cloudflare's global edge network for sub-50ms response times worldwide.
+Perfex ERP Healthcare est un système de gestion d'entreprise complet, conçu pour le secteur de la santé. Il combine des modules ERP classiques avec des fonctionnalités healthcare avancées.
 
-### Key Features
+### Fonctionnalités Clés
 
-- **12 Complete Modules**: Finance, CRM, Projects, Inventory, HR, Procurement, Sales, Manufacturing, Assets, Notifications, Documents, Workflows
-- **88 Database Tables**: Comprehensive data model covering all business operations
-- **150+ API Endpoints**: RESTful API with complete CRUD operations
-- **Edge Computing**: Deployed on 300+ Cloudflare locations globally
-- **Type-Safe**: Full TypeScript coverage across frontend and backend
-- **Secure**: JWT authentication, RBAC, multi-tenancy, audit logging
-- **Scalable**: Supports 1000+ concurrent users, 10M+ records per table
+- **20+ Modules Complets** : ERP (Finance, CRM, RH, etc.) + Healthcare (Dialyse, Cardiologie, Ophtalmologie, etc.)
+- **120+ Tables** : Modèle de données complet couvrant ERP et Healthcare
+- **300+ Endpoints API** : API RESTful avec FHIR R4 pour l'interopérabilité
+- **Edge Computing** : Déployé sur 300+ locations Cloudflare globalement
+- **Type-Safe** : Couverture TypeScript complète frontend et backend
+- **Sécurisé** : JWT, RBAC, multi-tenancy, audit trail, conformité HDS
+- **Scalable** : 1000+ utilisateurs simultanés, 10M+ enregistrements par table
+
+### Modules ERP
+
+- Finance & Comptabilité
+- CRM & Gestion Clients
+- Projets & Time Tracking
+- Inventaire & Stock
+- Ressources Humaines
+- Achats & Fournisseurs
+- Ventes & Commandes
+- Production & Manufacturing
+- Actifs & Amortissements
+- Documents & Workflows
+
+### Modules Healthcare
+
+- **Dialyse** : Gestion complète d'un centre d'hémodialyse
+- **Cardiologie** : Scores de risque, ECG, Échocardiogrammes
+- **Ophtalmologie** : Calcul IOL, OCT, Workflow chirurgical
+- **IA Clinique** : Assistant diagnostic, résumés patients, CDSS
+- **IA Imagerie** : Analyse automatisée ECG, Echo, OCT
+- **RPM** : Monitoring à distance des patients
+- **Portail Patient** : Accès patient sécurisé
+- **Santé Populationnelle** : Cohortes, indicateurs qualité
+- **FHIR R4** : Interopérabilité standards de santé
 
 ## 🚀 Quick Start
 
@@ -142,67 +167,92 @@ perfex/
 └──────┘ └───┘ └───┘  └───────┘
 ```
 
-## 📚 Modules
+## Modules Healthcare
+
+### Dialyse
+Gestion complète d'un centre d'hémodialyse avec suivi des patients, séances, machines et résultats de laboratoire.
+
+**Fonctionnalités** : Patients dialysés, Planification séances, Gestion machines, Résultats labo, Alertes cliniques, Calcul Kt/V
+
+### Cardiologie
+Évaluation du risque cardiovasculaire et suivi cardiologique complet.
+
+**Fonctionnalités** : Score Framingham, SCORE2, CHA2DS2-VASc, ECG, Échocardiogrammes, Workflow cardiologique
+
+### Ophtalmologie
+Gestion des patients ophtalmologiques avec calculs spécialisés.
+
+**Fonctionnalités** : Calcul IOL (SRK/T, Haigis, Barrett), Analyse OCT, Workflow chirurgical, Suivi post-op
+
+### IA Clinique
+Intelligence artificielle pour l'aide au diagnostic et à la documentation.
+
+**Fonctionnalités** : Assistant diagnostic, Résumés patients automatiques, NLP médical, CDSS
+
+### IA Imagerie
+Analyse automatisée des images médicales.
+
+**Fonctionnalités** : Analyse ECG, Analyse échocardiogramme, Analyse OCT, Détection d'anomalies
+
+### RPM (Remote Patient Monitoring)
+Suivi à distance des patients via appareils connectés.
+
+**Fonctionnalités** : Gestion appareils, Collecte mesures, Programmes de suivi, Alertes, Compliance
+
+### Portail Patient
+Accès sécurisé pour les patients à leur dossier médical.
+
+**Fonctionnalités** : Authentification, Messagerie sécurisée, Prise RDV, Suivi symptômes, Résultats
+
+### Santé Populationnelle
+Outils pour la santé publique et la gestion de cohortes.
+
+**Fonctionnalités** : Gestion cohortes, Indicateurs qualité (HAS, ROSP), Stratification risques, Analytics
+
+### FHIR R4
+Interopérabilité avec les standards de santé.
+
+**Fonctionnalités** : API FHIR R4, Ressources (Patient, Observation, etc.), Bundles, Search
+
+---
+
+## Modules ERP
 
 ### 1. Finance & Accounting
-Complete financial management with double-entry bookkeeping, multi-currency support, invoicing, payments, and financial reporting.
+Gestion financière complète avec comptabilité en partie double, multi-devises, facturation et reporting.
 
-**Features**: Chart of Accounts, Journals, Invoices, Payments, Bank Reconciliation, Tax Management
-
-### 2. Customer Relationship Management (CRM)
-Manage customer relationships, sales pipeline, and opportunities from lead to close.
-
-**Features**: Companies, Contacts, Pipeline Management, Opportunities, Activities, Lead Scoring
+### 2. CRM
+Gestion de la relation client, pipeline de ventes et opportunités.
 
 ### 3. Projects
-Plan and track projects with tasks, milestones, and time tracking.
-
-**Features**: Project Management, Task Tracking, Milestones, Time Tracking, Budget Management
+Gestion de projets avec tâches, jalons et suivi du temps.
 
 ### 4. Inventory
-Multi-warehouse inventory management with stock movements and valuation.
-
-**Features**: Items, Warehouses, Stock Levels, Movements, Adjustments, Reorder Points
+Gestion multi-entrepôts avec mouvements de stock et valorisation.
 
 ### 5. Human Resources
-Employee management, leave tracking, and attendance recording.
-
-**Features**: Employees, Departments, Leave Management, Attendance, Leave Balances
+Gestion des employés, congés et présences.
 
 ### 6. Procurement
-Complete purchase-to-pay cycle with supplier management.
-
-**Features**: Suppliers, Purchase Requisitions, Purchase Orders, Goods Receipt Notes, 3-Way Matching
+Cycle complet d'achat avec gestion fournisseurs.
 
 ### 7. Sales
-Quote-to-cash process with order management and delivery tracking.
-
-**Features**: Quotes, Sales Orders, Delivery Notes, Revenue Recognition
+Processus devis-à-encaissement avec gestion des commandes.
 
 ### 8. Manufacturing
-Production planning and execution with BOM and routing management.
-
-**Features**: Bill of Materials, Routings, Work Orders, Material Consumption, Capacity Planning
+Planification et exécution de production avec BOM et gammes.
 
 ### 9. Asset Management
-Fixed asset register with depreciation and maintenance tracking.
-
-**Features**: Asset Register, Depreciation, Maintenance, Transfers, Disposal
+Registre des actifs avec amortissement et maintenance.
 
 ### 10. Notifications & Audit
-System-wide notifications and comprehensive audit trail.
-
-**Features**: User Notifications, Audit Logs, System Settings, Compliance Tracking
+Notifications système et piste d'audit complète.
 
 ### 11. Documents & Reporting
-Document management with versioning and custom reporting engine.
-
-**Features**: Documents, Version Control, Email Templates, Report Builder, Scheduled Reports
+Gestion documentaire avec versioning et générateur de rapports.
 
 ### 12. Workflows & Integration
-Business process automation with approvals and external integrations.
-
-**Features**: Workflows, Approvals, Webhooks, API Keys, Activity Feed, Comments, Tags
+Automatisation des processus métier avec approbations et intégrations.
 
 ## 🛠️ Development
 
@@ -397,13 +447,16 @@ GitHub Actions workflow (`.github/workflows/deploy.yml`):
 - Deploy to production
 ```
 
-## 📖 Documentation
+## Documentation
 
-- [System Overview](./SYSTEM_OVERVIEW.md) - Complete technical documentation
-- [API Documentation](./docs/api.md) - REST API reference
-- [Database Schema](./docs/database.md) - Complete schema documentation
-- [Development Guide](./docs/development.md) - Developer guidelines
-- [Deployment Guide](./docs/deployment.md) - Deployment instructions
+- [Architecture](./docs/ARCHITECTURE.md) - Architecture technique détaillée
+- [Healthcare](./docs/HEALTHCARE.md) - Documentation modules santé
+- [Database](./docs/DATABASE.md) - Schémas de base de données
+- [Deployment](./docs/DEPLOYMENT.md) - Guide de déploiement
+- [System Overview](./SYSTEM_OVERVIEW.md) - Vue d'ensemble technique
+- [API Backend](./apps/workers/api/README.md) - Documentation API
+- [Frontend Web](./apps/web/README.md) - Documentation frontend
+- [Database Package](./packages/database/README.md) - Documentation database
 
 ## 🤝 Contributing
 
@@ -465,6 +518,6 @@ For support, email support@perfex.com or open an issue on GitHub.
 
 ---
 
-**Made with ❤️ by the Perfex Team**
+**Made with care by the Perfex Team**
 
-**Status**: ✅ Production Ready | **Version**: 1.0.0 | **Last Updated**: January 2025
+**Status**: Production Ready | **Version**: 2.0.0 | **Last Updated**: Février 2025
