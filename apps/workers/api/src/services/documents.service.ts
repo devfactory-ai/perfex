@@ -124,31 +124,31 @@ export class DocumentsService {
   }
 
   async listDocuments(organizationId: string, filters?: { categoryId?: string; search?: string; relatedEntityType?: string; relatedEntityId?: string }): Promise<Document[]> {
-    let query = drizzleDb.select().from(documents).where(eq(documents.organizationId, organizationId));
+    const conditions: any[] = [eq(documents.organizationId, organizationId)];
 
     if (filters?.categoryId) {
-      query = query.where(and(eq(documents.organizationId, organizationId), eq(documents.categoryId, filters.categoryId)));
+      conditions.push(eq(documents.categoryId, filters.categoryId));
     }
 
     if (filters?.relatedEntityType) {
-      query = query.where(and(eq(documents.organizationId, organizationId), eq(documents.relatedEntityType, filters.relatedEntityType)));
+      conditions.push(eq(documents.relatedEntityType, filters.relatedEntityType));
     }
 
     if (filters?.relatedEntityId) {
-      query = query.where(and(eq(documents.organizationId, organizationId), eq(documents.relatedEntityId, filters.relatedEntityId)));
+      conditions.push(eq(documents.relatedEntityId, filters.relatedEntityId));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(documents.organizationId, organizationId),
-          like(documents.name, searchTerm)
-        )
-      );
+      conditions.push(like(documents.name, searchTerm));
     }
 
-    return await query.orderBy(desc(documents.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(documents)
+      .where(and(...conditions))
+      .orderBy(desc(documents.createdAt))
+      .all() as any[];
   }
 
   async updateDocument(organizationId: string, documentId: string, data: UpdateDocumentInput): Promise<Document> {
@@ -197,13 +197,16 @@ export class DocumentsService {
 
     // Update document metrics
     if (action === 'download') {
-      await drizzleDb
-        .update(documents)
-        .set({
-          downloadCount: (existing: any) => existing.downloadCount + 1,
-          lastAccessedAt: new Date(),
-        })
-        .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
+      const doc = await this.getDocumentById(organizationId, documentId);
+      if (doc) {
+        await drizzleDb
+          .update(documents)
+          .set({
+            downloadCount: (doc.downloadCount || 0) + 1,
+            lastAccessedAt: new Date(),
+          })
+          .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
+      }
     }
   }
 
@@ -246,13 +249,18 @@ export class DocumentsService {
   }
 
   async listEmailTemplates(organizationId: string, category?: string): Promise<EmailTemplate[]> {
-    let query = drizzleDb.select().from(emailTemplates).where(eq(emailTemplates.organizationId, organizationId));
+    const conditions: any[] = [eq(emailTemplates.organizationId, organizationId)];
 
     if (category) {
-      query = query.where(and(eq(emailTemplates.organizationId, organizationId), eq(emailTemplates.category, category)));
+      conditions.push(eq(emailTemplates.category, category));
     }
 
-    return await query.orderBy(desc(emailTemplates.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(emailTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(emailTemplates.createdAt))
+      .all() as any[];
   }
 
   async queueEmail(organizationId: string, data: QueueEmailInput): Promise<void> {
@@ -325,13 +333,18 @@ export class DocumentsService {
   }
 
   async listReports(organizationId: string, category?: string): Promise<Report[]> {
-    let query = drizzleDb.select().from(reports).where(eq(reports.organizationId, organizationId));
+    const conditions: any[] = [eq(reports.organizationId, organizationId)];
 
     if (category) {
-      query = query.where(and(eq(reports.organizationId, organizationId), eq(reports.category, category)));
+      conditions.push(eq(reports.category, category));
     }
 
-    return await query.orderBy(desc(reports.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(reports)
+      .where(and(...conditions))
+      .orderBy(desc(reports.createdAt))
+      .all() as any[];
   }
 
   async getStats(organizationId: string): Promise<{

@@ -110,41 +110,40 @@ export class ContactService {
       search?: string;
     }
   ): Promise<Contact[]> {
-    let query = drizzleDb
-      .select()
-      .from(contacts)
-      .where(eq(contacts.organizationId, organizationId));
+    const conditions: any[] = [eq(contacts.organizationId, organizationId)];
 
     // Apply filters
     if (filters?.companyId) {
-      query = query.where(and(eq(contacts.organizationId, organizationId), eq(contacts.companyId, filters.companyId)));
+      conditions.push(eq(contacts.companyId, filters.companyId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(contacts.organizationId, organizationId), eq(contacts.status, filters.status as any)));
+      conditions.push(eq(contacts.status, filters.status as any));
     }
 
     if (filters?.assignedTo) {
-      query = query.where(and(eq(contacts.organizationId, organizationId), eq(contacts.assignedTo, filters.assignedTo)));
+      conditions.push(eq(contacts.assignedTo, filters.assignedTo));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(contacts.organizationId, organizationId),
-          or(
-            like(contacts.firstName, searchTerm),
-            like(contacts.lastName, searchTerm),
-            like(contacts.email, searchTerm),
-            like(contacts.phone, searchTerm),
-            like(contacts.mobile, searchTerm)
-          )
+      conditions.push(
+        or(
+          like(contacts.firstName, searchTerm),
+          like(contacts.lastName, searchTerm),
+          like(contacts.email, searchTerm),
+          like(contacts.phone, searchTerm),
+          like(contacts.mobile, searchTerm)
         )
       );
     }
 
-    const results = await query.orderBy(desc(contacts.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(contacts)
+      .where(and(...conditions))
+      .orderBy(desc(contacts.createdAt))
+      .all() as any[];
     return results;
   }
 
@@ -180,7 +179,7 @@ export class ContactService {
     return contactsList.map((contact) => ({
       ...contact,
       company: contact.companyId ? (companiesMap.get(contact.companyId) || null) : null,
-    }));
+    })) as any[];
   }
 
   /**

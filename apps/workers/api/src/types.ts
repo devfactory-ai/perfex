@@ -31,4 +31,16 @@ export interface Env {
 
   // Secrets (set via wrangler secret)
   JWT_SECRET: string;
+
+  // SMS Integration (Twilio)
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
+
+  // Lab Integration
+  LAB_API_ENDPOINT?: string;
+  LAB_API_KEY?: string;
+
+  // Email Integration (Resend)
+  RESEND_API_KEY?: string;
 }

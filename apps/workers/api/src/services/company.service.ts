@@ -76,39 +76,38 @@ export class CompanyService {
       search?: string;
     }
   ): Promise<Company[]> {
-    let query = drizzleDb
-      .select()
-      .from(companies)
-      .where(eq(companies.organizationId, organizationId));
+    const conditions: any[] = [eq(companies.organizationId, organizationId)];
 
     // Apply filters
     if (filters?.type) {
-      query = query.where(and(eq(companies.organizationId, organizationId), eq(companies.type, filters.type as any)));
+      conditions.push(eq(companies.type, filters.type as any));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(companies.organizationId, organizationId), eq(companies.status, filters.status)));
+      conditions.push(eq(companies.status, filters.status));
     }
 
     if (filters?.assignedTo) {
-      query = query.where(and(eq(companies.organizationId, organizationId), eq(companies.assignedTo, filters.assignedTo)));
+      conditions.push(eq(companies.assignedTo, filters.assignedTo));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(companies.organizationId, organizationId),
-          or(
-            like(companies.name, searchTerm),
-            like(companies.email, searchTerm),
-            like(companies.phone, searchTerm)
-          )
+      conditions.push(
+        or(
+          like(companies.name, searchTerm),
+          like(companies.email, searchTerm),
+          like(companies.phone, searchTerm)
         )
       );
     }
 
-    const results = await query.orderBy(desc(companies.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(companies)
+      .where(and(...conditions))
+      .orderBy(desc(companies.createdAt))
+      .all() as any[];
     return results;
   }
 

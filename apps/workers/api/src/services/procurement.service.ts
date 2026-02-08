@@ -69,24 +69,26 @@ export class ProcurementService {
   }
 
   async listSuppliers(organizationId: string, filters?: { active?: string; search?: string }): Promise<Supplier[]> {
-    let query = drizzleDb.select().from(suppliers).where(eq(suppliers.organizationId, organizationId));
+    const conditions: any[] = [eq(suppliers.organizationId, organizationId)];
 
     if (filters?.active) {
       const isActive = filters.active === 'true';
-      query = query.where(and(eq(suppliers.organizationId, organizationId), eq(suppliers.active, isActive)));
+      conditions.push(eq(suppliers.active, isActive));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(suppliers.organizationId, organizationId),
-          or(like(suppliers.name, searchTerm), like(suppliers.supplierNumber, searchTerm), like(suppliers.email, searchTerm))
-        )
+      conditions.push(
+        or(like(suppliers.name, searchTerm), like(suppliers.supplierNumber, searchTerm), like(suppliers.email, searchTerm))
       );
     }
 
-    return await query.orderBy(desc(suppliers.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(suppliers)
+      .where(and(...conditions))
+      .orderBy(desc(suppliers.createdAt))
+      .all() as any[];
   }
 
   async updateSupplier(organizationId: string, supplierId: string, data: UpdateSupplierInput): Promise<Supplier> {
@@ -195,17 +197,22 @@ export class ProcurementService {
   }
 
   async listPurchaseOrders(organizationId: string, filters?: { supplierId?: string; status?: string }): Promise<PurchaseOrder[]> {
-    let query = drizzleDb.select().from(purchaseOrders).where(eq(purchaseOrders.organizationId, organizationId));
+    const conditions: any[] = [eq(purchaseOrders.organizationId, organizationId)];
 
     if (filters?.supplierId) {
-      query = query.where(and(eq(purchaseOrders.organizationId, organizationId), eq(purchaseOrders.supplierId, filters.supplierId)));
+      conditions.push(eq(purchaseOrders.supplierId, filters.supplierId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(purchaseOrders.organizationId, organizationId), eq(purchaseOrders.status, filters.status as any)));
+      conditions.push(eq(purchaseOrders.status, filters.status as any));
     }
 
-    return await query.orderBy(desc(purchaseOrders.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(purchaseOrders)
+      .where(and(...conditions))
+      .orderBy(desc(purchaseOrders.createdAt))
+      .all() as any[];
   }
 
   async updatePurchaseOrder(organizationId: string, orderId: string, data: UpdatePurchaseOrderInput): Promise<PurchaseOrder> {

@@ -37,7 +37,6 @@ import type {
   TriggerWorkflowInput,
   CreateApprovalInput,
   RespondToApprovalInput,
-  CreateActivityInput,
   CreateCommentInput,
   UpdateCommentInput,
   CreateWebhookInput,
@@ -48,6 +47,18 @@ import type {
   UpdateTagInput,
   CreateEntityTagInput,
 } from '@perfex/shared';
+
+// Local type for activity creation
+type CreateActivityInput = {
+  userId?: string | null;
+  activityType: string;
+  entityType: string;
+  entityId?: string | null;
+  title: string;
+  description?: string | null;
+  metadata?: Record<string, any> | null;
+  isPublic?: boolean;
+};
 
 export class WorkflowsService {
   // ============================================
@@ -367,21 +378,26 @@ export class WorkflowsService {
   }
 
   async listActivities(organizationId: string, filters?: { entityType?: string; entityId?: string; userId?: string }): Promise<ActivityFeed[]> {
-    let query = drizzleDb.select().from(activityFeed).where(eq(activityFeed.organizationId, organizationId));
+    const conditions: any[] = [eq(activityFeed.organizationId, organizationId)];
 
     if (filters?.entityType) {
-      query = query.where(and(eq(activityFeed.organizationId, organizationId), eq(activityFeed.entityType, filters.entityType)));
+      conditions.push(eq(activityFeed.entityType, filters.entityType));
     }
 
     if (filters?.entityId) {
-      query = query.where(and(eq(activityFeed.organizationId, organizationId), eq(activityFeed.entityId, filters.entityId)));
+      conditions.push(eq(activityFeed.entityId, filters.entityId));
     }
 
     if (filters?.userId) {
-      query = query.where(and(eq(activityFeed.organizationId, organizationId), eq(activityFeed.userId, filters.userId)));
+      conditions.push(eq(activityFeed.userId, filters.userId));
     }
 
-    return await query.orderBy(desc(activityFeed.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(activityFeed)
+      .where(and(...conditions))
+      .orderBy(desc(activityFeed.createdAt))
+      .all() as any[];
   }
 
   // ============================================
@@ -684,13 +700,18 @@ export class WorkflowsService {
   }
 
   async listTags(organizationId: string, category?: string): Promise<Tag[]> {
-    let query = drizzleDb.select().from(tags).where(eq(tags.organizationId, organizationId));
+    const conditions: any[] = [eq(tags.organizationId, organizationId)];
 
     if (category) {
-      query = query.where(and(eq(tags.organizationId, organizationId), eq(tags.category, category)));
+      conditions.push(eq(tags.category, category));
     }
 
-    return await query.orderBy(desc(tags.usageCount)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(tags)
+      .where(and(...conditions))
+      .orderBy(desc(tags.usageCount))
+      .all() as any[];
   }
 
   async updateTag(organizationId: string, tagId: string, data: UpdateTagInput): Promise<Tag> {

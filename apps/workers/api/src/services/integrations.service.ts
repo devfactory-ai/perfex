@@ -17,10 +17,18 @@ import {
   type IntegrationTransaction,
   type NewIntegrationTransaction,
 } from '@perfex/database';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { drizzle } from 'drizzle-orm/d1';
 
 export class IntegrationsService {
-  constructor(private db: DrizzleD1Database) {}
+  private drizzleDb: ReturnType<typeof drizzle>;
+
+  constructor(db: D1Database) {
+    this.drizzleDb = drizzle(db);
+  }
+
+  private get db() {
+    return this.drizzleDb;
+  }
 
   // ============================================
   // INTEGRATION CONFIGS
@@ -185,15 +193,17 @@ export class IntegrationsService {
       offset?: number;
     } = {}
   ): Promise<IntegrationTransaction[]> {
+    const conditions: any[] = [eq(integrationTransactions.organizationId, organizationId)];
+
+    if (options.configId) {
+      conditions.push(eq(integrationTransactions.configId, options.configId));
+    }
+
     let query = this.db
       .select()
       .from(integrationTransactions)
-      .where(eq(integrationTransactions.organizationId, organizationId))
+      .where(and(...conditions))
       .orderBy(desc(integrationTransactions.createdAt));
-
-    if (options.configId) {
-      query = query.where(eq(integrationTransactions.configId, options.configId)) as typeof query;
-    }
 
     if (options.limit) {
       query = query.limit(options.limit) as typeof query;

@@ -492,7 +492,7 @@ export class AIService {
     }
 
     if (filters?.dismissed !== undefined) {
-      query = query.where(eq(aiInsights.dismissed, filters.dismissed ? 1 : 0));
+      query = query.where(eq(aiInsights.dismissed, filters.dismissed));
     }
 
     const results = await query.orderBy(desc(aiInsights.createdAt)).limit(50).all() as any[];
@@ -518,7 +518,7 @@ export class AIService {
 
     await drizzleDb
       .update(aiInsights)
-      .set({ dismissed: 1 })
+      .set({ dismissed: true })
       .where(
         and(
           eq(aiInsights.id, insightId),

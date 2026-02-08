@@ -69,8 +69,8 @@ export class OrganizationService {
       id: orgId,
       name: data.name,
       slug,
-      logoUrl: data.logoUrl || null,
-      settings: data.settings ? JSON.stringify(data.settings) : null,
+      logoUrl: (data as any).logoUrl || null,
+      settings: (data as any).settings ? JSON.stringify((data as any).settings) : null,
       createdAt: now,
       updatedAt: now,
     });

@@ -66,7 +66,7 @@ export class AuthService {
     private jwtSecret: string,
     private environment: string = 'production'
   ) {
-    this.emailService = new EmailService(environment);
+    this.emailService = new EmailService({ environment: environment as 'development' | 'staging' | 'production' });
   }
 
   /**
@@ -159,7 +159,7 @@ export class AuthService {
 
     // Send welcome email
     try {
-      await this.emailService.sendWelcomeEmail(user.email, user.firstName || 'User');
+      await this.emailService.sendWelcome(user.email, user.firstName || 'User');
     } catch (error) {
       // Don't fail registration if email fails
       logger.error('Failed to send welcome email', { error });
@@ -419,7 +419,7 @@ export class AuthService {
 
     // Send password reset email
     try {
-      await this.emailService.sendPasswordResetEmail(email, resetToken);
+      await this.emailService.sendPasswordReset(email, resetToken);
     } catch (error) {
       logger.error('Failed to send password reset email', { error });
     }
@@ -474,7 +474,7 @@ export class AuthService {
 
     // Send passwordless login email
     try {
-      await this.emailService.sendPasswordlessLoginEmail(email, loginToken);
+      await this.emailService.sendPasswordlessLogin(email, loginToken);
     } catch (error) {
       logger.error('Failed to send passwordless login email', { error });
       throw new Error('Failed to send login link');

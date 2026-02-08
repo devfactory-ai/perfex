@@ -4,7 +4,7 @@
  */
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import {
   roles,
   userRoles,
@@ -116,7 +116,7 @@ export class RoleService {
       query = drizzleDb
         .select()
         .from(roles)
-        .where(eq(roles.organizationId, null));
+        .where(isNull(roles.organizationId));
     }
 
     const rolesList = await query.all() as any[];
@@ -274,7 +274,7 @@ export class RoleService {
           eq(userRoles.roleId, roleId),
           organizationId
             ? eq(userRoles.organizationId, organizationId)
-            : eq(userRoles.organizationId, null)
+            : isNull(userRoles.organizationId)
         )
       )
       .get() as any;
@@ -367,7 +367,7 @@ export class RoleService {
       if (member) {
         const { DEFAULT_ROLE_PERMISSIONS } = await import('@perfex/shared');
         const rolePermissions = DEFAULT_ROLE_PERMISSIONS[member.role as 'owner' | 'admin' | 'member'];
-        return rolePermissions.includes(permission);
+        return (rolePermissions as readonly string[]).includes(permission);
       }
     }
 

@@ -173,7 +173,7 @@ export class AccountService {
     const allAccounts = await this.list(organizationId);
 
     // Sort by code for hierarchical display
-    return allAccounts.sort((a, b) => a.code.localeCompare(b.code));
+    return allAccounts.sort((a: any, b: any) => a.code.localeCompare(b.code));
   }
 
   /**

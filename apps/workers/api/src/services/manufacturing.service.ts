@@ -88,17 +88,22 @@ export class ManufacturingService {
   }
 
   async listBOMs(organizationId: string, filters?: { productId?: string; status?: string }): Promise<BillOfMaterials[]> {
-    let query = drizzleDb.select().from(billOfMaterials).where(eq(billOfMaterials.organizationId, organizationId));
+    const conditions: any[] = [eq(billOfMaterials.organizationId, organizationId)];
 
     if (filters?.productId) {
-      query = query.where(and(eq(billOfMaterials.organizationId, organizationId), eq(billOfMaterials.productId, filters.productId)));
+      conditions.push(eq(billOfMaterials.productId, filters.productId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(billOfMaterials.organizationId, organizationId), eq(billOfMaterials.status, filters.status as any)));
+      conditions.push(eq(billOfMaterials.status, filters.status as any));
     }
 
-    return await query.orderBy(desc(billOfMaterials.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(billOfMaterials)
+      .where(and(...conditions))
+      .orderBy(desc(billOfMaterials.createdAt))
+      .all() as any[];
   }
 
   async updateBOM(organizationId: string, bomId: string, data: UpdateBOMInput): Promise<BillOfMaterials> {
@@ -188,17 +193,22 @@ export class ManufacturingService {
   }
 
   async listRoutings(organizationId: string, filters?: { productId?: string; status?: string }): Promise<Routing[]> {
-    let query = drizzleDb.select().from(routings).where(eq(routings.organizationId, organizationId));
+    const conditions: any[] = [eq(routings.organizationId, organizationId)];
 
     if (filters?.productId) {
-      query = query.where(and(eq(routings.organizationId, organizationId), eq(routings.productId, filters.productId)));
+      conditions.push(eq(routings.productId, filters.productId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(routings.organizationId, organizationId), eq(routings.status, filters.status as any)));
+      conditions.push(eq(routings.status, filters.status as any));
     }
 
-    return await query.orderBy(desc(routings.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(routings)
+      .where(and(...conditions))
+      .orderBy(desc(routings.createdAt))
+      .all() as any[];
   }
 
   async updateRouting(organizationId: string, routingId: string, data: UpdateRoutingInput): Promise<Routing> {
@@ -274,27 +284,27 @@ export class ManufacturingService {
   }
 
   async listWorkOrders(organizationId: string, filters?: { status?: string; priority?: string; search?: string }): Promise<WorkOrder[]> {
-    let query = drizzleDb.select().from(workOrders).where(eq(workOrders.organizationId, organizationId));
+    const conditions: any[] = [eq(workOrders.organizationId, organizationId)];
 
     if (filters?.status) {
-      query = query.where(and(eq(workOrders.organizationId, organizationId), eq(workOrders.status, filters.status as any)));
+      conditions.push(eq(workOrders.status, filters.status as any));
     }
 
     if (filters?.priority) {
-      query = query.where(and(eq(workOrders.organizationId, organizationId), eq(workOrders.priority, filters.priority as any)));
+      conditions.push(eq(workOrders.priority, filters.priority as any));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(workOrders.organizationId, organizationId),
-          like(workOrders.workOrderNumber, searchTerm)
-        )
-      );
+      conditions.push(like(workOrders.workOrderNumber, searchTerm));
     }
 
-    return await query.orderBy(desc(workOrders.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(workOrders)
+      .where(and(...conditions))
+      .orderBy(desc(workOrders.createdAt))
+      .all() as any[];
   }
 
   async updateWorkOrder(organizationId: string, workOrderId: string, data: UpdateWorkOrderInput): Promise<WorkOrder> {

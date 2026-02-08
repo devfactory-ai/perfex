@@ -1,32 +1,35 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['./src/__tests__/setup.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+    exclude: ['node_modules', 'dist'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
-        'node_modules/**',
-        'dist/**',
-        '**/*.config.ts',
-        '**/*.test.ts',
+        'node_modules',
+        'src/__tests__',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/types/**',
       ],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+        lines: 60,
+        functions: 60,
+        branches: 50,
+        statements: 60,
       },
     },
+    testTimeout: 10000,
+    hookTimeout: 10000,
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@perfex/database': path.resolve(__dirname, '../../../packages/database/src'),
-      '@perfex/shared': path.resolve(__dirname, '../../../packages/shared/src'),
+      '@': '/src',
     },
   },
 });

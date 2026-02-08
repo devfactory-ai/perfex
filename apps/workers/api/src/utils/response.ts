@@ -4,6 +4,7 @@
  */
 
 import type { Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { AppError, isAppError, wrapError, type ErrorCode } from './errors';
 
 // ============================================================================
@@ -123,7 +124,7 @@ export class ResponseBuilder<T> {
       response.meta = this.meta;
     }
 
-    return c.json(response, this.statusCode);
+    return c.json(response, this.statusCode as ContentfulStatusCode);
   }
 }
 
@@ -149,7 +150,7 @@ export function sendSuccess<T>(
     response.meta = meta;
   }
 
-  return c.json(response, statusCode);
+  return c.json(response, statusCode as ContentfulStatusCode);
 }
 
 /**
@@ -194,7 +195,7 @@ export function sendPaginated<T>(
  * Send an error response from AppError
  */
 export function sendError(c: Context, error: AppError): Response {
-  return c.json(error.toJSON(), error.statusCode);
+  return c.json(error.toJSON(), error.statusCode as ContentfulStatusCode);
 }
 
 /**
@@ -224,7 +225,7 @@ export function sendCustomError(
     },
   };
 
-  return c.json(response, statusCode);
+  return c.json(response, statusCode as ContentfulStatusCode);
 }
 
 // ============================================================================
@@ -329,4 +330,67 @@ export function getPaginationParams(c: Context): { page: number; limit: number; 
  */
 export function createResponse<T>(): ResponseBuilder<T> {
   return new ResponseBuilder<T>();
+}
+
+// ============================================================================
+// Aliases for compatibility
+// ============================================================================
+
+/**
+ * Alias for sendSuccess - returns JSON response
+ */
+export function jsonResponse<T>(
+  c: Context,
+  data: T,
+  statusCode: 200 | 201 | 202 | 203 | 206 = 200
+): Response {
+  const response: SuccessResponse<T> = {
+    success: true,
+    data,
+  };
+  return c.json(response, statusCode);
+}
+
+/**
+ * Alias for sendCustomError - returns error response
+ */
+export function errorResponse(
+  c: Context,
+  code: ErrorCode,
+  message: string,
+  statusCode: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 = 400
+): Response {
+  const response: ErrorResponse = {
+    success: false,
+    error: { code, message },
+  };
+  return c.json(response, statusCode);
+}
+
+/**
+ * Alias for sendPaginated - returns paginated response
+ */
+export function paginatedResponse<T>(
+  c: Context,
+  items: T[],
+  pagination: { page: number; limit: number; total: number }
+): Response {
+  const { page, limit, total } = pagination;
+  const totalPages = Math.ceil(total / limit);
+
+  const response: SuccessResponse<T[]> = {
+    success: true,
+    data: items,
+    meta: {
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    },
+  };
+  return c.json(response, 200);
 }

@@ -101,27 +101,27 @@ export class SalesService {
   }
 
   async listSalesOrders(organizationId: string, filters?: { companyId?: string; status?: string; search?: string }): Promise<SalesOrder[]> {
-    let query = drizzleDb.select().from(salesOrders).where(eq(salesOrders.organizationId, organizationId));
+    const conditions: any[] = [eq(salesOrders.organizationId, organizationId)];
 
     if (filters?.companyId) {
-      query = query.where(and(eq(salesOrders.organizationId, organizationId), eq(salesOrders.companyId, filters.companyId)));
+      conditions.push(eq(salesOrders.companyId, filters.companyId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(salesOrders.organizationId, organizationId), eq(salesOrders.status, filters.status as any)));
+      conditions.push(eq(salesOrders.status, filters.status as any));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(salesOrders.organizationId, organizationId),
-          like(salesOrders.orderNumber, searchTerm)
-        )
-      );
+      conditions.push(like(salesOrders.orderNumber, searchTerm));
     }
 
-    return await query.orderBy(desc(salesOrders.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(salesOrders)
+      .where(and(...conditions))
+      .orderBy(desc(salesOrders.createdAt))
+      .all() as any[];
   }
 
   async updateSalesOrder(organizationId: string, orderId: string, data: UpdateSalesOrderInput): Promise<SalesOrder> {

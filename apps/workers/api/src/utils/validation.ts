@@ -38,7 +38,7 @@ export function validatePagination(
   }
 
   // Parse offset with minimum of 0
-  let offset = PAGINATION_DEFAULTS.OFFSET;
+  let offset: number = PAGINATION_DEFAULTS.OFFSET;
   if (offsetStr) {
     const parsed = parseInt(offsetStr, 10);
     if (!isNaN(parsed) && isFinite(parsed)) {

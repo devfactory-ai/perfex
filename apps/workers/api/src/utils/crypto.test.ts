@@ -56,7 +56,7 @@ describe('Crypto Utils', () => {
 
     it('should verify and decode access token', () => {
       const token = generateAccessToken('user-123', 'test@example.com', TEST_SECRET);
-      const payload = verifyToken(token, TEST_SECRET);
+      const payload = verifyToken(token, TEST_SECRET) as { sub: string; email: string; type: string };
 
       expect(payload.sub).toBe('user-123');
       expect(payload.email).toBe('test@example.com');

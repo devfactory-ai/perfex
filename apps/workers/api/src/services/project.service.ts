@@ -82,42 +82,41 @@ export class ProjectService {
       search?: string;
     }
   ): Promise<Project[]> {
-    let query = drizzleDb
-      .select()
-      .from(projects)
-      .where(eq(projects.organizationId, organizationId));
+    const conditions: any[] = [eq(projects.organizationId, organizationId)];
 
     // Apply filters
     if (filters?.status) {
-      query = query.where(and(eq(projects.organizationId, organizationId), eq(projects.status, filters.status as any)));
+      conditions.push(eq(projects.status, filters.status as any));
     }
 
     if (filters?.priority) {
-      query = query.where(and(eq(projects.organizationId, organizationId), eq(projects.priority, filters.priority as any)));
+      conditions.push(eq(projects.priority, filters.priority as any));
     }
 
     if (filters?.companyId) {
-      query = query.where(and(eq(projects.organizationId, organizationId), eq(projects.companyId, filters.companyId)));
+      conditions.push(eq(projects.companyId, filters.companyId));
     }
 
     if (filters?.projectManagerId) {
-      query = query.where(and(eq(projects.organizationId, organizationId), eq(projects.projectManagerId, filters.projectManagerId)));
+      conditions.push(eq(projects.projectManagerId, filters.projectManagerId));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(projects.organizationId, organizationId),
-          or(
-            like(projects.name, searchTerm),
-            like(projects.description, searchTerm)
-          )
+      conditions.push(
+        or(
+          like(projects.name, searchTerm),
+          like(projects.description, searchTerm)
         )
       );
     }
 
-    const results = await query.orderBy(desc(projects.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(projects)
+      .where(and(...conditions))
+      .orderBy(desc(projects.createdAt))
+      .all() as any[];
     return results;
   }
 

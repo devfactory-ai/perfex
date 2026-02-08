@@ -131,37 +131,39 @@ export class OpportunityService {
       maxValue?: number;
     }
   ): Promise<Opportunity[]> {
-    let query = drizzleDb
-      .select()
-      .from(opportunities)
-      .where(eq(opportunities.organizationId, organizationId));
+    const conditions: any[] = [eq(opportunities.organizationId, organizationId)];
 
     // Apply filters
     if (filters?.companyId) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), eq(opportunities.companyId, filters.companyId)));
+      conditions.push(eq(opportunities.companyId, filters.companyId));
     }
 
     if (filters?.stageId) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), eq(opportunities.stageId, filters.stageId)));
+      conditions.push(eq(opportunities.stageId, filters.stageId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), eq(opportunities.status, filters.status as any)));
+      conditions.push(eq(opportunities.status, filters.status as any));
     }
 
     if (filters?.assignedTo) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), eq(opportunities.assignedTo, filters.assignedTo)));
+      conditions.push(eq(opportunities.assignedTo, filters.assignedTo));
     }
 
     if (filters?.minValue !== undefined) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), gte(opportunities.value, filters.minValue)));
+      conditions.push(gte(opportunities.value, filters.minValue));
     }
 
     if (filters?.maxValue !== undefined) {
-      query = query.where(and(eq(opportunities.organizationId, organizationId), lte(opportunities.value, filters.maxValue)));
+      conditions.push(lte(opportunities.value, filters.maxValue));
     }
 
-    const results = await query.orderBy(desc(opportunities.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(opportunities)
+      .where(and(...conditions))
+      .orderBy(desc(opportunities.createdAt))
+      .all() as any[];
     return results;
   }
 

@@ -87,11 +87,10 @@ export class ScheduledService {
   async runDailyRiskAssessments(): Promise<void> {
     logger.info('[Scheduler] Running daily risk assessments...');
 
-    // Get all active organizations with audit enabled
+    // Get all organizations
     const activeOrgs = await this.db
       .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.active, true));
+      .from(organizations);
 
     for (const org of activeOrgs) {
       try {
@@ -104,7 +103,7 @@ export class ScheduledService {
               eq(auditSchedules.organizationId, org.id),
               eq(auditSchedules.scheduleType, 'risk_assessment'),
               eq(auditSchedules.frequency, 'daily'),
-              eq(auditSchedules.active, true)
+              eq(auditSchedules.isActive, true)
             )
           );
 
@@ -167,8 +166,7 @@ export class ScheduledService {
 
     const activeOrgs = await this.db
       .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.active, true));
+      .from(organizations);
 
     for (const org of activeOrgs) {
       try {
@@ -238,7 +236,7 @@ export class ScheduledService {
     const schedules = await this.db
       .select()
       .from(auditSchedules)
-      .where(eq(auditSchedules.active, true));
+      .where(eq(auditSchedules.isActive, true));
 
     for (const schedule of schedules) {
       try {

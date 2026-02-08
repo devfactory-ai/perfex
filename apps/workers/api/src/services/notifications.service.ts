@@ -59,22 +59,22 @@ export class NotificationsService {
   }
 
   async listUserNotifications(organizationId: string, userId: string, unreadOnly: boolean = false): Promise<Notification[]> {
-    let query = drizzleDb
-      .select()
-      .from(notifications)
-      .where(and(eq(notifications.organizationId, organizationId), eq(notifications.userId, userId)));
+    const conditions: any[] = [
+      eq(notifications.organizationId, organizationId),
+      eq(notifications.userId, userId)
+    ];
 
     if (unreadOnly) {
-      query = query.where(
-        and(
-          eq(notifications.organizationId, organizationId),
-          eq(notifications.userId, userId),
-          eq(notifications.isRead, false)
-        )
-      );
+      conditions.push(eq(notifications.isRead, false));
     }
 
-    return await query.orderBy(desc(notifications.createdAt)).limit(50).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(notifications)
+      .where(and(...conditions))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50)
+      .all() as any[];
   }
 
   async markAsRead(organizationId: string, userId: string, notificationIds: string[]): Promise<void> {
@@ -147,21 +147,27 @@ export class NotificationsService {
   }
 
   async listAuditLogs(organizationId: string, filters?: { entityType?: string; entityId?: string; userId?: string }): Promise<AuditLog[]> {
-    let query = drizzleDb.select().from(auditLogs).where(eq(auditLogs.organizationId, organizationId));
+    const conditions: any[] = [eq(auditLogs.organizationId, organizationId)];
 
     if (filters?.entityType) {
-      query = query.where(and(eq(auditLogs.organizationId, organizationId), eq(auditLogs.entityType, filters.entityType)));
+      conditions.push(eq(auditLogs.entityType, filters.entityType));
     }
 
     if (filters?.entityId) {
-      query = query.where(and(eq(auditLogs.organizationId, organizationId), eq(auditLogs.entityId, filters.entityId)));
+      conditions.push(eq(auditLogs.entityId, filters.entityId));
     }
 
     if (filters?.userId) {
-      query = query.where(and(eq(auditLogs.organizationId, organizationId), eq(auditLogs.userId, filters.userId)));
+      conditions.push(eq(auditLogs.userId, filters.userId));
     }
 
-    return await query.orderBy(desc(auditLogs.createdAt)).limit(100).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(100)
+      .all() as any[];
   }
 
   // ============================================
@@ -184,13 +190,18 @@ export class NotificationsService {
   }
 
   async listSettings(organizationId: string, category?: string): Promise<SystemSetting[]> {
-    let query = drizzleDb.select().from(systemSettings).where(eq(systemSettings.organizationId, organizationId));
+    const conditions: any[] = [eq(systemSettings.organizationId, organizationId)];
 
     if (category) {
-      query = query.where(and(eq(systemSettings.organizationId, organizationId), eq(systemSettings.category, category)));
+      conditions.push(eq(systemSettings.category, category));
     }
 
-    return await query.orderBy(desc(systemSettings.updatedAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(systemSettings)
+      .where(and(...conditions))
+      .orderBy(desc(systemSettings.updatedAt))
+      .all() as any[];
   }
 
   async createSetting(organizationId: string, userId: string, data: CreateSystemSettingInput): Promise<SystemSetting> {

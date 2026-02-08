@@ -52,16 +52,18 @@ export class PipelineService {
    * List pipeline stages
    */
   async list(organizationId: string, activeOnly: boolean = false): Promise<PipelineStage[]> {
-    let query = drizzleDb
-      .select()
-      .from(pipelineStages)
-      .where(eq(pipelineStages.organizationId, organizationId));
+    const conditions: any[] = [eq(pipelineStages.organizationId, organizationId)];
 
     if (activeOnly) {
-      query = query.where(and(eq(pipelineStages.organizationId, organizationId), eq(pipelineStages.active, true)));
+      conditions.push(eq(pipelineStages.active, true));
     }
 
-    const results = await query.orderBy(asc(pipelineStages.order)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(pipelineStages)
+      .where(and(...conditions))
+      .orderBy(asc(pipelineStages.order))
+      .all() as any[];
     return results;
   }
 

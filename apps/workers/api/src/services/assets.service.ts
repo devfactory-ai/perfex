@@ -123,27 +123,27 @@ export class AssetsService {
   }
 
   async listAssets(organizationId: string, filters?: { categoryId?: string; status?: string; search?: string }): Promise<FixedAsset[]> {
-    let query = drizzleDb.select().from(fixedAssets).where(eq(fixedAssets.organizationId, organizationId));
+    const conditions = [eq(fixedAssets.organizationId, organizationId)];
 
     if (filters?.categoryId) {
-      query = query.where(and(eq(fixedAssets.organizationId, organizationId), eq(fixedAssets.categoryId, filters.categoryId)));
+      conditions.push(eq(fixedAssets.categoryId, filters.categoryId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(fixedAssets.organizationId, organizationId), eq(fixedAssets.status, filters.status as any)));
+      conditions.push(eq(fixedAssets.status, filters.status as any));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(fixedAssets.organizationId, organizationId),
-          like(fixedAssets.name, searchTerm)
-        )
-      );
+      conditions.push(like(fixedAssets.name, searchTerm));
     }
 
-    return await query.orderBy(desc(fixedAssets.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(fixedAssets)
+      .where(and(...conditions))
+      .orderBy(desc(fixedAssets.createdAt))
+      .all() as any[];
   }
 
   async updateAsset(organizationId: string, assetId: string, data: UpdateFixedAssetInput): Promise<FixedAsset> {
@@ -227,17 +227,22 @@ export class AssetsService {
   }
 
   async listMaintenance(organizationId: string, filters?: { assetId?: string; status?: string }): Promise<AssetMaintenanceType[]> {
-    let query = drizzleDb.select().from(assetMaintenance).where(eq(assetMaintenance.organizationId, organizationId));
+    const conditions = [eq(assetMaintenance.organizationId, organizationId)];
 
     if (filters?.assetId) {
-      query = query.where(and(eq(assetMaintenance.organizationId, organizationId), eq(assetMaintenance.assetId, filters.assetId)));
+      conditions.push(eq(assetMaintenance.assetId, filters.assetId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(assetMaintenance.organizationId, organizationId), eq(assetMaintenance.status, filters.status as any)));
+      conditions.push(eq(assetMaintenance.status, filters.status as any));
     }
 
-    return await query.orderBy(desc(assetMaintenance.createdAt)).all() as any[];
+    return await drizzleDb
+      .select()
+      .from(assetMaintenance)
+      .where(and(...conditions))
+      .orderBy(desc(assetMaintenance.createdAt))
+      .all() as any[];
   }
 
   async getStats(organizationId: string): Promise<{

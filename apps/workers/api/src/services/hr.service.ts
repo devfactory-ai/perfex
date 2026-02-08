@@ -72,17 +72,19 @@ export class HRService {
    * List departments
    */
   async listDepartments(organizationId: string, filters?: { active?: string }): Promise<Department[]> {
-    let query = drizzleDb
-      .select()
-      .from(departments)
-      .where(eq(departments.organizationId, organizationId));
+    const conditions: any[] = [eq(departments.organizationId, organizationId)];
 
     if (filters?.active) {
       const isActive = filters.active === 'true';
-      query = query.where(and(eq(departments.organizationId, organizationId), eq(departments.active, isActive)));
+      conditions.push(eq(departments.active, isActive));
     }
 
-    const results = await query.orderBy(desc(departments.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(departments)
+      .where(and(...conditions))
+      .orderBy(desc(departments.createdAt))
+      .all() as any[];
     return results;
   }
 
@@ -212,40 +214,39 @@ export class HRService {
       search?: string;
     }
   ): Promise<Employee[]> {
-    let query = drizzleDb
-      .select()
-      .from(employees)
-      .where(eq(employees.organizationId, organizationId));
+    const conditions: any[] = [eq(employees.organizationId, organizationId)];
 
     if (filters?.departmentId) {
-      query = query.where(and(eq(employees.organizationId, organizationId), eq(employees.departmentId, filters.departmentId)));
+      conditions.push(eq(employees.departmentId, filters.departmentId));
     }
 
     if (filters?.employmentType) {
-      query = query.where(and(eq(employees.organizationId, organizationId), eq(employees.employmentType, filters.employmentType as any)));
+      conditions.push(eq(employees.employmentType, filters.employmentType as any));
     }
 
     if (filters?.active) {
       const isActive = filters.active === 'true';
-      query = query.where(and(eq(employees.organizationId, organizationId), eq(employees.active, isActive)));
+      conditions.push(eq(employees.active, isActive));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(employees.organizationId, organizationId),
-          or(
-            like(employees.firstName, searchTerm),
-            like(employees.lastName, searchTerm),
-            like(employees.email, searchTerm),
-            like(employees.employeeNumber, searchTerm)
-          )
+      conditions.push(
+        or(
+          like(employees.firstName, searchTerm),
+          like(employees.lastName, searchTerm),
+          like(employees.email, searchTerm),
+          like(employees.employeeNumber, searchTerm)
         )
       );
     }
 
-    const results = await query.orderBy(desc(employees.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(employees)
+      .where(and(...conditions))
+      .orderBy(desc(employees.createdAt))
+      .all() as any[];
     return results;
   }
 
@@ -365,24 +366,26 @@ export class HRService {
       leaveType?: string;
     }
   ): Promise<LeaveRequest[]> {
-    let query = drizzleDb
-      .select()
-      .from(leaveRequests)
-      .where(eq(leaveRequests.organizationId, organizationId));
+    const conditions: any[] = [eq(leaveRequests.organizationId, organizationId)];
 
     if (filters?.employeeId) {
-      query = query.where(and(eq(leaveRequests.organizationId, organizationId), eq(leaveRequests.employeeId, filters.employeeId)));
+      conditions.push(eq(leaveRequests.employeeId, filters.employeeId));
     }
 
     if (filters?.status) {
-      query = query.where(and(eq(leaveRequests.organizationId, organizationId), eq(leaveRequests.status, filters.status as any)));
+      conditions.push(eq(leaveRequests.status, filters.status as any));
     }
 
     if (filters?.leaveType) {
-      query = query.where(and(eq(leaveRequests.organizationId, organizationId), eq(leaveRequests.leaveType, filters.leaveType as any)));
+      conditions.push(eq(leaveRequests.leaveType, filters.leaveType as any));
     }
 
-    const results = await query.orderBy(desc(leaveRequests.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(leaveRequests)
+      .where(and(...conditions))
+      .orderBy(desc(leaveRequests.createdAt))
+      .all() as any[];
     return results;
   }
 

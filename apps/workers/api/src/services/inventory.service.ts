@@ -75,35 +75,34 @@ export class InventoryService {
       search?: string;
     }
   ): Promise<InventoryItem[]> {
-    let query = drizzleDb
-      .select()
-      .from(inventoryItems)
-      .where(eq(inventoryItems.organizationId, organizationId));
+    const conditions: any[] = [eq(inventoryItems.organizationId, organizationId)];
 
     if (filters?.category) {
-      query = query.where(and(eq(inventoryItems.organizationId, organizationId), eq(inventoryItems.category, filters.category)));
+      conditions.push(eq(inventoryItems.category, filters.category));
     }
 
     if (filters?.active) {
       const isActive = filters.active === 'true';
-      query = query.where(and(eq(inventoryItems.organizationId, organizationId), eq(inventoryItems.active, isActive)));
+      conditions.push(eq(inventoryItems.active, isActive));
     }
 
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.where(
-        and(
-          eq(inventoryItems.organizationId, organizationId),
-          or(
-            like(inventoryItems.name, searchTerm),
-            like(inventoryItems.sku, searchTerm),
-            like(inventoryItems.description, searchTerm)
-          )
+      conditions.push(
+        or(
+          like(inventoryItems.name, searchTerm),
+          like(inventoryItems.sku, searchTerm),
+          like(inventoryItems.description, searchTerm)
         )
       );
     }
 
-    const results = await query.orderBy(desc(inventoryItems.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(inventoryItems)
+      .where(and(...conditions))
+      .orderBy(desc(inventoryItems.createdAt))
+      .all() as any[];
     return results;
   }
 
@@ -212,17 +211,19 @@ export class InventoryService {
    * List warehouses
    */
   async listWarehouses(organizationId: string, filters?: { active?: string }): Promise<Warehouse[]> {
-    let query = drizzleDb
-      .select()
-      .from(warehouses)
-      .where(eq(warehouses.organizationId, organizationId));
+    const conditions: any[] = [eq(warehouses.organizationId, organizationId)];
 
     if (filters?.active) {
       const isActive = filters.active === 'true';
-      query = query.where(and(eq(warehouses.organizationId, organizationId), eq(warehouses.active, isActive)));
+      conditions.push(eq(warehouses.active, isActive));
     }
 
-    const results = await query.orderBy(desc(warehouses.createdAt)).all() as any[];
+    const results = await drizzleDb
+      .select()
+      .from(warehouses)
+      .where(and(...conditions))
+      .orderBy(desc(warehouses.createdAt))
+      .all() as any[];
     return results;
   }
 
