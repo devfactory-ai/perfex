@@ -58,6 +58,8 @@ const patientQuerySchema = listQuerySchema.extend({
 const createPatientSchema = z.object({
   contactId: z.string().uuid(),
   medicalId: z.string().min(1),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   nationalId: z.string().optional(),
   dateOfBirth: z.string().optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
@@ -698,30 +700,21 @@ ophthalmology.post(
       await db.insert(healthcarePatients).values({
         id: patientId,
         companyId: organizationId,
-        contactId: data.contactId,
-        medicalId: data.medicalId,
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
         nationalId: data.nationalId,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        gender: data.gender,
+        dateOfBirth: data.dateOfBirth || new Date().toISOString(),
+        gender: data.gender || 'male',
         bloodType: data.bloodType,
-        emergencyContactName: data.emergencyContactName,
-        emergencyContactPhone: data.emergencyContactPhone,
-        emergencyContactRelation: data.emergencyContactRelation,
+        emergencyContact: data.emergencyContactName,
+        emergencyPhone: data.emergencyContactPhone,
         allergies: data.allergies ? JSON.stringify(data.allergies) : undefined,
         medicalHistory: data.medicalHistory ? JSON.stringify(data.medicalHistory) : undefined,
         familyHistory: data.familyHistory ? JSON.stringify(data.familyHistory) : undefined,
-        surgicalHistory: data.surgicalHistory ? JSON.stringify(data.surgicalHistory) : undefined,
-        currentMedications: data.currentMedications ? JSON.stringify(data.currentMedications) : undefined,
         insuranceProvider: data.insuranceProvider,
         insuranceNumber: data.insuranceNumber,
-        referringPhysician: data.referringPhysician,
-        enrolledModules: JSON.stringify(['ophthalmology']),
-        patientStatus: 'active',
         notes: data.notes,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+      } as any);
 
       const [patient] = await db
         .select()
@@ -782,15 +775,19 @@ ophthalmology.put(
       await db
         .update(healthcarePatients)
         .set({
-          ...data,
+          firstName: data.firstName,
+          lastName: data.lastName,
           dateOfBirth: data.dateOfBirth || undefined,
+          gender: data.gender,
+          bloodType: data.bloodType,
           allergies: data.allergies ? JSON.stringify(data.allergies) : undefined,
           medicalHistory: data.medicalHistory ? JSON.stringify(data.medicalHistory) : undefined,
           familyHistory: data.familyHistory ? JSON.stringify(data.familyHistory) : undefined,
-          surgicalHistory: data.surgicalHistory ? JSON.stringify(data.surgicalHistory) : undefined,
-          currentMedications: data.currentMedications ? JSON.stringify(data.currentMedications) : undefined,
+          insuranceProvider: data.insuranceProvider,
+          insuranceNumber: data.insuranceNumber,
+          notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(healthcarePatients.id, patientId));
 
       const [patient] = await db
@@ -951,11 +948,10 @@ ophthalmology.post(
         id: consultationId,
         companyId: organizationId,
         patientId: data.patientId,
-        consultationNumber,
-        consultationDate: new Date(data.consultationDate),
         module: 'ophthalmology',
+        consultationDate: data.consultationDate,
         consultationType: data.consultationType,
-        providerId: data.providerId,
+        provider: data.providerId,
         chiefComplaint: data.chiefComplaint,
         historyOfPresentIllness: data.historyOfPresentIllness,
         physicalExamination: data.physicalExamination,
@@ -963,13 +959,10 @@ ophthalmology.post(
         diagnosis: data.diagnosis ? JSON.stringify(data.diagnosis) : undefined,
         treatmentPlan: data.treatmentPlan,
         prescriptions: data.prescriptions ? JSON.stringify(data.prescriptions) : undefined,
-        followUpDate: data.followUpDate ? new Date(data.followUpDate) : undefined,
+        followUpDate: data.followUpDate,
         status: 'completed',
         notes: data.notes,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+      } as any);
 
       const [consultation] = await db
         .select()
@@ -1033,7 +1026,7 @@ ophthalmology.put(
         .set({
           consultationDate: data.consultationDate || undefined,
           consultationType: data.consultationType,
-          providerId: data.providerId,
+          provider: data.providerId,
           chiefComplaint: data.chiefComplaint,
           historyOfPresentIllness: data.historyOfPresentIllness,
           physicalExamination: data.physicalExamination,
@@ -1044,7 +1037,7 @@ ophthalmology.put(
           followUpDate: data.followUpDate || undefined,
           notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(healthcareConsultations.id, consultationId));
 
       const [consultation] = await db
@@ -2404,11 +2397,11 @@ ophthalmology.put(
         }, 404);
       }
 
-      const now = new Date();
+      const now = new Date().toISOString();
       await db
         .update(ophthalmologyIvtInjections)
         .set({
-          injectionDate: data.injectionDate ? new Date(data.injectionDate) : undefined,
+          injectionDate: data.injectionDate,
           eye: data.eye,
           indication: data.indication,
           indicationDetails: data.indicationDetails,
@@ -2419,12 +2412,12 @@ ophthalmology.put(
           treatmentProtocol: data.treatmentProtocol,
           injectionInSeries: data.injectionInSeries,
           quadrant: data.quadrant,
-          preIopOd: data.preIop,
-          postIopOd: data.postIop,
+          preIop: data.preIop,
+          postIop: data.postIop,
           performedBy: data.performedById,
           notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(ophthalmologyIvtInjections.id, ivtId));
 
       const [ivt] = await db
@@ -2659,7 +2652,7 @@ ophthalmology.put(
       await db
         .update(ophthalmologySurgeries)
         .set({
-          surgeryDate: data.surgeryDate || undefined,
+          surgeryDate: data.surgeryDate,
           eye: data.eye,
           surgeryType: data.surgeryType,
           surgerySubtype: data.surgerySubtype,
@@ -2673,7 +2666,7 @@ ophthalmology.put(
           postOpInstructions: data.postOpInstructions,
           notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(ophthalmologySurgeries.id, surgeryId));
 
       const [surgery] = await db
@@ -3097,8 +3090,7 @@ ophthalmology.post(
         companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
-        measurementNumber,
-        measurementDate: new Date(data.measurementDate),
+        measurementDate: data.measurementDate,
         measurementTime: data.measurementTime,
         tonometryMethod: data.tonometryMethod,
         iopOd: data.iopOd,
@@ -3112,9 +3104,9 @@ ophthalmology.post(
         performedBy: data.performedById,
         notes: data.notes,
         createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      } as any);
 
       const [tonometry] = await db
         .select()
@@ -3170,11 +3162,11 @@ ophthalmology.put(
         }, 404);
       }
 
-      const now = new Date();
+      const now = new Date().toISOString();
       await db
         .update(ophthalmologyTonometry)
         .set({
-          measurementDate: data.measurementDate ? new Date(data.measurementDate) : undefined,
+          measurementDate: data.measurementDate,
           measurementTime: data.measurementTime,
           tonometryMethod: data.tonometryMethod,
           iopOd: data.iopOd,
@@ -3188,7 +3180,7 @@ ophthalmology.put(
           performedBy: data.performedById,
           notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(ophthalmologyTonometry.id, tonometryId));
 
       const [tonometry] = await db
@@ -3453,17 +3445,17 @@ ophthalmology.put(
         : 0;
 
       // Determine severity
-      let severity: string;
+      let severity: 'normal' | 'mild' | 'moderate' | 'severe';
       if (osdiScore <= 12) severity = 'normal';
       else if (osdiScore <= 22) severity = 'mild';
       else if (osdiScore <= 32) severity = 'moderate';
       else severity = 'severe';
 
-      const now = new Date();
+      const now = new Date().toISOString();
       await db
         .update(ophthalmologyOsdiScores)
         .set({
-          assessmentDate: data.assessmentDate ? new Date(data.assessmentDate) : undefined,
+          assessmentDate: data.assessmentDate,
           q1LightSensitivity: data.q1LightSensitivity,
           q2GrittyFeeling: data.q2GrittyFeeling,
           q3PainfulEyes: data.q3PainfulEyes,
@@ -3480,7 +3472,7 @@ ophthalmology.put(
           severity,
           notes: data.notes,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(ophthalmologyOsdiScores.id, osdiId));
 
       const [osdi] = await db

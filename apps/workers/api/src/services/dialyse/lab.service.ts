@@ -59,7 +59,7 @@ export class LabService {
     // Calculate Kt/V if pre and post urea values are provided
     let ktV = data.ktV;
     if (!ktV && data.ureaPre && data.ureaPost && patient.dryWeight) {
-      ktV = this.calculateKtV(data.ureaPre, data.ureaPost, patient.dryWeight, data.sessionDuration || 240);
+      ktV = this.calculateKtV(data.ureaPre, data.ureaPost, patient.dryWeight, (data as any).sessionDuration || 240);
     }
 
     await drizzleDb.insert(labResults).values({

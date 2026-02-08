@@ -56,6 +56,8 @@ const patientQuerySchema = listQuerySchema.extend({
 const createPatientSchema = z.object({
   contactId: z.string().uuid(),
   medicalId: z.string().min(1),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   nationalId: z.string().optional(),
   dateOfBirth: z.string().optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
@@ -586,30 +588,21 @@ cardiology.post(
       await db.insert(healthcarePatients).values({
         id: patientId,
         companyId: organizationId,
-        contactId: data.contactId,
-        medicalId: data.medicalId,
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
         nationalId: data.nationalId,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        gender: data.gender,
+        dateOfBirth: data.dateOfBirth || new Date().toISOString(),
+        gender: data.gender || 'male',
         bloodType: data.bloodType,
-        emergencyContactName: data.emergencyContactName,
-        emergencyContactPhone: data.emergencyContactPhone,
-        emergencyContactRelation: data.emergencyContactRelation,
+        emergencyContact: data.emergencyContactName,
+        emergencyPhone: data.emergencyContactPhone,
         allergies: data.allergies ? JSON.stringify(data.allergies) : undefined,
         medicalHistory: data.medicalHistory ? JSON.stringify(data.medicalHistory) : undefined,
         familyHistory: data.familyHistory ? JSON.stringify(data.familyHistory) : undefined,
-        surgicalHistory: data.surgicalHistory ? JSON.stringify(data.surgicalHistory) : undefined,
-        currentMedications: data.currentMedications ? JSON.stringify(data.currentMedications) : undefined,
         insuranceProvider: data.insuranceProvider,
         insuranceNumber: data.insuranceNumber,
-        referringPhysician: data.referringPhysician,
-        enrolledModules: JSON.stringify(['cardiology']),
-        patientStatus: 'active',
         notes: data.notes,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+      } as any);
 
       const [patient] = await db
         .select()
@@ -897,15 +890,12 @@ cardiology.post(
         id: consultationId,
         companyId: organizationId,
         patientId: data.patientId,
-        consultationNumber,
-        consultationDate: new Date(data.consultationDate),
         module: 'cardiology',
+        consultationDate: data.consultationDate,
         consultationType: data.consultationType,
-        providerId: data.providerId,
+        provider: data.providerId,
         chiefComplaint: data.chiefComplaint,
         historyOfPresentIllness: data.historyOfPresentIllness,
-        weightKg: data.weightKg,
-        heightCm: data.heightCm,
         systolicBp: data.systolicBp,
         diastolicBp: data.diastolicBp,
         heartRate: data.heartRate,
@@ -917,13 +907,10 @@ cardiology.post(
         diagnosis: data.diagnosis ? JSON.stringify(data.diagnosis) : undefined,
         treatmentPlan: data.treatmentPlan,
         prescriptions: data.prescriptions ? JSON.stringify(data.prescriptions) : undefined,
-        followUpDate: data.followUpDate ? new Date(data.followUpDate) : undefined,
+        followUpDate: data.followUpDate,
         status: 'completed',
         notes: data.notes,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+      } as any);
 
       const [consultation] = await db
         .select()
@@ -1289,8 +1276,7 @@ cardiology.post(
         companyId: organizationId,
         patientId: data.patientId,
         consultationId: data.consultationId,
-        echoNumber,
-        studyDate: new Date(data.studyDate),
+        studyDate: data.studyDate,
         echoType: data.echoType,
         indication: data.indication,
         lvEf: data.lvEf,
@@ -1313,9 +1299,9 @@ cardiology.post(
         urgency: 'routine',
         notes: data.notes,
         createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      } as any);
 
       const [echo] = await db
         .select()
@@ -1475,13 +1461,12 @@ cardiology.post(
         id: pacemakerId,
         companyId: organizationId,
         patientId: data.patientId,
-        deviceNumber,
         deviceType: data.deviceType,
         indication: data.indication,
         manufacturer: data.manufacturer,
         model: data.model,
         serialNumber: data.serialNumber,
-        implantDate: new Date(data.implantDate),
+        implantDate: data.implantDate,
         implantedBy: data.implantedById,
         implantCenter: data.implantCenter,
         mode: data.mode,
@@ -1493,9 +1478,9 @@ cardiology.post(
         status: 'active',
         notes: data.notes,
         createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      } as any);
 
       const [pacemaker] = await db
         .select()

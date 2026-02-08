@@ -45,6 +45,18 @@ import integrationsRoutes from './routes/integrations';
 import dialyseRoutes from './routes/dialyse';
 import cardiologyRoutes from './routes/cardiology';
 import ophthalmologyRoutes from './routes/ophthalmology';
+import calculatorsRoutes from './routes/healthcare-calculators';
+import healthcareAnalyticsRoutes from './routes/healthcare-analytics';
+import healthcareIntegrationsRoutes from './routes/healthcare-integrations';
+import cdssRoutes from './routes/cdss';
+import patientPortalRoutes from './routes/patient-portal';
+import clinicalAiRoutes from './routes/clinical-ai';
+import fhirRoutes from './routes/fhir';
+import rpmRoutes from './routes/rpm';
+import imagingAiRoutes from './routes/imaging-ai';
+import populationHealthRoutes from './routes/population-health';
+import { docs as docsRoutes } from './routes/docs';
+import openapi from './openapi';
 import type { Env } from './types';
 import { ScheduledService } from './services/scheduled.service';
 
@@ -142,15 +154,103 @@ app.get('/', (c) => {
  */
 const apiV1 = new Hono<{ Bindings: Env }>();
 
-// Health check for API
-apiV1.get('/health', (c) => {
-  return c.json({
-    status: 'healthy',
-    database: c.env.DB ? 'connected' : 'disconnected',
-    cache: c.env.CACHE ? 'available' : 'unavailable',
-    sessions: c.env.SESSIONS ? 'available' : 'unavailable',
+// Enhanced health check with actual connectivity tests
+apiV1.get('/health', async (c) => {
+  const startTime = Date.now();
+  const checks: {
+    name: string;
+    status: 'healthy' | 'unhealthy' | 'degraded';
+    latency?: number;
+    message?: string;
+  }[] = [];
+
+  // Test database connectivity
+  if (c.env.DB) {
+    const dbStart = Date.now();
+    try {
+      await c.env.DB.prepare('SELECT 1 as test').first();
+      checks.push({
+        name: 'database',
+        status: 'healthy',
+        latency: Date.now() - dbStart,
+      });
+    } catch (error) {
+      checks.push({
+        name: 'database',
+        status: 'unhealthy',
+        latency: Date.now() - dbStart,
+        message: error instanceof Error ? error.message : 'Connection failed',
+      });
+    }
+  } else {
+    checks.push({ name: 'database', status: 'unhealthy', message: 'Not configured' });
+  }
+
+  // Test KV cache connectivity
+  if (c.env.CACHE) {
+    const cacheStart = Date.now();
+    try {
+      const testKey = `health_check_${Date.now()}`;
+      await c.env.CACHE.put(testKey, 'ok', { expirationTtl: 1 });
+      await c.env.CACHE.delete(testKey);
+      checks.push({
+        name: 'cache',
+        status: 'healthy',
+        latency: Date.now() - cacheStart,
+      });
+    } catch (error) {
+      checks.push({
+        name: 'cache',
+        status: 'degraded',
+        latency: Date.now() - cacheStart,
+        message: error instanceof Error ? error.message : 'Cache test failed',
+      });
+    }
+  } else {
+    checks.push({ name: 'cache', status: 'degraded', message: 'Not configured' });
+  }
+
+  // Test sessions KV
+  if (c.env.SESSIONS) {
+    const sessionsStart = Date.now();
+    try {
+      const testKey = `session_health_${Date.now()}`;
+      await c.env.SESSIONS.put(testKey, 'ok', { expirationTtl: 1 });
+      await c.env.SESSIONS.delete(testKey);
+      checks.push({
+        name: 'sessions',
+        status: 'healthy',
+        latency: Date.now() - sessionsStart,
+      });
+    } catch (error) {
+      checks.push({
+        name: 'sessions',
+        status: 'degraded',
+        latency: Date.now() - sessionsStart,
+        message: error instanceof Error ? error.message : 'Sessions test failed',
+      });
+    }
+  } else {
+    checks.push({ name: 'sessions', status: 'degraded', message: 'Not configured' });
+  }
+
+  // Determine overall status
+  const hasUnhealthy = checks.some((c) => c.status === 'unhealthy');
+  const hasDegraded = checks.some((c) => c.status === 'degraded');
+  const overallStatus = hasUnhealthy ? 'unhealthy' : hasDegraded ? 'degraded' : 'healthy';
+
+  const response = {
+    status: overallStatus,
+    version: '1.0.0',
+    environment: c.env.ENVIRONMENT || 'development',
     timestamp: new Date().toISOString(),
-  });
+    totalLatency: Date.now() - startTime,
+    checks,
+  };
+
+  // Return appropriate status code
+  const statusCode = overallStatus === 'unhealthy' ? 503 : 200;
+  return c.json(response, statusCode);
 });
 
 // Test endpoint for debugging
@@ -247,6 +347,42 @@ apiV1.route('/cardiology', cardiologyRoutes);
 // Mount Ophthalmology routes (Healthcare - Ophthalmology module)
 apiV1.route('/ophthalmology', ophthalmologyRoutes);
 
+// Mount Healthcare Calculators routes (Clinical calculators for all modules)
+apiV1.route('/calculators', calculatorsRoutes);
+
+// Mount Healthcare Analytics routes (Dashboard analytics and reports)
+apiV1.route('/healthcare/analytics', healthcareAnalyticsRoutes);
+
+// Mount Healthcare Integrations routes (SMS, FHIR, Lab connectors)
+apiV1.route('/healthcare/integrations', healthcareIntegrationsRoutes);
+
+// Mount CDSS routes (Clinical Decision Support System)
+apiV1.route('/cdss', cdssRoutes);
+
+// Mount Patient Portal routes (Patient-facing API)
+apiV1.route('/patient-portal', patientPortalRoutes);
+
+// Mount Clinical AI routes (AI-powered clinical assistance)
+apiV1.route('/clinical-ai', clinicalAiRoutes);
+
+// Mount FHIR R4 routes (HL7 FHIR Interoperability)
+apiV1.route('/fhir', fhirRoutes);
+
+// Mount RPM routes (Remote Patient Monitoring)
+apiV1.route('/rpm', rpmRoutes);
+
+// Mount Imaging AI routes (AI-powered diagnostic imaging analysis)
+apiV1.route('/imaging-ai', imagingAiRoutes);
+
+// Mount Population Health routes (Predictive analytics and quality indicators)
+apiV1.route('/population-health', populationHealthRoutes);
+
+// Mount API Documentation routes
+apiV1.route('/docs', docsRoutes);
+
+// Mount OpenAPI/Swagger Documentation
+apiV1.route('/', openapi);
+
 // Mount API routes
 app.route('/api/v1', apiV1);
 
@@ -321,7 +457,7 @@ app.onError((err, c) => {
         ...(!isProduction && { stack: err.stack }),
       },
     },
-    statusCode
+    statusCode as any
   );
 });
 

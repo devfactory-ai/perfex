@@ -180,43 +180,91 @@ export const csrfMiddleware = (config: Partial<CsrfConfig> = {}) => {
 /**
  * Middleware to generate and set CSRF token for the user
  * Should be called after authentication
+ *
+ * IMPORTANT: This middleware generates the token BEFORE processing
+ * and stores it in context so it can be included in responses properly.
  */
 export const setCsrfToken = (config: Partial<CsrfConfig> = {}) => {
   const cfg = { ...DEFAULT_CSRF_CONFIG, ...config };
 
   return createMiddleware(async (c: Context, next) => {
-    await next();
-
-    // Only set CSRF token for successful authentication responses
+    // Pre-generate token for authenticated users
     const userId = c.get('userId');
-    if (!userId) {
-      return;
+
+    if (userId) {
+      const kv = (c.env as { CACHE?: KVNamespace }).CACHE;
+
+      if (kv) {
+        // Check if user already has a valid CSRF token
+        const existingHash = await kv.get(`csrf:${userId}`);
+
+        if (!existingHash) {
+          // Generate new CSRF token BEFORE processing the request
+          const csrfToken = await generateCsrfToken();
+          const tokenHash = await hashCsrfToken(csrfToken);
+
+          // Store hash in KV
+          await kv.put(`csrf:${userId}`, tokenHash, {
+            expirationTtl: cfg.tokenExpiry,
+          });
+
+          // Store token in context for the handler to use
+          c.set('csrfToken', csrfToken);
+
+          // Also set in response header immediately
+          c.header(cfg.headerName, csrfToken);
+        }
+      }
     }
 
-    const kv = (c.env as { CACHE?: KVNamespace }).CACHE;
-    if (!kv) {
-      return;
-    }
-
-    // Check if user already has a valid CSRF token
-    const existingHash = await kv.get(`csrf:${userId}`);
-    if (existingHash) {
-      return;
-    }
-
-    // Generate new CSRF token
-    const csrfToken = await generateCsrfToken();
-    const tokenHash = await hashCsrfToken(csrfToken);
-
-    // Store hash in KV
-    await kv.put(`csrf:${userId}`, tokenHash, {
-      expirationTtl: cfg.tokenExpiry,
-    });
-
-    // Set token in response header
-    c.header(cfg.headerName, csrfToken);
+    await next();
   });
 };
+
+/**
+ * Get CSRF token from context or generate a new one
+ * Use this in auth responses to include the token
+ */
+export async function getOrCreateCsrfToken(
+  c: Context,
+  userId: string,
+  config: Partial<CsrfConfig> = {}
+): Promise<string | null> {
+  const cfg = { ...DEFAULT_CSRF_CONFIG, ...config };
+
+  // Check if already generated in this request
+  const existingToken = c.get('csrfToken');
+  if (existingToken) {
+    return existingToken;
+  }
+
+  const kv = (c.env as { CACHE?: KVNamespace }).CACHE;
+  if (!kv) {
+    return null;
+  }
+
+  // Check if user has existing token - if so, don't generate new one
+  // Client should use their existing token
+  const existingHash = await kv.get(`csrf:${userId}`);
+  if (existingHash) {
+    // Token exists but we don't store the raw token, so client needs to use their cached one
+    // Return null to indicate no new token
+    return null;
+  }
+
+  // Generate new token
+  const csrfToken = await generateCsrfToken();
+  const tokenHash = await hashCsrfToken(csrfToken);
+
+  await kv.put(`csrf:${userId}`, tokenHash, {
+    expirationTtl: cfg.tokenExpiry,
+  });
+
+  c.set('csrfToken', csrfToken);
+  c.header(cfg.headerName, csrfToken);
+
+  return csrfToken;
+}
 
 /**
  * Endpoint to get a fresh CSRF token
@@ -249,4 +297,13 @@ export async function invalidateCsrfToken(
   kv: KVNamespace
 ): Promise<void> {
   await kv.delete(`csrf:${userId}`);
+}
+
+/**
+ * Hono context type extension for CSRF
+ */
+declare module 'hono' {
+  interface ContextVariableMap {
+    csrfToken?: string;
+  }
 }

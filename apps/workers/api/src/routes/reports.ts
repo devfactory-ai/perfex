@@ -37,7 +37,10 @@ reportsRouter.post(
     const accountId = c.req.param('accountId');
     const filters = c.req.valid('json');
     const reportService = new ReportService(c.env.DB);
-    const generalLedger = await reportService.getGeneralLedger(organizationId, accountId, filters);
+    const generalLedger = await reportService.getGeneralLedger(organizationId, accountId, {
+      startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+    });
 
     return c.json({ data: generalLedger });
   }
@@ -62,7 +65,10 @@ reportsRouter.post(
 
     const filters = c.req.valid('json');
     const reportService = new ReportService(c.env.DB);
-    const trialBalance = await reportService.getTrialBalance(organizationId, filters);
+    const trialBalance = await reportService.getTrialBalance(organizationId, {
+      startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+    });
 
     return c.json({ data: trialBalance });
   }
@@ -115,7 +121,10 @@ reportsRouter.post(
 
     const filters = c.req.valid('json');
     const reportService = new ReportService(c.env.DB);
-    const incomeStatement = await reportService.getIncomeStatement(organizationId, filters);
+    const incomeStatement = await reportService.getIncomeStatement(organizationId, {
+      startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+    });
 
     return c.json({ data: incomeStatement });
   }

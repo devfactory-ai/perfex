@@ -82,7 +82,7 @@ function validatePagination(limit?: number, offset?: number): { limit: number; o
   };
 }
 
-function validateEnum<T extends readonly string[]>(value: string | undefined, allowed: T, defaultValue: T[number]): T[number] {
+function validateEnum<T extends readonly string[]>(value: string | undefined | null, allowed: T, defaultValue: T[number]): T[number] {
   if (!value) return defaultValue;
   return (allowed as readonly string[]).includes(value) ? value as T[number] : defaultValue;
 }

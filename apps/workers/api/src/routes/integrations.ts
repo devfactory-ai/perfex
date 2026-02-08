@@ -9,9 +9,9 @@ import { z } from 'zod';
 import { IntegrationsService } from '../services/integrations.service';
 import { authMiddleware, requirePermissions } from '../middleware/auth';
 import { logger } from '../utils/logger';
-import type { Bindings, Variables } from '../types';
+import type { Env } from '../types';
 
-const integrationsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const integrationsRoutes = new Hono<{ Bindings: Env; Variables: { user: any; db: D1Database; organizationId: string } }>();
 
 // Apply auth middleware to all routes
 integrationsRoutes.use('*', authMiddleware);

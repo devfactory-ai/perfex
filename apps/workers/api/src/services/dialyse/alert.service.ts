@@ -10,9 +10,31 @@ import { safeJsonParse } from '../../utils/json';
 import type {
   ClinicalAlert,
   ClinicalAlertWithPatient,
-  CreateAlertInput,
-  UpdateAlertInput,
 } from '@perfex/shared';
+
+// Local type definitions
+type CreateAlertInput = {
+  patientId: string;
+  alertType: string;
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  description?: string | null;
+  triggeredAt?: Date | string;
+  dueDate?: Date | string | null;
+  notes?: string;
+  assignedTo?: string | null;
+  relatedToType?: string | null;
+  relatedToId?: string | null;
+};
+
+type UpdateAlertInput = Partial<CreateAlertInput> & {
+  status?: 'active' | 'acknowledged' | 'resolved' | 'dismissed' | 'snoozed';
+  acknowledgedAt?: Date | string;
+  resolvedAt?: Date | string;
+  dismissedAt?: Date | string;
+  snoozedUntil?: Date | string;
+  assignedTo?: string | null;
+};
 
 // Alert types for automated generation
 type AlertType =
@@ -50,18 +72,18 @@ export class AlertService {
       id: alertId,
       organizationId,
       patientId: data.patientId,
-      alertType: data.alertType,
+      alertType: data.alertType as any,
       severity: data.severity,
       title: data.title,
       description: data.description || null,
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      dueDate: data.dueDate ? new Date(data.dueDate as any) : null,
       status: 'active',
       assignedTo: data.assignedTo || null,
       relatedToType: data.relatedToType || null,
       relatedToId: data.relatedToId || null,
       createdAt: now,
       updatedAt: now,
-    });
+    } as any);
 
     const alert = await this.getById(organizationId, alertId);
     if (!alert) {
@@ -209,7 +231,7 @@ export class AlertService {
         and(
           eq(clinicalAlerts.organizationId, organizationId),
           eq(clinicalAlerts.status, 'active'),
-          or(eq(clinicalAlerts.severity, 'critical'), eq(clinicalAlerts.severity, 'high'))
+          or(eq(clinicalAlerts.severity, 'critical'), eq(clinicalAlerts.severity, 'warning'))
         )
       )
       .orderBy(desc(clinicalAlerts.severity), desc(clinicalAlerts.createdAt))
@@ -359,7 +381,7 @@ export class AlertService {
         .where(
           and(
             eq(clinicalAlerts.patientId, patient.id),
-            eq(clinicalAlerts.alertType, 'serology_update_due'),
+            eq(clinicalAlerts.alertType, 'serology_update' as any),
             eq(clinicalAlerts.status, 'active')
           )
         )
@@ -369,7 +391,7 @@ export class AlertService {
         await this.create(organizationId, {
           patientId: patient.id,
           alertType: 'serology_update_due',
-          severity: 'medium',
+          severity: 'warning',
           title: 'Mise à jour sérologie requise',
           description: `La dernière mise à jour sérologique date de plus de 3 mois.`,
           relatedToType: 'patient',
@@ -412,7 +434,7 @@ export class AlertService {
           and(
             eq(clinicalAlerts.relatedToType, 'vascular_access'),
             eq(clinicalAlerts.relatedToId, access.id),
-            eq(clinicalAlerts.alertType, 'vascular_access_control'),
+            eq(clinicalAlerts.alertType, 'vascular_access' as any),
             eq(clinicalAlerts.status, 'active')
           )
         )
@@ -423,7 +445,7 @@ export class AlertService {
         await this.create(organizationId, {
           patientId: access.patientId,
           alertType: 'vascular_access_control',
-          severity: isOverdue ? 'high' : 'medium',
+          severity: isOverdue ? 'critical' : 'warning',
           title: isOverdue ? 'Contrôle abord vasculaire en retard' : 'Contrôle abord vasculaire à programmer',
           description: `Contrôle de l'abord vasculaire (${access.type}) prévu le ${access.nextControlDate}`,
           dueDate: access.nextControlDate ? new Date(access.nextControlDate).toISOString() : undefined,
@@ -479,7 +501,7 @@ export class AlertService {
         await this.create(organizationId, {
           patientId: result.patientId,
           alertType: 'lab_out_of_range',
-          severity: hasCritical ? 'high' : 'medium',
+          severity: hasCritical ? 'critical' : 'warning',
           title: 'Résultats de laboratoire anormaux',
           description: `Valeurs hors normes: ${outOfRangeMarkers.join(', ')}`,
           relatedToType: 'lab_result',

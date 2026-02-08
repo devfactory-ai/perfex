@@ -452,7 +452,7 @@ export class MachineService {
       WHERE organization_id = '${organizationId}'
     `));
 
-    const row = result.rows?.[0] as any || {};
+    const row = (result as any).results?.[0] || {};
     return {
       total: Number(row.total) || 0,
       scheduled: Number(row.scheduled) || 0,

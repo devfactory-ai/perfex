@@ -139,76 +139,100 @@ export class PatientService {
 
   /**
    * Get patient with full details (contact, prescriptions, accesses, labs, alerts)
+   * Optimized: Uses Promise.all() to fetch all related data in parallel
    */
   async getByIdFull(organizationId: string, patientId: string): Promise<DialysePatientFull | null> {
-    const patientWithContact = await this.getByIdWithContact(organizationId, patientId);
-    if (!patientWithContact) {
+    // First get the patient to validate it exists
+    const patient = await this.getById(organizationId, patientId);
+    if (!patient) {
       return null;
     }
 
-    // Get active prescription
-    const activePrescription = await drizzleDb
-      .select()
-      .from(dialysePrescriptions)
-      .where(
-        and(
-          eq(dialysePrescriptions.patientId, patientId),
-          eq(dialysePrescriptions.organizationId, organizationId),
-          eq(dialysePrescriptions.status, 'active')
-        )
-      )
-      .get() as any;
+    // Fetch all related data in parallel (N+1 → 1+1 optimization)
+    const [
+      contact,
+      activePrescription,
+      vascularAccessesList,
+      recentLabResult,
+      activeAlertsList,
+    ] = await Promise.all([
+      // Get contact
+      drizzleDb
+        .select()
+        .from(contacts)
+        .where(eq(contacts.id, patient.contactId))
+        .get(),
 
-    // Get all vascular accesses
-    const vascularAccessesList = await drizzleDb
-      .select()
-      .from(vascularAccesses)
-      .where(
-        and(
-          eq(vascularAccesses.patientId, patientId),
-          eq(vascularAccesses.organizationId, organizationId)
+      // Get active prescription
+      drizzleDb
+        .select()
+        .from(dialysePrescriptions)
+        .where(
+          and(
+            eq(dialysePrescriptions.patientId, patientId),
+            eq(dialysePrescriptions.organizationId, organizationId),
+            eq(dialysePrescriptions.status, 'active')
+          )
         )
-      )
-      .orderBy(desc(vascularAccesses.createdAt))
-      .all() as any[];
+        .get(),
 
-    // Get active vascular access
-    const activeVascularAccess = vascularAccessesList.find((a) => a.status === 'active') || null;
-
-    // Get most recent lab result
-    const recentLabResult = await drizzleDb
-      .select()
-      .from(labResults)
-      .where(
-        and(
-          eq(labResults.patientId, patientId),
-          eq(labResults.organizationId, organizationId)
+      // Get all vascular accesses
+      drizzleDb
+        .select()
+        .from(vascularAccesses)
+        .where(
+          and(
+            eq(vascularAccesses.patientId, patientId),
+            eq(vascularAccesses.organizationId, organizationId)
+          )
         )
-      )
-      .orderBy(desc(labResults.labDate))
-      .limit(1)
-      .get() as any;
+        .orderBy(desc(vascularAccesses.createdAt))
+        .all(),
 
-    // Get active alerts
-    const activeAlertsList = await drizzleDb
-      .select()
-      .from(clinicalAlerts)
-      .where(
-        and(
-          eq(clinicalAlerts.patientId, patientId),
-          eq(clinicalAlerts.organizationId, organizationId),
-          eq(clinicalAlerts.status, 'active')
+      // Get most recent lab result
+      drizzleDb
+        .select()
+        .from(labResults)
+        .where(
+          and(
+            eq(labResults.patientId, patientId),
+            eq(labResults.organizationId, organizationId)
+          )
         )
-      )
-      .orderBy(desc(clinicalAlerts.createdAt))
-      .all() as any[];
+        .orderBy(desc(labResults.labDate))
+        .limit(1)
+        .get(),
+
+      // Get active alerts
+      drizzleDb
+        .select()
+        .from(clinicalAlerts)
+        .where(
+          and(
+            eq(clinicalAlerts.patientId, patientId),
+            eq(clinicalAlerts.organizationId, organizationId),
+            eq(clinicalAlerts.status, 'active')
+          )
+        )
+        .orderBy(desc(clinicalAlerts.createdAt))
+        .all(),
+    ]);
+
+    if (!contact) {
+      return null;
+    }
+
+    // Get active vascular access from list
+    const typedAccessList = vascularAccessesList as any[];
+    const activeVascularAccess = typedAccessList.find((a) => a.status === 'active') || null;
 
     return {
-      ...patientWithContact,
-      activePrescription: activePrescription || null,
+      ...patient,
+      contact: contact as any,
+      activePrescription: (activePrescription as any) || null,
       activeVascularAccess,
-      vascularAccesses: vascularAccessesList as VascularAccess[],
-      recentLabResult: recentLabResult || null,
+      vascularAccesses: typedAccessList as VascularAccess[],
+      recentLabResult: (recentLabResult as any) || null,
       activeAlerts: activeAlertsList as any[],
     };
   }
@@ -330,9 +354,9 @@ export class PatientService {
     if (data.allergies !== undefined) patientFields.allergies = JSON.stringify(data.allergies);
     if (data.contraindications !== undefined) patientFields.contraindications = JSON.stringify(data.contraindications);
     if (data.hepatitisBVaccinated !== undefined) patientFields.hepatitisBVaccinated = data.hepatitisBVaccinated;
-    if (data.hepatitisBLastDose !== undefined) patientFields.hepatitisBLastDose = new Date(data.hepatitisBLastDose);
+    if (data.hepatitisBLastDose !== undefined) patientFields.hepatitisBLastDose = data.hepatitisBLastDose ? new Date(data.hepatitisBLastDose) : null;
     if (data.patientStatus !== undefined) patientFields.patientStatus = data.patientStatus;
-    if (data.dialysisStartDate !== undefined) patientFields.dialysisStartDate = new Date(data.dialysisStartDate);
+    if (data.dialysisStartDate !== undefined) patientFields.dialysisStartDate = data.dialysisStartDate ? new Date(data.dialysisStartDate) : null;
     if (data.notes !== undefined) patientFields.notes = data.notes;
 
     await drizzleDb

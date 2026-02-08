@@ -1639,7 +1639,7 @@ dialyse.post(
   '/sessions/:sessionId/signatures',
   requirePermission('dialyse:sessions:update'),
   zValidator('json', z.object({
-    signatureType: z.enum(['nurse_start', 'nurse_end', 'doctor_review', 'patient_consent']),
+    signatureType: z.enum(['nurse_start', 'nurse_end', 'doctor_validation']),
     signatureData: z.string().optional(),
   })),
   async (c) => {

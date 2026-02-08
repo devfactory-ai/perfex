@@ -32,10 +32,13 @@ import type {
   CreateSessionSlotInput,
   UpdateSessionSlotInput,
   CreateSessionRecordInput,
-  CreateSessionIncidentInput,
+  CreateIncidentInput,
   CreateSessionMedicationInput,
   CreateSessionConsumableInput,
 } from '@perfex/shared';
+
+// Local type alias
+type CreateSessionIncidentInput = CreateIncidentInput;
 import { machineService } from './machine.service';
 
 export class SessionService {
@@ -196,8 +199,8 @@ export class SessionService {
       sessionDate: new Date(data.sessionDate),
       status: 'scheduled',
       scheduledStartTime: data.scheduledStartTime || null,
-      isRecurring: data.isRecurring || false,
-      recurrenceGroupId: data.recurrenceGroupId || null,
+      isRecurring: (data as any).isRecurring || false,
+      recurrenceGroupId: (data as any).recurrenceGroupId || null,
       primaryNurseId: data.primaryNurseId || null,
       supervisingDoctorId: data.supervisingDoctorId || null,
       notes: data.notes || null,
@@ -249,9 +252,7 @@ export class SessionService {
         const session = await this.create(organizationId, userId, {
           ...data,
           sessionDate: sessionDate.toISOString(),
-          isRecurring: true,
-          recurrenceGroupId,
-        });
+        } as any);
 
         sessions.push(session);
       }
@@ -613,8 +614,8 @@ export class SessionService {
       transmembranePressure: data.transmembranePressure || null,
       bloodFlowRate: data.bloodFlowRate || null,
       dialysateFlowRate: data.dialysateFlowRate || null,
-      cumulativeUf: data.cumulativeUf || null,
-      clinicalState: data.clinicalState || null,
+      cumulativeUF: (data as any).cumulativeUF || (data as any).cumulativeUf || null,
+      clinicalState: data.clinicalState ? (typeof data.clinicalState === 'string' ? data.clinicalState : JSON.stringify(data.clinicalState)) : null,
       vascularAccessState: data.vascularAccessState || null,
       compressionTime: data.compressionTime || null,
       ufAchieved: data.ufAchieved || null,
@@ -803,7 +804,7 @@ export class SessionService {
   async addSignature(
     sessionId: string,
     userId: string,
-    signatureType: 'nurse_start' | 'nurse_end' | 'doctor_review' | 'patient_consent',
+    signatureType: 'nurse_start' | 'nurse_end' | 'doctor_validation',
     signatureData?: string
   ): Promise<SessionSignature> {
     const now = new Date();
