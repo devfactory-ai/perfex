@@ -56,6 +56,7 @@ import rpmRoutes from './routes/rpm';
 import imagingAiRoutes from './routes/imaging-ai';
 import populationHealthRoutes from './routes/population-health';
 import bakeryRoutes from './routes/bakery';
+import seedRoutes from './routes/seed';
 import { docs as docsRoutes } from './routes/docs';
 import openapi from './openapi';
 import type { Env } from './types';
@@ -380,6 +381,9 @@ apiV1.route('/population-health', populationHealthRoutes);
 
 // Mount Bakery routes (Complete bakery ERP module)
 apiV1.route('/bakery', bakeryRoutes);
+
+// Mount Seed routes (Demo data seeding - non-production only)
+apiV1.route('/seed', seedRoutes);
 
 // Mount API Documentation routes
 apiV1.route('/docs', docsRoutes);
