@@ -30,6 +30,7 @@ export * from './patient-portal';
 export * from './rpm';
 export * from './imaging-ai';
 export * from './population-health';
+export * from './bakery';
 
 // Export all tables for drizzle-kit
 export {
@@ -349,3 +350,54 @@ export {
   analyticsDashboards,
   scheduledReports as phScheduledReports,
 } from './population-health';
+
+// Bakery module tables
+export {
+  // Stock Management
+  bakeryArticles,
+  bakeryStockMovements,
+  bakeryInventories,
+  bakeryInventoryLines,
+  bakeryStockAlerts,
+  bakerySupplierOrders,
+  bakerySupplierOrderLines,
+  bakeryProducts,
+  bakeryProductRecipes,
+  bakeryRecipeCompositions,
+  // Production
+  bakeryProofingChambers,
+  bakeryProofingCarts,
+  bakeryCartLines,
+  bakeryOvens,
+  bakeryOvenPassages,
+  bakeryQualityControls,
+  bakeryProductionDefects,
+  bakeryProductionComparisons,
+  bakeryMeterReadings,
+  bakeryDailyConsumptions,
+  // Maintenance
+  bakeryEquipment,
+  bakeryInterventions,
+  bakeryMaintenancePlans,
+  bakeryMaintenanceAlerts,
+  bakerySpareParts,
+  bakerySparePartMovements,
+  bakeryInterventionParts,
+  bakeryMaintenanceIndicators,
+  // Sales
+  bakeryB2BClients,
+  bakeryClientPricing,
+  bakeryDeliveryOrders,
+  bakeryDeliveryOrderLines,
+  bakeryDeliveryNotes,
+  bakeryPointsOfSale,
+  bakerySalesSessions,
+  bakeryPOSStock,
+  bakeryTeamHandovers,
+  // Reporting
+  bakeryReportConfigs,
+  bakeryGeneratedReports,
+  bakeryAccountingExports,
+  bakeryDailySalesSummary,
+  bakeryAuditLogs,
+} from './bakery';

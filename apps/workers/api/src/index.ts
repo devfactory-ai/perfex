@@ -55,6 +55,7 @@ import fhirRoutes from './routes/fhir';
 import rpmRoutes from './routes/rpm';
 import imagingAiRoutes from './routes/imaging-ai';
 import populationHealthRoutes from './routes/population-health';
+import bakeryRoutes from './routes/bakery';
 import { docs as docsRoutes } from './routes/docs';
 import openapi from './openapi';
 import type { Env } from './types';
@@ -376,6 +377,9 @@ apiV1.route('/imaging-ai', imagingAiRoutes);
 
 // Mount Population Health routes (Predictive analytics and quality indicators)
 apiV1.route('/population-health', populationHealthRoutes);
+
+// Mount Bakery routes (Complete bakery ERP module)
+apiV1.route('/bakery', bakeryRoutes);
 
 // Mount API Documentation routes
 apiV1.route('/docs', docsRoutes);
