@@ -241,7 +241,7 @@ export const ariaAttrs = {
   /**
    * Build ARIA attributes for a tab
    */
-  tab(isSelected: boolean, tabPanelId: string): Record<string, string | boolean> {
+  tab(isSelected: boolean, tabPanelId: string): Record<string, string | boolean | number> {
     return {
       role: 'tab',
       'aria-selected': isSelected,
@@ -253,7 +253,7 @@ export const ariaAttrs = {
   /**
    * Build ARIA attributes for a tab panel
    */
-  tabPanel(isHidden: boolean, tabId: string): Record<string, string | boolean> {
+  tabPanel(isHidden: boolean, tabId: string): Record<string, string | boolean | number> {
     return {
       role: 'tabpanel',
       'aria-labelledby': tabId,

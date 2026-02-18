@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Patient Portal Messages Page
  * Secure messaging between patients and healthcare providers

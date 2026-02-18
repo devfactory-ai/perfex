@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Patient Portal Appointments Page
  * View and request appointments

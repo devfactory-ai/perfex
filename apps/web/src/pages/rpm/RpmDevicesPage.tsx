@@ -3,10 +3,9 @@
  * List and manage IoT devices for remote patient monitoring
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { Link } from 'react-router-dom';
 import { useApi } from '@/hooks/useApi';
 import {
   PageHeader,
@@ -21,8 +20,6 @@ import {
   Wifi,
   WifiOff,
   Battery,
-  Settings,
-  AlertTriangle,
   User,
   MoreVertical,
   Edit,
@@ -57,9 +54,7 @@ const DEVICE_STATUSES = [
 ];
 
 export function RpmDevicesPage() {
-  const { t } = useLanguage();
   const api = useApi();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
@@ -180,13 +175,13 @@ export function RpmDevicesPage() {
           )}
           <StatusBadge
             status={device.status}
-            colorMap={{
-              active: 'green',
-              inactive: 'gray',
-              maintenance: 'yellow',
-              lost: 'red',
-              retired: 'gray',
-              pending_activation: 'blue',
+            statusMap={{
+              active: { label: 'Active', variant: 'green' },
+              inactive: { label: 'Inactive', variant: 'gray' },
+              maintenance: { label: 'Maintenance', variant: 'yellow' },
+              lost: { label: 'Lost', variant: 'red' },
+              retired: { label: 'Retired', variant: 'gray' },
+              pending_activation: { label: 'Pending', variant: 'blue' },
             }}
           />
         </div>
@@ -352,8 +347,11 @@ export function RpmDevicesPage() {
         columns={columns}
         data={devices}
         isLoading={isLoading}
-        emptyMessage="No devices found"
-        pagination={pagination}
+        emptyTitle="No devices found"
+        rowKey={(device: any) => device.id}
+        currentPage={pagination?.page}
+        totalPages={pagination?.totalPages}
+        totalItems={pagination?.total}
         onPageChange={setPage}
       />
     </div>

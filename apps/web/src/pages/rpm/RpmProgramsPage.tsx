@@ -3,10 +3,9 @@
  * List and manage RPM monitoring programs
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useApi } from '@/hooks/useApi';
 import {
   PageHeader,
@@ -24,7 +23,6 @@ import {
   Scale,
   Activity,
   Clock,
-  DollarSign,
   MoreVertical,
   Edit,
   Trash2,
@@ -69,7 +67,6 @@ const getProgramIcon = (type: string) => {
 };
 
 export function RpmProgramsPage() {
-  const { t } = useLanguage();
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -210,10 +207,10 @@ export function RpmProgramsPage() {
       render: (program: any) => (
         <StatusBadge
           status={program.status}
-          colorMap={{
-            active: 'green',
-            inactive: 'gray',
-            archived: 'red',
+          statusMap={{
+            active: { label: 'Active', variant: 'green' },
+            inactive: { label: 'Inactive', variant: 'gray' },
+            archived: { label: 'Archived', variant: 'red' },
           }}
         />
       ),
@@ -333,8 +330,11 @@ export function RpmProgramsPage() {
         columns={columns}
         data={programs}
         isLoading={isLoading}
-        emptyMessage="No programs found"
-        pagination={pagination}
+        emptyTitle="No programs found"
+        rowKey={(program: any) => program.id}
+        currentPage={pagination?.page}
+        totalPages={pagination?.totalPages}
+        totalItems={pagination?.total}
         onPageChange={setPage}
       />
     </div>

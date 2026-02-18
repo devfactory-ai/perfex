@@ -3,16 +3,14 @@
  * List and manage patient enrollments in RPM programs
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useApi } from '@/hooks/useApi';
 import {
   PageHeader,
   DataTable,
   StatusBadge,
-  SearchInput,
   FilterDropdown,
 } from '@/components/healthcare';
 import {
@@ -31,7 +29,6 @@ import {
 } from 'lucide-react';
 
 export function RpmEnrollmentsPage() {
-  const { t } = useLanguage();
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -186,12 +183,12 @@ export function RpmEnrollmentsPage() {
       render: (enrollment: any) => (
         <StatusBadge
           status={enrollment.status}
-          colorMap={{
-            active: 'green',
-            paused: 'yellow',
-            completed: 'blue',
-            discontinued: 'red',
-            expired: 'gray',
+          statusMap={{
+            active: { label: 'Active', variant: 'green' },
+            paused: { label: 'Paused', variant: 'yellow' },
+            completed: { label: 'Completed', variant: 'blue' },
+            discontinued: { label: 'Discontinued', variant: 'red' },
+            expired: { label: 'Expired', variant: 'gray' },
           }}
         />
       ),
@@ -329,8 +326,11 @@ export function RpmEnrollmentsPage() {
         columns={columns}
         data={enrollments}
         isLoading={isLoading}
-        emptyMessage="No enrollments found"
-        pagination={pagination}
+        emptyTitle="No enrollments found"
+        rowKey={(enrollment: any) => enrollment.id}
+        currentPage={pagination?.page}
+        totalPages={pagination?.totalPages}
+        totalItems={pagination?.total}
         onPageChange={setPage}
       />
     </div>

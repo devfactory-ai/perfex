@@ -3,18 +3,19 @@
  * Unified header for all healthcare list/detail pages
  */
 
+import { type ReactNode, isValidElement } from 'react';
 import { type LucideIcon, ArrowLeft } from 'lucide-react';
 import { type HealthcareModule, getModuleTheme } from './theme';
 
 export interface PageHeaderProps {
   title: string;
-  subtitle?: React.ReactNode;
-  description?: React.ReactNode; // alias for subtitle
-  icon?: LucideIcon;
-  module: HealthcareModule;
-  actions?: React.ReactNode;
-  children?: React.ReactNode; // for additional action buttons
-  badge?: React.ReactNode; // optional badge next to title
+  subtitle?: ReactNode;
+  description?: ReactNode; // alias for subtitle
+  icon?: LucideIcon | ReactNode;
+  module?: HealthcareModule;
+  actions?: ReactNode;
+  children?: ReactNode; // for additional action buttons
+  badge?: ReactNode; // optional badge next to title
   onBack?: () => void;
   showBackButton?: boolean;
   backButton?: { label?: string; onClick: () => void };
@@ -24,7 +25,7 @@ export function PageHeader({
   title,
   subtitle,
   description,
-  icon: Icon,
+  icon,
   module,
   actions,
   children,
@@ -33,10 +34,35 @@ export function PageHeader({
   showBackButton,
   backButton
 }: PageHeaderProps) {
-  const theme = getModuleTheme(module);
+  const theme = module ? getModuleTheme(module) : null;
   const handleBack = onBack || backButton?.onClick;
   const shouldShowBack = showBackButton || !!onBack || !!backButton;
   const displaySubtitle = subtitle ?? description;
+
+  // Determine if icon is a component or already rendered element
+  const renderIcon = () => {
+    if (!icon) return null;
+
+    // If it's already a React element, render it as-is
+    if (isValidElement(icon)) {
+      return icon;
+    }
+
+    // Otherwise, treat it as a LucideIcon component
+    const IconComponent = icon as LucideIcon;
+    const iconClasses = theme
+      ? `h-6 w-6 ${theme.icon} dark:${theme.iconDark}`
+      : 'h-6 w-6 text-gray-600';
+    const wrapperClasses = theme
+      ? `p-2 rounded-lg ${theme.primaryLight}`
+      : 'p-2 rounded-lg bg-gray-100';
+
+    return (
+      <div className={wrapperClasses}>
+        <IconComponent className={iconClasses} />
+      </div>
+    );
+  };
 
   return (
     <div className="flex items-center justify-between">
@@ -51,11 +77,7 @@ export function PageHeader({
             </button>
           )}
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            {Icon && (
-              <div className={`p-2 rounded-lg ${theme.primaryLight}`}>
-                <Icon className={`h-6 w-6 ${theme.icon} dark:${theme.iconDark}`} />
-              </div>
-            )}
+            {renderIcon()}
             {title}
             {badge}
           </h1>

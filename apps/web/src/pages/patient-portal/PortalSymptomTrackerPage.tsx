@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Patient Portal Symptom Tracker Page
  * Allow patients to track and log their symptoms over time

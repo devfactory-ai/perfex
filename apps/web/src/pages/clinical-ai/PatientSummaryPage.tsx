@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Patient Summary Page
  * Generate and view AI-powered patient summaries

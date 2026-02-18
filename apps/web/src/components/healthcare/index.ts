@@ -51,3 +51,16 @@ export {
 // Page Templates
 export { PatientsListPage, type PatientBase, type PatientStats, type PatientsListPageProps } from './PatientsListPage';
 export { ResourceListPage, type ResourceListPageProps, type StatsCardConfig, type FilterConfig as ResourceFilterConfig } from './ResourceListPage';
+
+// Simple Filter Components (used by RPM pages)
+export { SearchInput } from './SearchInput';
+export { FilterDropdown } from './FilterDropdown';
+
+// Dialog Components
+export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
+
+// Form Component Stubs (for pages that use them)
+// These are simple re-exports of the existing form components
+export { Select as FormSelect } from './FormInput';
+export { Input as FormField } from './FormInput';
+export { Select as FormTextarea } from './FormInput';

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 /**
  * Error codes with French translations
  */
-export const ERROR_CODES = {
+export const ERROR_CODES: Record<string, string> = {
   // Authentication errors
   AUTH_INVALID_CREDENTIALS: 'Identifiants invalides',
   AUTH_TOKEN_EXPIRED: 'Session expirée, veuillez vous reconnecter',
@@ -44,7 +44,7 @@ export const ERROR_CODES = {
 
   // Generic
   UNKNOWN_ERROR: 'Une erreur inattendue s\'est produite',
-} as const;
+};
 
 export type ErrorCode = keyof typeof ERROR_CODES;
 

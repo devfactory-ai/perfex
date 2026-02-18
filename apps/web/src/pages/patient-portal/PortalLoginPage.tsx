@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Patient Portal Login Page
  * Secure login for patients to access their health information

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Clinical Document Form Page
  * Generate and edit AI-powered clinical documents

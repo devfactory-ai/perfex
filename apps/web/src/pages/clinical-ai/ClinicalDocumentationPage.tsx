@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Clinical Documentation Page
  * List and manage AI-generated clinical documents

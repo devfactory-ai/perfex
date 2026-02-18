@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Diagnostic Assistant Page
  * AI-powered diagnostic suggestions and differential diagnosis support

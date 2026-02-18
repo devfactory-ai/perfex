@@ -1,4 +1,34 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { api } from '@/lib/api';
+
+/**
+ * Simple API hook for making API calls
+ * Returns an object with get, post, patch, put, delete methods
+ */
+export function useApi() {
+  return useMemo(() => ({
+    get: async <T = any>(url: string): Promise<T> => {
+      const response = await api.get(url);
+      return response.data;
+    },
+    post: async <T = any>(url: string, data?: any): Promise<T> => {
+      const response = await api.post(url, data);
+      return response.data;
+    },
+    patch: async <T = any>(url: string, data?: any): Promise<T> => {
+      const response = await api.patch(url, data);
+      return response.data;
+    },
+    put: async <T = any>(url: string, data?: any): Promise<T> => {
+      const response = await api.put(url, data);
+      return response.data;
+    },
+    delete: async <T = any>(url: string): Promise<T> => {
+      const response = await api.delete(url);
+      return response.data;
+    },
+  }), []);
+}
 
 interface PaginatedResponse<T> {
   data: T[];
