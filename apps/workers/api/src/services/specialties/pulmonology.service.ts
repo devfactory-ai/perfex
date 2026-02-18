@@ -26,7 +26,7 @@ export interface PulmonologyPatient {
   environmentalExposures: EnvironmentalExposure[];
   vaccinations: { flu: Date[]; pneumococcal: Date[] };
   actionPlans: ActionPlan[];
-  inhaler Technique: InhalerTechnique[];
+  inhalerTechnique: InhalerTechnique[];
   sixMinuteWalkTests: SixMinuteWalkTest[];
   createdAt: Date;
   updatedAt: Date;
