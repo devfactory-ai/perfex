@@ -41,6 +41,7 @@ export const DEFAULT_CSRF_CONFIG: CsrfConfig = {
     '/api/v1/auth/passwordless/verify',
     '/api/v1/health',
     '/api/v1/test',
+    '/api/v1/seed',
   ],
 };
 
