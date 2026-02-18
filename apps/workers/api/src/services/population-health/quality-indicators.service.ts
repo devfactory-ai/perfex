@@ -9,7 +9,8 @@ import {
   qualityIndicators,
   qualityMeasurements,
   iqssReports,
-} from '@perfex/database/schema';
+} from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface CreateIndicatorInput {
   indicatorCode: string;
@@ -57,7 +58,7 @@ export class QualityIndicatorsService {
     userId: string,
     input: CreateIndicatorInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [indicator] = await db
       .insert(qualityIndicators)
@@ -95,7 +96,7 @@ export class QualityIndicatorsService {
    * Get indicator by ID
    */
   static async getIndicatorById(env: Env, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [indicator] = await db
       .select()
@@ -115,7 +116,7 @@ export class QualityIndicatorsService {
     module?: string,
     category?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const conditions = [
       sql`(${qualityIndicators.organizationId} = ${organizationId} OR ${qualityIndicators.organizationId} IS NULL)`,
@@ -156,7 +157,7 @@ export class QualityIndicatorsService {
     indicatorId: string,
     input: MeasurementInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get indicator details
     const indicator = await this.getIndicatorById(env, indicatorId);
@@ -292,7 +293,7 @@ export class QualityIndicatorsService {
     indicatorId: string,
     limit = 12
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const measurements = await db
       .select()
@@ -347,7 +348,7 @@ export class QualityIndicatorsService {
     validatorId: string,
     notes?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [measurement] = await db
       .update(qualityMeasurements)
@@ -384,7 +385,7 @@ export class QualityIndicatorsService {
     reportYear: number,
     reportType: 'dialysis' | 'cardiology' | 'ophthalmology' | 'general'
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get all measurements for the year for relevant indicators
     const yearStart = new Date(reportYear, 0, 1);
@@ -472,7 +473,7 @@ export class QualityIndicatorsService {
     reportYear: number,
     reportType: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [report] = await db
       .select()
@@ -499,7 +500,7 @@ export class QualityIndicatorsService {
     reportId: string,
     userId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [report] = await db
       .update(iqssReports)
@@ -528,7 +529,7 @@ export class QualityIndicatorsService {
     organizationId: string,
     module?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get all active indicators
     const indicators = await this.listIndicators(env, organizationId, undefined, module);

@@ -5,7 +5,8 @@
 
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { octAnalysis, imagingAnalysis } from '@perfex/database/schema';
+import { octAnalysis, imagingAnalysis } from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface OctAnalysisInput {
   imagingAnalysisId: string;
@@ -60,7 +61,7 @@ export class OctAnalysisService {
     organizationId: string,
     input: OctAnalysisInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .insert(octAnalysis)
@@ -81,7 +82,7 @@ export class OctAnalysisService {
    * Get OCT analysis by ID
    */
   static async getById(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -100,7 +101,7 @@ export class OctAnalysisService {
    * Get OCT analysis by imaging analysis ID
    */
   static async getByImagingId(env: Env, organizationId: string, imagingAnalysisId: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -124,7 +125,7 @@ export class OctAnalysisService {
     id: string,
     findings: OctAiFindings
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(octAnalysis)
@@ -145,7 +146,6 @@ export class OctAnalysisService {
         atrophyPresent: findings.atrophyPresent,
         cnvPresent: findings.cnvPresent,
         amdStage: findings.amdStage as any,
-        drSeverity: findings.drSeverity as any,
         dmePresent: findings.dmePresent,
         glaucomaRisk: findings.glaucomaRisk as any,
         updatedAt: new Date(),
@@ -171,7 +171,7 @@ export class OctAnalysisService {
     eye?: 'od' | 'os',
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const conditions = [
       eq(octAnalysis.organizationId, organizationId),
@@ -245,7 +245,7 @@ export class OctAnalysisService {
     }
 
     // Update current analysis with comparison
-    const db = getDb(env);
+    const db = getDb();
     await db
       .update(octAnalysis)
       .set({
@@ -297,7 +297,7 @@ export class OctAnalysisService {
 Respond ONLY with the JSON object.`;
 
     try {
-      const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      const response = await (ai as any).run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1000,
       });

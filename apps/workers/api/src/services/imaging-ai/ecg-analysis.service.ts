@@ -5,7 +5,8 @@
 
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { ecgAnalysis, imagingAnalysis } from '@perfex/database/schema';
+import { ecgAnalysis, imagingAnalysis } from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface EcgAnalysisInput {
   imagingAnalysisId: string;
@@ -49,7 +50,7 @@ export class EcgAnalysisService {
     organizationId: string,
     input: EcgAnalysisInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .insert(ecgAnalysis)
@@ -68,7 +69,7 @@ export class EcgAnalysisService {
    * Get ECG analysis by ID
    */
   static async getById(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -87,7 +88,7 @@ export class EcgAnalysisService {
    * Get ECG analysis by imaging analysis ID
    */
   static async getByImagingId(env: Env, organizationId: string, imagingAnalysisId: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -111,7 +112,7 @@ export class EcgAnalysisService {
     id: string,
     findings: EcgAiFindings
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Determine status values
     const prStatus = findings.prInterval
@@ -191,7 +192,7 @@ export class EcgAnalysisService {
     patientId: string,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const analyses = await db
       .select({
@@ -222,7 +223,7 @@ export class EcgAnalysisService {
     previousEcgId: string,
     changes: any
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(ecgAnalysis)
@@ -283,7 +284,7 @@ export class EcgAnalysisService {
 Respond ONLY with the JSON object, no additional text.`;
 
     try {
-      const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      const response = await (ai as any).run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1000,
       });

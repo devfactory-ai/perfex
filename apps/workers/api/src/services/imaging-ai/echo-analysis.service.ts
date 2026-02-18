@@ -5,7 +5,8 @@
 
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { echoAnalysis, imagingAnalysis } from '@perfex/database/schema';
+import { echoAnalysis, imagingAnalysis } from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface EchoAnalysisInput {
   imagingAnalysisId: string;
@@ -72,7 +73,7 @@ export class EchoAnalysisService {
     organizationId: string,
     input: EchoAnalysisInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .insert(echoAnalysis)
@@ -92,7 +93,7 @@ export class EchoAnalysisService {
    * Get Echo analysis by ID
    */
   static async getById(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -111,7 +112,7 @@ export class EchoAnalysisService {
    * Get Echo analysis by imaging analysis ID
    */
   static async getByImagingId(env: Env, organizationId: string, imagingAnalysisId: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -135,7 +136,7 @@ export class EchoAnalysisService {
     id: string,
     findings: EchoAiFindings
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(echoAnalysis)
@@ -190,7 +191,7 @@ export class EchoAnalysisService {
     patientId: string,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const analyses = await db
       .select({
@@ -252,7 +253,7 @@ export class EchoAnalysisService {
     }
 
     // Update with comparison
-    const db = getDb(env);
+    const db = getDb();
     await db
       .update(echoAnalysis)
       .set({
@@ -310,7 +311,7 @@ export class EchoAnalysisService {
 Respond ONLY with the JSON object.`;
 
     try {
-      const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      const response = await (ai as any).run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1200,
       });

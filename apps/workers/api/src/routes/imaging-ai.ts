@@ -4,19 +4,19 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/rbac';
+import { requireAuth, requirePermission } from '../middleware/auth';
 import {
   ImagingService,
   EcgAnalysisService,
   OctAnalysisService,
   EchoAnalysisService,
 } from '../services/imaging-ai';
+import type { Env } from '../types';
 
 const imagingAi = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware to all routes
-imagingAi.use('/*', authMiddleware);
+imagingAi.use('/*', requireAuth);
 
 // ============================================================================
 // IMAGING ANALYSIS - Core
@@ -25,14 +25,14 @@ imagingAi.use('/*', authMiddleware);
 /**
  * Create new imaging analysis
  */
-imagingAi.post('/analysis', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/analysis', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const analysis = await ImagingService.createAnalysis(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       user.id,
       body
     );
@@ -47,17 +47,17 @@ imagingAi.post('/analysis', requirePermission('imaging', 'write'), async (c) => 
 /**
  * List imaging analyses
  */
-imagingAi.get('/analysis', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/analysis', requirePermission('imaging:read'), async (c) => {
   try {
-    const user = c.get('user');
-    const { modality, status, patientId, page, limit } = c.req.query();
+    const { imageType, analysisStatus, reviewStatus, patientId, page, limit } = c.req.query();
 
     const result = await ImagingService.list(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       {
-        modality,
-        status,
+        imageType,
+        analysisStatus,
+        reviewStatus,
         patientId,
       },
       parseInt(page || '1'),
@@ -74,12 +74,12 @@ imagingAi.get('/analysis', requirePermission('imaging', 'read'), async (c) => {
 /**
  * Get imaging analysis by ID
  */
-imagingAi.get('/analysis/:id', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/analysis/:id', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
-    const analysis = await ImagingService.getById(c.env, user.organizationId, id);
+    const analysis = await ImagingService.getById(c.env, c.get('realOrganizationId')!, id);
     if (!analysis) {
       return c.json({ success: false, error: 'Imaging analysis not found' }, 404);
     }
@@ -94,90 +94,99 @@ imagingAi.get('/analysis/:id', requirePermission('imaging', 'read'), async (c) =
 /**
  * Start AI analysis
  */
-imagingAi.post('/analysis/:id/analyze', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/analysis/:id/analyze', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
     // Get analysis record
-    const analysis = await ImagingService.getById(c.env, user.organizationId, id);
+    const analysis = await ImagingService.getById(c.env, c.get('realOrganizationId')!, id);
     if (!analysis) {
       return c.json({ success: false, error: 'Imaging analysis not found' }, 404);
     }
 
     // Mark as processing
-    await ImagingService.startAnalysis(c.env, user.organizationId, id);
+    await ImagingService.startAnalysis(c.env, c.get('realOrganizationId')!, id);
 
     // Run appropriate AI analysis based on modality
     let aiFindings: any = null;
     let modalityAnalysis: any = null;
 
     try {
-      switch (analysis.modality) {
+      switch (analysis.imageType) {
         case 'ecg':
-          modalityAnalysis = await EcgAnalysisService.getByImagingId(c.env, user.organizationId, id);
+          modalityAnalysis = await EcgAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, id);
           if (!modalityAnalysis) {
-            modalityAnalysis = await EcgAnalysisService.create(c.env, user.organizationId, {
+            modalityAnalysis = await EcgAnalysisService.create(c.env, c.get('realOrganizationId')!, {
               imagingAnalysisId: id,
+              ecgType: '12_lead',
             });
           }
           aiFindings = await EcgAnalysisService.analyzeEcg(
             c.env,
-            user.organizationId,
+            c.get('realOrganizationId')!,
             id,
-            analysis.studyType || 'standard_12_lead',
             analysis.imageUrl || ''
           );
-          await EcgAnalysisService.updateWithFindings(c.env, user.organizationId, modalityAnalysis.id, aiFindings);
+          await EcgAnalysisService.updateWithFindings(c.env, c.get('realOrganizationId')!, modalityAnalysis.id, aiFindings);
           break;
 
         case 'oct':
-          modalityAnalysis = await OctAnalysisService.getByImagingId(c.env, user.organizationId, id);
+          modalityAnalysis = await OctAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, id);
           if (!modalityAnalysis) {
-            modalityAnalysis = await OctAnalysisService.create(c.env, user.organizationId, {
+            modalityAnalysis = await OctAnalysisService.create(c.env, c.get('realOrganizationId')!, {
               imagingAnalysisId: id,
+              eye: 'od',
+              scanType: 'macular_cube',
             });
           }
           aiFindings = await OctAnalysisService.analyzeOct(
             c.env,
-            user.organizationId,
+            c.get('realOrganizationId')!,
             id,
-            analysis.studyType || 'macular_cube',
+            (analysis.imageSubtype as string) || 'macular_cube',
             analysis.imageUrl || ''
           );
-          await OctAnalysisService.updateWithFindings(c.env, user.organizationId, modalityAnalysis.id, aiFindings);
+          await OctAnalysisService.updateWithFindings(c.env, c.get('realOrganizationId')!, modalityAnalysis.id, aiFindings);
           break;
 
-        case 'echo':
-          modalityAnalysis = await EchoAnalysisService.getByImagingId(c.env, user.organizationId, id);
+        case 'echocardiogram':
+          modalityAnalysis = await EchoAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, id);
           if (!modalityAnalysis) {
-            modalityAnalysis = await EchoAnalysisService.create(c.env, user.organizationId, {
+            modalityAnalysis = await EchoAnalysisService.create(c.env, c.get('realOrganizationId')!, {
               imagingAnalysisId: id,
+              studyType: 'tte',
             });
           }
           aiFindings = await EchoAnalysisService.analyzeEcho(
             c.env,
-            user.organizationId,
+            c.get('realOrganizationId')!,
             id,
-            analysis.studyType || 'tte',
+            (analysis.imageSubtype as string) || 'tte',
             analysis.imageUrl || ''
           );
-          await EchoAnalysisService.updateWithFindings(c.env, user.organizationId, modalityAnalysis.id, aiFindings);
+          await EchoAnalysisService.updateWithFindings(c.env, c.get('realOrganizationId')!, modalityAnalysis.id, aiFindings);
           break;
 
         default:
-          throw new Error(`Unsupported modality: ${analysis.modality}`);
+          throw new Error(`Unsupported image type: ${analysis.imageType}`);
       }
 
       // Complete analysis
       const completed = await ImagingService.completeAnalysis(
         c.env,
-        user.organizationId,
+        c.get('realOrganizationId')!,
         id,
-        aiFindings.aiSummary || 'Analysis complete',
-        aiFindings.majorFindings || [],
-        aiFindings.recommendations || [],
-        aiFindings.urgencyScore || 1
+        {
+          aiModel: 'llama-3.1-8b-instruct',
+          aiFindings: aiFindings,
+          aiConfidence: 0.85,
+          aiSummary: aiFindings.aiSummary || aiFindings.aiInterpretation || 'Analysis complete',
+          hasAbnormality: aiFindings.urgencyScore > 3,
+          criticalFinding: aiFindings.urgencyScore >= 8,
+          requiresUrgentReview: aiFindings.urgencyScore >= 7,
+          urgencyLevel: aiFindings.urgencyScore >= 8 ? 'stat' : aiFindings.urgencyScore >= 6 ? 'urgent' : aiFindings.urgencyScore >= 4 ? 'priority' : 'routine',
+        }
       );
 
       return c.json({
@@ -189,7 +198,7 @@ imagingAi.post('/analysis/:id/analyze', requirePermission('imaging', 'write'), a
         },
       });
     } catch (aiError: any) {
-      await ImagingService.failAnalysis(c.env, user.organizationId, id, aiError.message);
+      await ImagingService.failAnalysis(c.env, c.get('realOrganizationId')!, id, aiError.message);
       throw aiError;
     }
   } catch (error: any) {
@@ -201,7 +210,7 @@ imagingAi.post('/analysis/:id/analyze', requirePermission('imaging', 'write'), a
 /**
  * Submit physician review
  */
-imagingAi.post('/analysis/:id/review', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/analysis/:id/review', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -209,13 +218,15 @@ imagingAi.post('/analysis/:id/review', requirePermission('imaging', 'write'), as
 
     const analysis = await ImagingService.submitReview(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       user.id,
-      body.findings,
-      body.impression,
-      body.recommendations,
-      body.agreesWithAi
+      {
+        reviewerAgreement: body.agreesWithAi ? 'agree' : 'partially_agree',
+        physicianFindings: body.findings,
+        physicianDiagnosis: body.impression,
+        physicianNotes: body.recommendations,
+      }
     );
 
     return c.json({ success: true, data: analysis });
@@ -228,12 +239,12 @@ imagingAi.post('/analysis/:id/review', requirePermission('imaging', 'write'), as
 /**
  * Sign/finalize analysis
  */
-imagingAi.post('/analysis/:id/sign', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/analysis/:id/sign', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
-    const analysis = await ImagingService.signAnalysis(c.env, user.organizationId, id, user.id);
+    const analysis = await ImagingService.signAnalysis(c.env, c.get('realOrganizationId')!, id, user.id);
     return c.json({ success: true, data: analysis });
   } catch (error: any) {
     console.error('Sign analysis error:', error);
@@ -244,14 +255,14 @@ imagingAi.post('/analysis/:id/sign', requirePermission('imaging', 'write'), asyn
 /**
  * Get urgent reviews
  */
-imagingAi.get('/urgent', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/urgent', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { limit } = c.req.query();
 
     const analyses = await ImagingService.getUrgentReviews(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       parseInt(limit || '20')
     );
 
@@ -265,7 +276,7 @@ imagingAi.get('/urgent', requirePermission('imaging', 'read'), async (c) => {
 /**
  * Get patient imaging history
  */
-imagingAi.get('/patient/:patientId/history', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/patient/:patientId/history', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
@@ -273,7 +284,7 @@ imagingAi.get('/patient/:patientId/history', requirePermission('imaging', 'read'
 
     const analyses = await ImagingService.getPatientHistory(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId,
       modality,
       parseInt(limit || '20')
@@ -289,16 +300,20 @@ imagingAi.get('/patient/:patientId/history', requirePermission('imaging', 'read'
 /**
  * Compare with previous
  */
-imagingAi.get('/analysis/:id/compare/:previousId', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.post('/analysis/:id/compare/:previousId', requirePermission('imaging:write'), async (c) => {
   try {
-    const user = c.get('user');
     const { id, previousId } = c.req.param();
+    const body = await c.req.json();
 
     const comparison = await ImagingService.compareWithPrevious(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
-      previousId
+      previousId,
+      {
+        progressionStatus: body.progressionStatus || 'stable',
+        progressionNotes: body.progressionNotes,
+      }
     );
 
     return c.json({ success: true, data: comparison });
@@ -311,11 +326,11 @@ imagingAi.get('/analysis/:id/compare/:previousId', requirePermission('imaging', 
 /**
  * Get dashboard statistics
  */
-imagingAi.get('/dashboard/stats', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/dashboard/stats', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
 
-    const stats = await ImagingService.getDashboardStats(c.env, user.organizationId);
+    const stats = await ImagingService.getDashboardStats(c.env, c.get('realOrganizationId')!);
     return c.json({ success: true, data: stats });
   } catch (error: any) {
     console.error('Get dashboard stats error:', error);
@@ -330,12 +345,12 @@ imagingAi.get('/dashboard/stats', requirePermission('imaging', 'read'), async (c
 /**
  * Get ECG analysis by imaging ID
  */
-imagingAi.get('/ecg/:imagingId', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/ecg/:imagingId', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { imagingId } = c.req.param();
 
-    const analysis = await EcgAnalysisService.getByImagingId(c.env, user.organizationId, imagingId);
+    const analysis = await EcgAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, imagingId);
     if (!analysis) {
       return c.json({ success: false, error: 'ECG analysis not found' }, 404);
     }
@@ -350,7 +365,7 @@ imagingAi.get('/ecg/:imagingId', requirePermission('imaging', 'read'), async (c)
 /**
  * Get patient ECG history
  */
-imagingAi.get('/ecg/patient/:patientId/history', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/ecg/patient/:patientId/history', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
@@ -358,7 +373,7 @@ imagingAi.get('/ecg/patient/:patientId/history', requirePermission('imaging', 'r
 
     const analyses = await EcgAnalysisService.getPatientHistory(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId,
       parseInt(limit || '20')
     );
@@ -373,16 +388,17 @@ imagingAi.get('/ecg/patient/:patientId/history', requirePermission('imaging', 'r
 /**
  * Compare ECG with previous
  */
-imagingAi.get('/ecg/:id/compare/:previousId', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.post('/ecg/:id/compare/:previousId', requirePermission('imaging:write'), async (c) => {
   try {
-    const user = c.get('user');
     const { id, previousId } = c.req.param();
+    const body = await c.req.json();
 
     const comparison = await EcgAnalysisService.compareWithPrevious(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
-      previousId
+      previousId,
+      body.changes || {}
     );
 
     return c.json({ success: true, data: comparison });
@@ -399,12 +415,12 @@ imagingAi.get('/ecg/:id/compare/:previousId', requirePermission('imaging', 'read
 /**
  * Get OCT analysis by imaging ID
  */
-imagingAi.get('/oct/:imagingId', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/oct/:imagingId', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { imagingId } = c.req.param();
 
-    const analysis = await OctAnalysisService.getByImagingId(c.env, user.organizationId, imagingId);
+    const analysis = await OctAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, imagingId);
     if (!analysis) {
       return c.json({ success: false, error: 'OCT analysis not found' }, 404);
     }
@@ -419,7 +435,7 @@ imagingAi.get('/oct/:imagingId', requirePermission('imaging', 'read'), async (c)
 /**
  * Get patient OCT progression
  */
-imagingAi.get('/oct/patient/:patientId/progression', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/oct/patient/:patientId/progression', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
@@ -427,7 +443,7 @@ imagingAi.get('/oct/patient/:patientId/progression', requirePermission('imaging'
 
     const progression = await OctAnalysisService.getPatientProgression(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId,
       eye as 'od' | 'os' | undefined,
       parseInt(limit || '10')
@@ -443,14 +459,14 @@ imagingAi.get('/oct/patient/:patientId/progression', requirePermission('imaging'
 /**
  * Calculate OCT progression
  */
-imagingAi.post('/oct/:id/progression/:previousId', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/oct/:id/progression/:previousId', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id, previousId } = c.req.param();
 
     const progression = await OctAnalysisService.calculateProgression(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       previousId
     );
@@ -469,12 +485,12 @@ imagingAi.post('/oct/:id/progression/:previousId', requirePermission('imaging', 
 /**
  * Get Echo analysis by imaging ID
  */
-imagingAi.get('/echo/:imagingId', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/echo/:imagingId', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { imagingId } = c.req.param();
 
-    const analysis = await EchoAnalysisService.getByImagingId(c.env, user.organizationId, imagingId);
+    const analysis = await EchoAnalysisService.getByImagingId(c.env, c.get('realOrganizationId')!, imagingId);
     if (!analysis) {
       return c.json({ success: false, error: 'Echo analysis not found' }, 404);
     }
@@ -489,7 +505,7 @@ imagingAi.get('/echo/:imagingId', requirePermission('imaging', 'read'), async (c
 /**
  * Get patient Echo history
  */
-imagingAi.get('/echo/patient/:patientId/history', requirePermission('imaging', 'read'), async (c) => {
+imagingAi.get('/echo/patient/:patientId/history', requirePermission('imaging:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
@@ -497,7 +513,7 @@ imagingAi.get('/echo/patient/:patientId/history', requirePermission('imaging', '
 
     const analyses = await EchoAnalysisService.getPatientHistory(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId,
       parseInt(limit || '20')
     );
@@ -512,14 +528,14 @@ imagingAi.get('/echo/patient/:patientId/history', requirePermission('imaging', '
 /**
  * Calculate Echo change
  */
-imagingAi.post('/echo/:id/change/:previousId', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/echo/:id/change/:previousId', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id, previousId } = c.req.param();
 
     const change = await EchoAnalysisService.calculateChange(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       previousId
     );
@@ -538,7 +554,7 @@ imagingAi.post('/echo/:id/change/:previousId', requirePermission('imaging', 'wri
 /**
  * Create imaging report
  */
-imagingAi.post('/analysis/:id/report', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/analysis/:id/report', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -546,14 +562,21 @@ imagingAi.post('/analysis/:id/report', requirePermission('imaging', 'write'), as
 
     const report = await ImagingService.createReport(
       c.env,
-      user.organizationId,
-      id,
+      c.get('realOrganizationId')!,
       user.id,
-      body.reportType,
-      body.reportContent,
-      body.findings,
-      body.impression,
-      body.recommendations
+      id,
+      {
+        title: body.title || 'Imaging Report',
+        reportType: body.reportType || 'final',
+        clinicalHistory: body.clinicalHistory,
+        indication: body.indication,
+        technique: body.technique,
+        comparison: body.comparison,
+        findings: body.findings,
+        impression: body.impression,
+        recommendations: body.recommendations,
+        generatedBy: 'physician',
+      }
     );
 
     return c.json({ success: true, data: report }, 201);
@@ -566,12 +589,19 @@ imagingAi.post('/analysis/:id/report', requirePermission('imaging', 'write'), as
 /**
  * Sign imaging report
  */
-imagingAi.post('/reports/:reportId/sign', requirePermission('imaging', 'write'), async (c) => {
+imagingAi.post('/reports/:reportId/sign', requirePermission('imaging:write'), async (c) => {
   try {
     const user = c.get('user');
     const { reportId } = c.req.param();
+    const body = await c.req.json().catch(() => ({}));
 
-    const report = await ImagingService.signReport(c.env, user.organizationId, reportId, user.id);
+    const report = await ImagingService.signReport(
+      c.env,
+      c.get('realOrganizationId')!,
+      reportId,
+      user.id,
+      body.signatureMethod || 'electronic'
+    );
     return c.json({ success: true, data: report });
   } catch (error: any) {
     console.error('Sign report error:', error);

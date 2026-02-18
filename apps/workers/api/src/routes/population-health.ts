@@ -4,18 +4,18 @@
  */
 
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/rbac';
+import { requireAuth, requirePermission } from '../middleware/auth';
 import {
   RiskScoreService,
   CohortService,
   QualityIndicatorsService,
 } from '../services/population-health';
+import type { Env } from '../types';
 
 const populationHealth = new Hono<{ Bindings: Env }>();
 
 // Apply auth middleware to all routes
-populationHealth.use('/*', authMiddleware);
+populationHealth.use('/*', requireAuth);
 
 // ============================================================================
 // RISK MODELS & SCORES
@@ -24,14 +24,14 @@ populationHealth.use('/*', authMiddleware);
 /**
  * Create risk model
  */
-populationHealth.post('/risk-models', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/risk-models', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const model = await RiskScoreService.createModel(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       user.id,
       body
     );
@@ -46,14 +46,14 @@ populationHealth.post('/risk-models', requirePermission('analytics', 'write'), a
 /**
  * List risk models
  */
-populationHealth.get('/risk-models', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-models', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { status, module } = c.req.query();
 
     const models = await RiskScoreService.listModels(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       status,
       module
     );
@@ -68,7 +68,7 @@ populationHealth.get('/risk-models', requirePermission('analytics', 'read'), asy
 /**
  * Get risk model by ID
  */
-populationHealth.get('/risk-models/:id', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-models/:id', requirePermission('analytics:read'), async (c) => {
   try {
     const { id } = c.req.param();
 
@@ -87,7 +87,7 @@ populationHealth.get('/risk-models/:id', requirePermission('analytics', 'read'),
 /**
  * Activate risk model
  */
-populationHealth.post('/risk-models/:id/activate', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/risk-models/:id/activate', requirePermission('analytics:write'), async (c) => {
   try {
     const { id } = c.req.param();
 
@@ -102,7 +102,7 @@ populationHealth.post('/risk-models/:id/activate', requirePermission('analytics'
 /**
  * Get model performance metrics
  */
-populationHealth.get('/risk-models/:id/performance', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-models/:id/performance', requirePermission('analytics:read'), async (c) => {
   try {
     const { id } = c.req.param();
 
@@ -117,14 +117,14 @@ populationHealth.get('/risk-models/:id/performance', requirePermission('analytic
 /**
  * Calculate risk score for patient
  */
-populationHealth.post('/risk-scores/calculate', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/risk-scores/calculate', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const score = await RiskScoreService.calculateRiskScore(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       body.patientId,
       body.modelId
     );
@@ -139,7 +139,7 @@ populationHealth.post('/risk-scores/calculate', requirePermission('analytics', '
 /**
  * Get patient risk scores
  */
-populationHealth.get('/risk-scores/patient/:patientId', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-scores/patient/:patientId', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
@@ -147,7 +147,7 @@ populationHealth.get('/risk-scores/patient/:patientId', requirePermission('analy
 
     const scores = await RiskScoreService.getPatientScores(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId,
       parseInt(limit || '20')
     );
@@ -162,14 +162,14 @@ populationHealth.get('/risk-scores/patient/:patientId', requirePermission('analy
 /**
  * Get high risk patients
  */
-populationHealth.get('/risk-scores/high-risk', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-scores/high-risk', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { modelId, limit } = c.req.query();
 
     const patients = await RiskScoreService.getHighRiskPatients(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       modelId,
       parseInt(limit || '50')
     );
@@ -184,14 +184,14 @@ populationHealth.get('/risk-scores/high-risk', requirePermission('analytics', 'r
 /**
  * Get risk distribution
  */
-populationHealth.get('/risk-scores/distribution/:modelId', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/risk-scores/distribution/:modelId', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { modelId } = c.req.param();
 
     const distribution = await RiskScoreService.getRiskDistribution(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       modelId
     );
 
@@ -205,7 +205,7 @@ populationHealth.get('/risk-scores/distribution/:modelId', requirePermission('an
 /**
  * Record outcome for validation
  */
-populationHealth.post('/risk-scores/:scoreId/outcome', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/risk-scores/:scoreId/outcome', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { scoreId } = c.req.param();
@@ -213,7 +213,7 @@ populationHealth.post('/risk-scores/:scoreId/outcome', requirePermission('analyt
 
     const updated = await RiskScoreService.recordOutcome(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       scoreId,
       body
     );
@@ -232,14 +232,14 @@ populationHealth.post('/risk-scores/:scoreId/outcome', requirePermission('analyt
 /**
  * Create cohort
  */
-populationHealth.post('/cohorts', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/cohorts', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const cohort = await CohortService.create(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       user.id,
       body
     );
@@ -254,14 +254,14 @@ populationHealth.post('/cohorts', requirePermission('analytics', 'write'), async
 /**
  * List cohorts
  */
-populationHealth.get('/cohorts', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/cohorts', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { cohortType, module, page, limit } = c.req.query();
 
     const result = await CohortService.list(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       cohortType,
       module,
       parseInt(page || '1'),
@@ -278,12 +278,12 @@ populationHealth.get('/cohorts', requirePermission('analytics', 'read'), async (
 /**
  * Get cohort by ID
  */
-populationHealth.get('/cohorts/:id', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/cohorts/:id', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
-    const cohort = await CohortService.getById(c.env, user.organizationId, id);
+    const cohort = await CohortService.getById(c.env, c.get('realOrganizationId')!, id);
     if (!cohort) {
       return c.json({ success: false, error: 'Cohort not found' }, 404);
     }
@@ -298,13 +298,13 @@ populationHealth.get('/cohorts/:id', requirePermission('analytics', 'read'), asy
 /**
  * Update cohort
  */
-populationHealth.put('/cohorts/:id', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.put('/cohorts/:id', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
     const body = await c.req.json();
 
-    const cohort = await CohortService.update(c.env, user.organizationId, id, body);
+    const cohort = await CohortService.update(c.env, c.get('realOrganizationId')!, id, body);
     return c.json({ success: true, data: cohort });
   } catch (error: any) {
     console.error('Update cohort error:', error);
@@ -315,12 +315,12 @@ populationHealth.put('/cohorts/:id', requirePermission('analytics', 'write'), as
 /**
  * Refresh cohort membership
  */
-populationHealth.post('/cohorts/:id/refresh', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/cohorts/:id/refresh', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
-    const result = await CohortService.refreshCohort(c.env, user.organizationId, id);
+    const result = await CohortService.refreshCohort(c.env, c.get('realOrganizationId')!, id);
     return c.json({ success: true, data: result });
   } catch (error: any) {
     console.error('Refresh cohort error:', error);
@@ -331,7 +331,7 @@ populationHealth.post('/cohorts/:id/refresh', requirePermission('analytics', 'wr
 /**
  * Get cohort members
  */
-populationHealth.get('/cohorts/:id/members', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/cohorts/:id/members', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -339,7 +339,7 @@ populationHealth.get('/cohorts/:id/members', requirePermission('analytics', 'rea
 
     const result = await CohortService.getMembers(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       parseInt(page || '1'),
       parseInt(limit || '50')
@@ -355,7 +355,7 @@ populationHealth.get('/cohorts/:id/members', requirePermission('analytics', 'rea
 /**
  * Add member to cohort
  */
-populationHealth.post('/cohorts/:id/members', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/cohorts/:id/members', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -363,7 +363,7 @@ populationHealth.post('/cohorts/:id/members', requirePermission('analytics', 'wr
 
     const membership = await CohortService.addMember(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       body.patientId,
       user.id
@@ -379,13 +379,13 @@ populationHealth.post('/cohorts/:id/members', requirePermission('analytics', 'wr
 /**
  * Remove member from cohort
  */
-populationHealth.delete('/cohorts/:id/members/:patientId', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.delete('/cohorts/:id/members/:patientId', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id, patientId } = c.req.param();
     const { reason } = c.req.query();
 
-    await CohortService.removeMember(c.env, user.organizationId, id, patientId, reason);
+    await CohortService.removeMember(c.env, c.get('realOrganizationId')!, id, patientId, reason);
     return c.json({ success: true });
   } catch (error: any) {
     console.error('Remove cohort member error:', error);
@@ -396,12 +396,12 @@ populationHealth.delete('/cohorts/:id/members/:patientId', requirePermission('an
 /**
  * Create cohort snapshot
  */
-populationHealth.post('/cohorts/:id/snapshot', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/cohorts/:id/snapshot', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
-    const snapshot = await CohortService.createSnapshot(c.env, user.organizationId, id, 'manual');
+    const snapshot = await CohortService.createSnapshot(c.env, c.get('realOrganizationId')!, id, 'manual');
     return c.json({ success: true, data: snapshot }, 201);
   } catch (error: any) {
     console.error('Create snapshot error:', error);
@@ -412,7 +412,7 @@ populationHealth.post('/cohorts/:id/snapshot', requirePermission('analytics', 'w
 /**
  * Get cohort snapshots
  */
-populationHealth.get('/cohorts/:id/snapshots', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/cohorts/:id/snapshots', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -420,7 +420,7 @@ populationHealth.get('/cohorts/:id/snapshots', requirePermission('analytics', 'r
 
     const snapshots = await CohortService.getSnapshots(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       parseInt(limit || '20')
     );
@@ -435,14 +435,14 @@ populationHealth.get('/cohorts/:id/snapshots', requirePermission('analytics', 'r
 /**
  * Get patient cohorts
  */
-populationHealth.get('/patient/:patientId/cohorts', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/patient/:patientId/cohorts', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { patientId } = c.req.param();
 
     const cohorts = await CohortService.getPatientCohorts(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       patientId
     );
 
@@ -460,14 +460,14 @@ populationHealth.get('/patient/:patientId/cohorts', requirePermission('analytics
 /**
  * Create quality indicator
  */
-populationHealth.post('/quality-indicators', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/quality-indicators', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const indicator = await QualityIndicatorsService.createIndicator(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       user.id,
       body
     );
@@ -482,14 +482,14 @@ populationHealth.post('/quality-indicators', requirePermission('analytics', 'wri
 /**
  * List quality indicators
  */
-populationHealth.get('/quality-indicators', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/quality-indicators', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { source, module, category } = c.req.query();
 
     const indicators = await QualityIndicatorsService.listIndicators(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       source,
       module,
       category
@@ -505,7 +505,7 @@ populationHealth.get('/quality-indicators', requirePermission('analytics', 'read
 /**
  * Get quality indicator by ID
  */
-populationHealth.get('/quality-indicators/:id', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/quality-indicators/:id', requirePermission('analytics:read'), async (c) => {
   try {
     const { id } = c.req.param();
 
@@ -524,7 +524,7 @@ populationHealth.get('/quality-indicators/:id', requirePermission('analytics', '
 /**
  * Record measurement for indicator
  */
-populationHealth.post('/quality-indicators/:id/measurements', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/quality-indicators/:id/measurements', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -532,7 +532,7 @@ populationHealth.post('/quality-indicators/:id/measurements', requirePermission(
 
     const measurement = await QualityIndicatorsService.recordMeasurement(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       {
         measurementPeriod: body.measurementPeriod,
@@ -554,7 +554,7 @@ populationHealth.post('/quality-indicators/:id/measurements', requirePermission(
 /**
  * Get indicator measurements
  */
-populationHealth.get('/quality-indicators/:id/measurements', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/quality-indicators/:id/measurements', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -562,7 +562,7 @@ populationHealth.get('/quality-indicators/:id/measurements', requirePermission('
 
     const measurements = await QualityIndicatorsService.getIndicatorMeasurements(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       parseInt(limit || '12')
     );
@@ -577,7 +577,7 @@ populationHealth.get('/quality-indicators/:id/measurements', requirePermission('
 /**
  * Get indicator trends
  */
-populationHealth.get('/quality-indicators/:id/trends', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/quality-indicators/:id/trends', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
@@ -585,7 +585,7 @@ populationHealth.get('/quality-indicators/:id/trends', requirePermission('analyt
 
     const trends = await QualityIndicatorsService.getIndicatorTrends(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       parseInt(periods || '12')
     );
@@ -600,7 +600,7 @@ populationHealth.get('/quality-indicators/:id/trends', requirePermission('analyt
 /**
  * Validate measurement
  */
-populationHealth.post('/measurements/:measurementId/validate', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/measurements/:measurementId/validate', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { measurementId } = c.req.param();
@@ -608,7 +608,7 @@ populationHealth.post('/measurements/:measurementId/validate', requirePermission
 
     const measurement = await QualityIndicatorsService.validateMeasurement(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       measurementId,
       user.id,
       body.notes
@@ -624,14 +624,14 @@ populationHealth.post('/measurements/:measurementId/validate', requirePermission
 /**
  * Get quality dashboard summary
  */
-populationHealth.get('/quality-dashboard', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/quality-dashboard', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { module } = c.req.query();
 
     const summary = await QualityIndicatorsService.getDashboardSummary(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       module
     );
 
@@ -649,14 +649,14 @@ populationHealth.get('/quality-dashboard', requirePermission('analytics', 'read'
 /**
  * Create IQSS report
  */
-populationHealth.post('/iqss-reports', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/iqss-reports', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json();
 
     const report = await QualityIndicatorsService.createIqssReport(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       user.id,
       body.reportYear,
       body.reportType
@@ -672,14 +672,14 @@ populationHealth.post('/iqss-reports', requirePermission('analytics', 'write'), 
 /**
  * Get IQSS report
  */
-populationHealth.get('/iqss-reports/:year/:type', requirePermission('analytics', 'read'), async (c) => {
+populationHealth.get('/iqss-reports/:year/:type', requirePermission('analytics:read'), async (c) => {
   try {
     const user = c.get('user');
     const { year, type } = c.req.param();
 
     const report = await QualityIndicatorsService.getIqssReport(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       parseInt(year),
       type
     );
@@ -698,14 +698,14 @@ populationHealth.get('/iqss-reports/:year/:type', requirePermission('analytics',
 /**
  * Submit IQSS report
  */
-populationHealth.post('/iqss-reports/:id/submit', requirePermission('analytics', 'write'), async (c) => {
+populationHealth.post('/iqss-reports/:id/submit', requirePermission('analytics:write'), async (c) => {
   try {
     const user = c.get('user');
     const { id } = c.req.param();
 
     const report = await QualityIndicatorsService.submitIqssReport(
       c.env,
-      user.organizationId,
+      c.get('realOrganizationId')!,
       id,
       user.id
     );

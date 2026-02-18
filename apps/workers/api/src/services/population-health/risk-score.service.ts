@@ -9,7 +9,8 @@ import {
   riskModels,
   patientRiskScores,
   healthcarePatients,
-} from '@perfex/database/schema';
+} from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface CreateRiskModelInput {
   modelCode: string;
@@ -46,7 +47,7 @@ export class RiskScoreService {
     userId: string,
     input: CreateRiskModelInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [model] = await db
       .insert(riskModels)
@@ -74,7 +75,7 @@ export class RiskScoreService {
    * Get risk model by ID
    */
   static async getModelById(env: Env, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [model] = await db
       .select()
@@ -93,7 +94,7 @@ export class RiskScoreService {
     status?: string,
     module?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const conditions = [
       sql`(${riskModels.organizationId} = ${organizationId} OR ${riskModels.organizationId} IS NULL)`,
@@ -120,7 +121,7 @@ export class RiskScoreService {
    * Activate risk model
    */
   static async activateModel(env: Env, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [model] = await db
       .update(riskModels)
@@ -147,7 +148,7 @@ export class RiskScoreService {
     patientId: string,
     modelId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get the model
     const model = await this.getModelById(env, modelId);
@@ -308,7 +309,7 @@ Respond ONLY with JSON.`;
     patientId: string,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const scores = await db
       .select()
@@ -334,7 +335,7 @@ Respond ONLY with JSON.`;
     modelId?: string,
     limit = 50
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const conditions = [
       eq(patientRiskScores.organizationId, organizationId),
@@ -364,7 +365,7 @@ Respond ONLY with JSON.`;
     organizationId: string,
     modelId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const distribution = await db
       .select({
@@ -397,7 +398,7 @@ Respond ONLY with JSON.`;
       outcomeDate?: Date;
     }
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get the original prediction
     const [score] = await db
@@ -441,7 +442,7 @@ Respond ONLY with JSON.`;
     env: Env,
     modelId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get all scores with outcomes for this model
     const scores = await db

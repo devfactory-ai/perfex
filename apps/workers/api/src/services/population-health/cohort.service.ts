@@ -10,7 +10,8 @@ import {
   cohortMembership,
   cohortSnapshots,
   healthcarePatients,
-} from '@perfex/database/schema';
+} from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface CreateCohortInput {
   cohortCode: string;
@@ -35,7 +36,7 @@ export class CohortService {
     userId: string,
     input: CreateCohortInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [cohort] = await db
       .insert(populationCohorts)
@@ -63,7 +64,7 @@ export class CohortService {
    * Get cohort by ID
    */
   static async getById(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [cohort] = await db
       .select()
@@ -89,7 +90,7 @@ export class CohortService {
     page = 1,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
     const offset = (page - 1) * limit;
 
     const conditions = [
@@ -138,7 +139,7 @@ export class CohortService {
     id: string,
     updates: Partial<CreateCohortInput>
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const updateData: any = { updatedAt: new Date() };
 
@@ -172,7 +173,7 @@ export class CohortService {
     organizationId: string,
     cohortId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const cohort = await this.getById(env, organizationId, cohortId);
     if (!cohort) {
@@ -296,7 +297,7 @@ export class CohortService {
     page = 1,
     limit = 50
   ) {
-    const db = getDb(env);
+    const db = getDb();
     const offset = (page - 1) * limit;
 
     const members = await db
@@ -348,7 +349,7 @@ export class CohortService {
     patientId: string,
     userId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Check if already a member
     const [existing] = await db
@@ -400,7 +401,7 @@ export class CohortService {
     patientId: string,
     reason?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     await db
       .update(cohortMembership)
@@ -437,7 +438,7 @@ export class CohortService {
     cohortId: string,
     snapshotType: 'scheduled' | 'manual' | 'triggered' = 'manual'
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     // Get current cohort stats
     const cohort = await this.getById(env, organizationId, cohortId);
@@ -502,7 +503,7 @@ export class CohortService {
     cohortId: string,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const snapshots = await db
       .select()
@@ -527,7 +528,7 @@ export class CohortService {
     organizationId: string,
     patientId: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const memberships = await db
       .select({

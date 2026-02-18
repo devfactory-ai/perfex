@@ -9,7 +9,8 @@ import {
   imagingAnalysis,
   imagingReports,
   healthcarePatients,
-} from '@perfex/database/schema';
+} from '@perfex/database';
+import type { Env } from '../../types';
 
 export interface CreateImagingAnalysisInput {
   patientId: string;
@@ -53,7 +54,7 @@ export class ImagingService {
     userId: string,
     input: CreateImagingAnalysisInput
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const analysisNumber = `IMG-${Date.now().toString(36).toUpperCase()}`;
 
@@ -91,7 +92,7 @@ export class ImagingService {
    * Get imaging analysis by ID
    */
   static async getById(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .select()
@@ -116,7 +117,7 @@ export class ImagingService {
     page = 1,
     limit = 20
   ) {
-    const db = getDb(env);
+    const db = getDb();
     const offset = (page - 1) * limit;
 
     const conditions = [eq(imagingAnalysis.organizationId, organizationId)];
@@ -181,7 +182,7 @@ export class ImagingService {
    * Start AI analysis for an imaging study
    */
   static async startAnalysis(env: Env, organizationId: string, id: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -224,7 +225,7 @@ export class ImagingService {
       urgencyLevel?: 'routine' | 'priority' | 'urgent' | 'stat';
     }
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -266,7 +267,7 @@ export class ImagingService {
     id: string,
     error: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -301,7 +302,7 @@ export class ImagingService {
       physicianNotes?: string;
     }
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -336,7 +337,7 @@ export class ImagingService {
     signerId: string,
     digitalSignature?: string
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -362,7 +363,7 @@ export class ImagingService {
    * Get urgent analyses requiring review
    */
   static async getUrgentReviews(env: Env, organizationId: string, limit = 20) {
-    const db = getDb(env);
+    const db = getDb();
 
     const analyses = await db
       .select()
@@ -390,7 +391,7 @@ export class ImagingService {
     imageType?: string,
     limit = 50
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const conditions = [
       eq(imagingAnalysis.organizationId, organizationId),
@@ -424,7 +425,7 @@ export class ImagingService {
       progressionNotes?: string;
     }
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [analysis] = await db
       .update(imagingAnalysis)
@@ -449,7 +450,7 @@ export class ImagingService {
    * Get dashboard statistics
    */
   static async getDashboardStats(env: Env, organizationId: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -550,7 +551,7 @@ export class ImagingService {
       aiConfidence?: number;
     }
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const reportNumber = `RPT-${Date.now().toString(36).toUpperCase()}`;
 
@@ -585,7 +586,7 @@ export class ImagingService {
    * Get report by analysis ID
    */
   static async getReportByAnalysisId(env: Env, organizationId: string, analysisId: string) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [report] = await db
       .select()
@@ -612,7 +613,7 @@ export class ImagingService {
     signerId: string,
     signatureMethod: 'electronic' | 'digital_certificate' | 'biometric'
   ) {
-    const db = getDb(env);
+    const db = getDb();
 
     const [report] = await db
       .update(imagingReports)

@@ -188,7 +188,7 @@ rpm.get('/devices', zValidator('query', deviceListQuerySchema), async (c) => {
     const user = c.get('user');
     const query = c.req.valid('query');
 
-    const result = await deviceService.list(user.organizationId, {
+    const result = await deviceService.list(c.get('realOrganizationId')!, {
       status: query.status,
       deviceType: query.deviceType,
       patientId: query.patientId,
@@ -224,13 +224,13 @@ rpm.get('/devices/:id', async (c) => {
     const user = c.get('user');
     const deviceId = c.req.param('id');
 
-    const device = await deviceService.getById(user.organizationId, deviceId);
+    const device = await deviceService.getById(c.get('realOrganizationId')!, deviceId);
     if (!device) {
       return c.json({ success: false, error: 'Device not found' }, 404);
     }
 
     // Get device events
-    const events = await deviceService.getDeviceEvents(user.organizationId, deviceId, 20);
+    const events = await deviceService.getDeviceEvents(c.get('realOrganizationId')!, deviceId, 20);
 
     return c.json({
       success: true,
@@ -250,7 +250,7 @@ rpm.post('/devices', zValidator('json', createDeviceSchema), async (c) => {
     const user = c.get('user');
     const data = c.req.valid('json');
 
-    const device = await deviceService.create(user.organizationId, user.id, data);
+    const device = await deviceService.create(c.get('realOrganizationId')!, user.id, data);
 
     return c.json({ success: true, data: device }, 201);
   } catch (error: any) {
@@ -268,7 +268,7 @@ rpm.patch('/devices/:id', zValidator('json', updateDeviceSchema), async (c) => {
     const deviceId = c.req.param('id');
     const data = c.req.valid('json');
 
-    const device = await deviceService.update(user.organizationId, deviceId, user.id, data);
+    const device = await deviceService.update(c.get('realOrganizationId')!, deviceId, user.id, data);
     if (!device) {
       return c.json({ success: false, error: 'Device not found' }, 404);
     }
@@ -289,7 +289,7 @@ rpm.post('/devices/:id/assign', zValidator('json', z.object({ patientId: z.strin
     const deviceId = c.req.param('id');
     const { patientId } = c.req.valid('json');
 
-    const device = await deviceService.assignToPatient(user.organizationId, deviceId, user.id, patientId);
+    const device = await deviceService.assignToPatient(c.get('realOrganizationId')!, deviceId, user.id, patientId);
     if (!device) {
       return c.json({ success: false, error: 'Device not found' }, 404);
     }
@@ -309,7 +309,7 @@ rpm.post('/devices/:id/unassign', async (c) => {
     const user = c.get('user');
     const deviceId = c.req.param('id');
 
-    const device = await deviceService.unassignFromPatient(user.organizationId, deviceId, user.id);
+    const device = await deviceService.unassignFromPatient(c.get('realOrganizationId')!, deviceId, user.id);
     if (!device) {
       return c.json({ success: false, error: 'Device not found' }, 404);
     }
@@ -329,7 +329,7 @@ rpm.delete('/devices/:id', async (c) => {
     const user = c.get('user');
     const deviceId = c.req.param('id');
 
-    const deleted = await deviceService.delete(user.organizationId, deviceId, user.id);
+    const deleted = await deviceService.delete(c.get('realOrganizationId')!, deviceId, user.id);
     if (!deleted) {
       return c.json({ success: false, error: 'Device not found' }, 404);
     }
@@ -349,9 +349,9 @@ rpm.get('/devices/alerts/summary', async (c) => {
     const user = c.get('user');
 
     const [needingCalibration, offline, lowBattery] = await Promise.all([
-      deviceService.getDevicesNeedingCalibration(user.organizationId),
-      deviceService.getOfflineDevices(user.organizationId, 24),
-      deviceService.getLowBatteryDevices(user.organizationId, 20),
+      deviceService.getDevicesNeedingCalibration(c.get('realOrganizationId')!),
+      deviceService.getOfflineDevices(c.get('realOrganizationId')!, 24),
+      deviceService.getLowBatteryDevices(c.get('realOrganizationId')!, 20),
     ]);
 
     return c.json({
@@ -381,7 +381,7 @@ rpm.get('/patients/:patientId/readings', zValidator('query', readingListQuerySch
     const patientId = c.req.param('patientId');
     const query = c.req.valid('query');
 
-    const result = await readingService.list(user.organizationId, {
+    const result = await readingService.list(c.get('realOrganizationId')!, {
       patientId,
       readingType: query.readingType,
       deviceId: query.deviceId,
@@ -420,7 +420,7 @@ rpm.get('/patients/:patientId/readings/latest', async (c) => {
     const user = c.get('user');
     const patientId = c.req.param('patientId');
 
-    const readings = await readingService.getLatestByType(user.organizationId, patientId);
+    const readings = await readingService.getLatestByType(c.get('realOrganizationId')!, patientId);
 
     return c.json({ success: true, data: readings });
   } catch (error: any) {
@@ -442,7 +442,7 @@ rpm.get('/patients/:patientId/readings/stats', async (c) => {
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
 
-    const stats = await readingService.getStats(user.organizationId, patientId, start, end);
+    const stats = await readingService.getStats(c.get('realOrganizationId')!, patientId, start, end);
 
     return c.json({ success: true, data: stats });
   } catch (error: any) {
@@ -460,7 +460,7 @@ rpm.post('/patients/:patientId/readings', zValidator('json', createReadingSchema
     const patientId = c.req.param('patientId');
     const data = c.req.valid('json');
 
-    const reading = await readingService.create(user.organizationId, patientId, data);
+    const reading = await readingService.create(c.get('realOrganizationId')!, patientId, data);
 
     return c.json({ success: true, data: reading }, 201);
   } catch (error: any) {
@@ -477,7 +477,7 @@ rpm.get('/readings/:id', async (c) => {
     const user = c.get('user');
     const readingId = c.req.param('id');
 
-    const reading = await readingService.getById(user.organizationId, readingId);
+    const reading = await readingService.getById(c.get('realOrganizationId')!, readingId);
     if (!reading) {
       return c.json({ success: false, error: 'Reading not found' }, 404);
     }
@@ -498,7 +498,7 @@ rpm.post('/readings/:id/invalidate', zValidator('json', z.object({ reason: z.str
     const readingId = c.req.param('id');
     const { reason } = c.req.valid('json');
 
-    const reading = await readingService.markInvalid(user.organizationId, readingId, user.id, reason);
+    const reading = await readingService.markInvalid(c.get('realOrganizationId')!, readingId, user.id, reason);
     if (!reading) {
       return c.json({ success: false, error: 'Reading not found' }, 404);
     }
@@ -519,7 +519,7 @@ rpm.post('/readings/:id/review', zValidator('json', z.object({ notes: z.string()
     const readingId = c.req.param('id');
     const { notes } = c.req.valid('json');
 
-    const reading = await readingService.review(user.organizationId, readingId, user.id, notes);
+    const reading = await readingService.review(c.get('realOrganizationId')!, readingId, user.id, notes);
     if (!reading) {
       return c.json({ success: false, error: 'Reading not found' }, 404);
     }
@@ -546,7 +546,7 @@ rpm.get('/programs', zValidator('query', listQuerySchema.extend({
     const user = c.get('user');
     const query = c.req.valid('query');
 
-    const result = await programService.listPrograms(user.organizationId, {
+    const result = await programService.listPrograms(c.get('realOrganizationId')!, {
       status: query.status,
       programType: query.programType,
       associatedModule: query.associatedModule,
@@ -579,13 +579,13 @@ rpm.get('/programs/:id', async (c) => {
     const user = c.get('user');
     const programId = c.req.param('id');
 
-    const program = await programService.getProgramById(user.organizationId, programId);
+    const program = await programService.getProgramById(c.get('realOrganizationId')!, programId);
     if (!program) {
       return c.json({ success: false, error: 'Program not found' }, 404);
     }
 
     // Get enrollment counts
-    const enrollmentCounts = await programService.getEnrollmentCountsByProgram(user.organizationId);
+    const enrollmentCounts = await programService.getEnrollmentCountsByProgram(c.get('realOrganizationId')!);
     const activeEnrollments = enrollmentCounts.find(e => e.programId === programId)?.count || 0;
 
     return c.json({
@@ -606,7 +606,7 @@ rpm.post('/programs', zValidator('json', createProgramSchema), async (c) => {
     const user = c.get('user');
     const data = c.req.valid('json');
 
-    const program = await programService.createProgram(user.organizationId, user.id, data);
+    const program = await programService.createProgram(c.get('realOrganizationId')!, user.id, data);
 
     return c.json({ success: true, data: program }, 201);
   } catch (error: any) {
@@ -624,7 +624,7 @@ rpm.patch('/programs/:id', zValidator('json', updateProgramSchema), async (c) =>
     const programId = c.req.param('id');
     const data = c.req.valid('json');
 
-    const program = await programService.updateProgram(user.organizationId, programId, data);
+    const program = await programService.updateProgram(c.get('realOrganizationId')!, programId, data);
     if (!program) {
       return c.json({ success: false, error: 'Program not found' }, 404);
     }
@@ -644,7 +644,7 @@ rpm.delete('/programs/:id', async (c) => {
     const user = c.get('user');
     const programId = c.req.param('id');
 
-    const deleted = await programService.deleteProgram(user.organizationId, programId);
+    const deleted = await programService.deleteProgram(c.get('realOrganizationId')!, programId);
     if (!deleted) {
       return c.json({ success: false, error: 'Program not found' }, 404);
     }
@@ -671,7 +671,7 @@ rpm.get('/enrollments', zValidator('query', listQuerySchema.extend({
     const user = c.get('user');
     const query = c.req.valid('query');
 
-    const result = await programService.listEnrollments(user.organizationId, {
+    const result = await programService.listEnrollments(c.get('realOrganizationId')!, {
       patientId: query.patientId,
       programId: query.programId,
       status: query.status,
@@ -703,14 +703,14 @@ rpm.get('/enrollments/:id', async (c) => {
     const user = c.get('user');
     const enrollmentId = c.req.param('id');
 
-    const enrollment = await programService.getEnrollmentById(user.organizationId, enrollmentId);
+    const enrollment = await programService.getEnrollmentById(c.get('realOrganizationId')!, enrollmentId);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
 
     // Get compliance history
     const compliance = await complianceService.getComplianceHistory(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       enrollmentId,
       'weekly',
       10
@@ -734,7 +734,7 @@ rpm.post('/enrollments', zValidator('json', createEnrollmentSchema), async (c) =
     const user = c.get('user');
     const data = c.req.valid('json');
 
-    const enrollment = await programService.enrollPatient(user.organizationId, user.id, data);
+    const enrollment = await programService.enrollPatient(c.get('realOrganizationId')!, user.id, data);
 
     return c.json({ success: true, data: enrollment }, 201);
   } catch (error: any) {
@@ -752,7 +752,7 @@ rpm.patch('/enrollments/:id', zValidator('json', updateEnrollmentSchema), async 
     const enrollmentId = c.req.param('id');
     const data = c.req.valid('json');
 
-    const enrollment = await programService.updateEnrollment(user.organizationId, enrollmentId, user.id, data);
+    const enrollment = await programService.updateEnrollment(c.get('realOrganizationId')!, enrollmentId, user.id, data);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
@@ -773,7 +773,7 @@ rpm.post('/enrollments/:id/pause', zValidator('json', z.object({ reason: z.strin
     const enrollmentId = c.req.param('id');
     const { reason } = c.req.valid('json');
 
-    const enrollment = await programService.pauseEnrollment(user.organizationId, enrollmentId, user.id, reason);
+    const enrollment = await programService.pauseEnrollment(c.get('realOrganizationId')!, enrollmentId, user.id, reason);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
@@ -793,7 +793,7 @@ rpm.post('/enrollments/:id/resume', async (c) => {
     const user = c.get('user');
     const enrollmentId = c.req.param('id');
 
-    const enrollment = await programService.resumeEnrollment(user.organizationId, enrollmentId, user.id);
+    const enrollment = await programService.resumeEnrollment(c.get('realOrganizationId')!, enrollmentId, user.id);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
@@ -814,7 +814,7 @@ rpm.post('/enrollments/:id/complete', zValidator('json', z.object({ notes: z.str
     const enrollmentId = c.req.param('id');
     const { notes } = c.req.valid('json');
 
-    const enrollment = await programService.completeEnrollment(user.organizationId, enrollmentId, user.id, notes);
+    const enrollment = await programService.completeEnrollment(c.get('realOrganizationId')!, enrollmentId, user.id, notes);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
@@ -835,7 +835,7 @@ rpm.post('/enrollments/:id/discontinue', zValidator('json', z.object({ reason: z
     const enrollmentId = c.req.param('id');
     const { reason } = c.req.valid('json');
 
-    const enrollment = await programService.discontinueEnrollment(user.organizationId, enrollmentId, user.id, reason);
+    const enrollment = await programService.discontinueEnrollment(c.get('realOrganizationId')!, enrollmentId, user.id, reason);
     if (!enrollment) {
       return c.json({ success: false, error: 'Enrollment not found' }, 404);
     }
@@ -865,7 +865,7 @@ rpm.post('/enrollments/:id/compliance/calculate', zValidator('json', z.object({
     const { periodType, periodStart, periodEnd } = c.req.valid('json');
 
     const compliance = await complianceService.calculateCompliance(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       enrollmentId,
       periodType,
       new Date(periodStart),
@@ -887,7 +887,7 @@ rpm.get('/compliance/non-compliant', async (c) => {
     const user = c.get('user');
     const threshold = c.req.query('threshold') ? parseInt(c.req.query('threshold')!) : 80;
 
-    const patients = await complianceService.getNonCompliantPatients(user.organizationId, threshold);
+    const patients = await complianceService.getNonCompliantPatients(c.get('realOrganizationId')!, threshold);
 
     return c.json({ success: true, data: patients });
   } catch (error: any) {
@@ -903,7 +903,7 @@ rpm.get('/compliance/summary', async (c) => {
   try {
     const user = c.get('user');
 
-    const summary = await complianceService.getOrganizationComplianceSummary(user.organizationId);
+    const summary = await complianceService.getOrganizationComplianceSummary(c.get('realOrganizationId')!);
 
     return c.json({ success: true, data: summary });
   } catch (error: any) {
@@ -924,7 +924,7 @@ rpm.post('/time-logs', zValidator('json', timeLogSchema), async (c) => {
     const user = c.get('user');
     const data = c.req.valid('json');
 
-    const timeLog = await complianceService.logTime(user.organizationId, user.id, data);
+    const timeLog = await complianceService.logTime(c.get('realOrganizationId')!, user.id, data);
 
     return c.json({ success: true, data: timeLog }, 201);
   } catch (error: any) {
@@ -944,7 +944,7 @@ rpm.get('/enrollments/:id/time-logs', async (c) => {
     const endDate = c.req.query('endDate');
 
     const logs = await complianceService.getTimeLogs(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       enrollmentId,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined
@@ -973,7 +973,7 @@ rpm.post('/enrollments/:id/billing/calculate', zValidator('json', z.object({
     const { periodMonth } = c.req.valid('json');
 
     const billing = await complianceService.calculateBillingPeriod(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       enrollmentId,
       periodMonth
     );
@@ -993,7 +993,7 @@ rpm.get('/enrollments/:id/billing', async (c) => {
     const user = c.get('user');
     const enrollmentId = c.req.param('id');
 
-    const periods = await complianceService.getBillingPeriods(user.organizationId, enrollmentId);
+    const periods = await complianceService.getBillingPeriods(c.get('realOrganizationId')!, enrollmentId);
 
     return c.json({ success: true, data: periods });
   } catch (error: any) {
@@ -1015,7 +1015,7 @@ rpm.post('/billing/:id/mark-billed', zValidator('json', z.object({
     const { claimNumber, billedAmount } = c.req.valid('json');
 
     const billing = await complianceService.markBilled(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       billingPeriodId,
       claimNumber,
       billedAmount
@@ -1040,7 +1040,7 @@ rpm.post('/billing/:id/record-payment', zValidator('json', z.object({
     const { paidAmount } = c.req.valid('json');
 
     const billing = await complianceService.recordPayment(
-      user.organizationId,
+      c.get('realOrganizationId')!,
       billingPeriodId,
       paidAmount
     );

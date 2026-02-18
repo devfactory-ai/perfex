@@ -389,7 +389,7 @@ export interface NPSGaugeData {
   detractors: number;
 }
 
-export interface SurveyStatus {
+export interface SurveyStatusSummary {
   surveyId: string;
   surveyName: string;
   responsesThisWeek: number;
