@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { useTheme, type ThemeMode } from '@/contexts/ThemeContext';
 import { AIChatWidget } from '@/components/ai/AIChatWidget';
+import { useModuleIds } from '@/hooks/useModules';
 
 // Flag icons for languages
 const languageFlags: Record<Language, string> = {
@@ -18,9 +19,11 @@ const languageFlags: Record<Language, string> = {
 };
 
 // Navigation items configuration with translation keys
+// Each section has a moduleId that matches the module registry
 const navItems = [
   {
     sectionKey: null,
+    moduleId: 'dashboard', // Always shown
     links: [
       {
         to: '/',
@@ -35,6 +38,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.finance',
+    moduleId: 'finance',
     links: [
       {
         to: '/finance/accounts',
@@ -76,6 +80,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.crm',
+    moduleId: 'crm',
     links: [
       {
         to: '/crm/companies',
@@ -108,6 +113,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.projects',
+    moduleId: 'projects',
     links: [
       {
         to: '/projects',
@@ -122,6 +128,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.inventory',
+    moduleId: 'inventory',
     links: [
       {
         to: '/inventory',
@@ -136,6 +143,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.hr',
+    moduleId: 'hr',
     links: [
       {
         to: '/hr/employees',
@@ -150,6 +158,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.procurement',
+    moduleId: 'procurement',
     links: [
       {
         to: '/procurement/suppliers',
@@ -164,6 +173,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.sales',
+    moduleId: 'sales',
     links: [
       {
         to: '/sales/orders',
@@ -178,6 +188,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.manufacturing',
+    moduleId: 'manufacturing',
     links: [
       {
         to: '/manufacturing/work-orders',
@@ -192,6 +203,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.assets',
+    moduleId: 'assets',
     links: [
       {
         to: '/assets',
@@ -206,6 +218,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.workflows',
+    moduleId: 'workflows',
     links: [
       {
         to: '/workflows',
@@ -229,6 +242,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.ai',
+    moduleId: 'ai',
     links: [
       {
         to: '/ai',
@@ -243,6 +257,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.audit',
+    moduleId: 'audit',
     links: [
       {
         to: '/audit',
@@ -293,6 +308,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.recipes',
+    moduleId: 'recipes',
     links: [
       {
         to: '/recipes',
@@ -307,6 +323,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.traceability',
+    moduleId: 'traceability',
     links: [
       {
         to: '/traceability',
@@ -321,6 +338,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.dialyse',
+    moduleId: 'dialyse',
     links: [
       {
         to: '/dialyse',
@@ -371,6 +389,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.cardiology',
+    moduleId: 'cardiology',
     links: [
       {
         to: '/cardiology',
@@ -421,6 +440,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.ophthalmology',
+    moduleId: 'ophthalmology',
     links: [
       {
         to: '/ophthalmology',
@@ -472,6 +492,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.payroll',
+    moduleId: 'payroll',
     links: [
       {
         to: '/payroll',
@@ -486,6 +507,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.integrations',
+    moduleId: 'integrations',
     links: [
       {
         to: '/integrations',
@@ -500,6 +522,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.settings',
+    moduleId: 'settings', // Always shown
     links: [
       {
         to: '/settings/modules',
@@ -514,6 +537,7 @@ const navItems = [
   },
   {
     sectionKey: 'nav.help',
+    moduleId: 'help', // Always shown
     links: [
       {
         to: '/help',
@@ -552,6 +576,7 @@ export function DashboardLayout() {
   const { mode, setMode, isDark } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const enabledModules = useModuleIds();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -559,6 +584,15 @@ export function DashboardLayout() {
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const themeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter navigation items based on enabled modules
+  // Modules that are always shown: dashboard, settings, help
+  const alwaysShownModules = ['dashboard', 'settings', 'help'];
+  const filteredNavItems = navItems.filter((group) => {
+    if (!group.moduleId) return true; // Show items without moduleId
+    if (alwaysShownModules.includes(group.moduleId)) return true;
+    return enabledModules.includes(group.moduleId);
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -641,7 +675,7 @@ export function DashboardLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.map((group, groupIndex) => (
+          {filteredNavItems.map((group, groupIndex) => (
             <div key={groupIndex}>
               {group.sectionKey && !isSidebarCollapsed && (
                 <div className="pt-4 pb-2">
