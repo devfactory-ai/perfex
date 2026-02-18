@@ -42,8 +42,8 @@ git branch  # Devrait montrer 'main'
 ### 3. Ajouter le Remote et Pousser
 
 ```bash
-# Ajouter le remote (remplacer YOUR_USERNAME)
-git remote add origin https://github.com/YOUR_USERNAME/perfex-erp.git
+# Ajouter le remote
+git remote add origin https://github.com/devfactory/perfex.git
 
 # Vérifier le remote
 git remote -v
@@ -52,7 +52,7 @@ git remote -v
 git push -u origin main
 
 # Si vous avez déjà un remote 'origin', le remplacer:
-# git remote set-url origin https://github.com/YOUR_USERNAME/perfex-erp.git
+# git remote set-url origin https://github.com/devfactory/perfex.git
 ```
 
 ### 4. Créer la Branche Develop
@@ -66,7 +66,7 @@ git push -u origin develop
 git checkout main
 ```
 
-**Lien du dépôt**: `https://github.com/YOUR_USERNAME/perfex-erp`
+**Lien du dépôt**: `https://github.com/devfactory/perfex`
 
 ---
 
@@ -382,7 +382,7 @@ wrangler pages deploy dist --project-name=perfex-web
 
 Pour que le CI/CD fonctionne, configurez ces secrets dans GitHub:
 
-1. Aller sur: `https://github.com/YOUR_USERNAME/perfex-erp/settings/secrets/actions`
+1. Aller sur: `https://github.com/devfactory/perfex/settings/secrets/actions`
 
 2. Ajouter les secrets:
    - `CLOUDFLARE_API_TOKEN`: Votre token Cloudflare

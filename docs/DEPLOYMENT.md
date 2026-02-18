@@ -58,7 +58,7 @@ wrangler whoami
 ### 1. Cloner le Projet
 
 ```bash
-git clone https://github.com/yassine-techini/perfex-erp.git
+git clone https://github.com/devfactory/perfex.git
 cd perfex-erp
 pnpm install
 ```

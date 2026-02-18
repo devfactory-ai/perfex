@@ -58,7 +58,7 @@ This guide will walk you through setting up Perfex ERP from scratch, including a
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/perfex.git
+git clone https://github.com/devfactory/perfex.git
 cd perfex
 ```
 

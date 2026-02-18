@@ -9,7 +9,7 @@
 # Ne PAS initialiser avec README
 
 # 2. Dans votre terminal, exécuter:
-git remote add origin https://github.com/VOTRE_USERNAME/perfex-erp.git
+git remote add origin https://github.com/devfactory/perfex.git
 git branch -M main
 git push -u origin main
 
@@ -19,7 +19,7 @@ git push -u origin develop
 git checkout main
 ```
 
-**✅ Votre lien GitHub**: `https://github.com/VOTRE_USERNAME/perfex-erp`
+**✅ Lien GitHub**: `https://github.com/devfactory/perfex`
 
 ---
 
@@ -219,7 +219,7 @@ Login de test:
 
 ## 📝 Notes Importantes
 
-1. **Remplacer VOTRE_USERNAME** par votre username GitHub
+1. **Le projet est maintenant sur l'organisation devfactory**: https://github.com/devfactory/perfex
 2. **Remplacer VOTRE-SUBDOMAIN** par votre subdomain Cloudflare (affiché après wrangler login)
 3. **Sauvegarder vos IDs** de database et KV namespaces
 4. **Générer des secrets uniques** pour chaque environnement

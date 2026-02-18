@@ -39,7 +39,7 @@ Perfex ERP Healthcare est une suite complète de modules conçus pour répondre 
 
 ```bash
 # Cloner le repository
-git clone https://github.com/yassine-techini/perfex-erp.git
+git clone https://github.com/devfactory/perfex.git
 cd perfex
 
 # Installer les dépendances

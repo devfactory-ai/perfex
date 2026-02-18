@@ -222,7 +222,7 @@ wrangler pages deploy dist --project-name=perfex-web
 - [x] 3 APIs Workers déployés et opérationnels
 - [x] 3 Frontends Pages déployés et opérationnels
 - [x] Secrets JWT configurés pour tous les environnements
-- [x] Code poussé sur GitHub (https://github.com/yassine-techini/perfex-erp)
+- [x] Code poussé sur GitHub (https://github.com/devfactory/perfex)
 - [x] Documentation complète créée
 - [x] Tests de connectivité réussis
 

@@ -58,7 +58,7 @@ Perfex ERP Healthcare est un système de gestion d'entreprise complet, conçu po
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/perfex.git
+git clone https://github.com/devfactory/perfex.git
 cd perfex
 
 # Install dependencies

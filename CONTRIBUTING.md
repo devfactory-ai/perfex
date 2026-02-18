@@ -41,7 +41,7 @@ git clone https://github.com/YOUR_USERNAME/perfex.git
 cd perfex
 
 # 3. Add upstream remote
-git remote add upstream https://github.com/original/perfex.git
+git remote add upstream https://github.com/devfactory/perfex.git
 
 # 4. Install dependencies
 pnpm install

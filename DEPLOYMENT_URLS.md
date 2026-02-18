@@ -87,7 +87,7 @@ Accédez au dashboard pour monitoring:
 # Nom suggéré: perfex-erp
 
 # Ajouter le remote et pousser
-git remote add origin https://github.com/VOTRE_USERNAME/perfex-erp.git
+git remote add origin https://github.com/devfactory/perfex.git
 git push -u origin main
 
 # Créer la branche develop
