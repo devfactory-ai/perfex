@@ -858,7 +858,7 @@ export class PortalAuthService {
    * PORTAL-AUTH-014
    */
   async validateSession(token: string): Promise<PortalUser | null> {
-    const tokenHash = hashToken(token);
+    const tokenHash = await hashToken(token);
 
     const session = await this.drizzleDb
       .select()
@@ -897,7 +897,7 @@ export class PortalAuthService {
     refreshToken: string,
     ipAddress: string
   ): Promise<PortalAuthTokens> {
-    const tokenHash = hashToken(refreshToken);
+    const tokenHash = await hashToken(refreshToken);
 
     const session = await this.drizzleDb
       .select()
@@ -1044,8 +1044,8 @@ export class PortalAuthService {
     const accessToken = generateRandomToken();
     const refreshToken = generateRandomToken();
 
-    const accessTokenHash = hashToken(accessToken);
-    const refreshTokenHash = hashToken(refreshToken);
+    const accessTokenHash = await hashToken(accessToken);
+    const refreshTokenHash = await hashToken(refreshToken);
 
     // Token expiry
     const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days or 1 day
@@ -1067,7 +1067,6 @@ export class PortalAuthService {
 
     // Create session
     await this.drizzleDb.insert(portalSessions).values({
-      id: crypto.randomUUID(),
       portalUserId: userId,
       companyId,
       token: accessTokenHash,
@@ -1080,7 +1079,7 @@ export class PortalAuthService {
       isActive: true,
       createdAt: now,
       lastActivityAt: now,
-    });
+    } as any);
 
     return {
       accessToken,
@@ -1100,7 +1099,7 @@ export class PortalAuthService {
       ? `Bonjour,\n\nMerci de vous être inscrit sur notre portail patient.\n\nCliquez sur le lien suivant pour vérifier votre email:\n${verifyUrl}\n\nCe lien expire dans 24 heures.\n\nCordialement`
       : `Hello,\n\nThank you for registering on our patient portal.\n\nClick the following link to verify your email:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\nBest regards`;
 
-    await this.emailService.sendEmail({
+    await this.emailService.send({
       to: email,
       subject,
       text: body,
@@ -1118,7 +1117,7 @@ export class PortalAuthService {
       ? `Bonjour,\n\nVous avez demandé la réinitialisation de votre mot de passe.\n\nCliquez sur le lien suivant:\n${resetUrl}\n\nCe lien expire dans 1 heure.\n\nSi vous n'avez pas fait cette demande, ignorez cet email.\n\nCordialement`
       : `Hello,\n\nYou requested a password reset.\n\nClick the following link:\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\nBest regards`;
 
-    await this.emailService.sendEmail({
+    await this.emailService.send({
       to: email,
       subject,
       text: body,

@@ -759,7 +759,7 @@ export class SterilizationService {
       sterilizationMethod: data.sterilizationMethod || 'steam_134',
       containerType: data.containerType || 'rigid_container',
       containerId: data.containerId,
-      packagingMaterial: data.packagingType || 'container',
+      packagingMaterial: data.packagingMaterial || 'container',
       status: 'available',
       location: data.location || { area: 'sterile_storage' },
       cycleCount: 0,

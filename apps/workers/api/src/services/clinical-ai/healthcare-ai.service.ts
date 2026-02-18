@@ -289,7 +289,8 @@ export class HealthcareAIService {
       ? CLINICAL_SYSTEM_PROMPTS.documentation_fr
       : CLINICAL_SYSTEM_PROMPTS.documentation_en;
 
-    const documentTemplate = DOCUMENT_TEMPLATES[`${request.documentType}_${language}`] || '';
+    const templateKey = `${request.documentType}_${language}` as keyof typeof DOCUMENT_TEMPLATES;
+    const documentTemplate = DOCUMENT_TEMPLATES[templateKey] || DOCUMENT_TEMPLATES[`${request.documentType}_fr` as keyof typeof DOCUMENT_TEMPLATES] || '';
 
     // Get patient info
     const patient = await this.drizzleDb
@@ -365,7 +366,7 @@ Génère le document ${request.documentType} de manière professionnelle et comp
       { role: 'user' as const, content: userPrompt },
     ];
 
-    const aiResponse = await this.ai.run(this.defaultModel, {
+    const aiResponse = await (this.ai as any).run(this.defaultModel, {
       messages,
       max_tokens: 2000,
       temperature: 0.3,
@@ -569,7 +570,7 @@ Génère un résumé structuré en JSON avec les sections suivantes:
       { role: 'user' as const, content: userPrompt },
     ];
 
-    const aiResponse = await this.ai.run(this.defaultModel, {
+    const aiResponse = await (this.ai as any).run(this.defaultModel, {
       messages,
       max_tokens: 2000,
       temperature: 0.3,
@@ -775,7 +776,7 @@ Réponds en JSON avec la structure suivante:
       { role: 'user' as const, content: userPrompt },
     ];
 
-    const aiResponse = await this.ai.run(this.defaultModel, {
+    const aiResponse = await (this.ai as any).run(this.defaultModel, {
       messages,
       max_tokens: 2500,
       temperature: 0.2,
@@ -945,7 +946,7 @@ Réponds en JSON avec la structure suivante:
       .$dynamic();
 
     if (category) {
-      query = query.where(eq(aiClinicalPrompts.category, category));
+      query = query.where(eq(aiClinicalPrompts.category, category as any));
     }
 
     if (module) {
@@ -990,8 +991,8 @@ Réponds en JSON avec la structure suivante:
         .set({
           name: promptData.name,
           description: promptData.description,
-          category: promptData.category,
-          module: promptData.module || 'general',
+          category: promptData.category as any,
+          module: (promptData.module || 'general') as any,
           systemPrompt: promptData.systemPrompt,
           userPromptTemplate: promptData.userPromptTemplate,
           outputFormat: promptData.outputFormat,
@@ -1013,13 +1014,12 @@ Réponds en JSON avec la structure suivante:
     } else {
       // Create new
       await this.drizzleDb.insert(aiClinicalPrompts).values({
-        id: promptId,
         companyId,
         name: promptData.name,
         code: promptData.code,
         description: promptData.description,
-        category: promptData.category,
-        module: promptData.module || 'general',
+        category: promptData.category as any,
+        module: (promptData.module || 'general') as any,
         systemPrompt: promptData.systemPrompt,
         userPromptTemplate: promptData.userPromptTemplate,
         outputFormat: promptData.outputFormat,
@@ -1133,10 +1133,9 @@ Réponds en JSON avec la structure suivante:
     const estimatedCost = totalTokens ? (totalTokens / 1000) * 0.0002 : 0;
 
     await this.drizzleDb.insert(clinicalAiUsage).values({
-      id: crypto.randomUUID(),
       companyId,
       userId,
-      feature,
+      feature: feature as any,
       requestId: details.entityId,
       entityType: details.entityType,
       entityId: details.entityId,

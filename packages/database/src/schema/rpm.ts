@@ -163,7 +163,7 @@ export const iotReadings = sqliteTable('rpm_iot_readings', {
 
   // Alert status
   triggeredAlert: integer('triggered_alert', { mode: 'boolean' }).default(false),
-  alertId: text('alert_id').references(() => rpmAlerts.id),
+  alertId: text('alert_id'), // Reference to rpmAlerts.id (no FK constraint to avoid circular reference)
 
   // Normal range comparison
   isWithinRange: integer('is_within_range', { mode: 'boolean' }),

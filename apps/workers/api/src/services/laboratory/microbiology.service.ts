@@ -1638,7 +1638,7 @@ export class MicrobiologyService {
     const volumeByTestType: TestVolumeMetric[] = [
       { testType: 'culture_aerobic', thisMonth: 150, lastMonth: 140, positivityRate: 25 },
       { testType: 'culture_blood', thisMonth: 80, lastMonth: 75, positivityRate: 10 },
-      { testType: 'culture_urine', thisMonth: 200, lastMonth: 190, positivityRate: 30 },
+      { testType: 'culture_aerobic', thisMonth: 200, lastMonth: 190, positivityRate: 30 }, // Urine cultures
       { testType: 'pcr', thisMonth: 100, lastMonth: 85, positivityRate: 15 }
     ];
 

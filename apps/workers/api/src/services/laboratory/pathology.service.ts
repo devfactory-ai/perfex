@@ -1412,7 +1412,7 @@ export class PathologyService {
     return this.updateCase(caseId, {
       specimenReceived: new Date().toISOString(),
       status: 'in_review'
-    }) as Promise<FrozenSectionCase>;
+    } as any) as Promise<FrozenSectionCase>;
   }
 
   async reportFrozenResult(caseId: string, data: {
@@ -1433,7 +1433,7 @@ export class PathologyService {
       signedOutBy: data.reportedBy,
       signedOutAt: resultTime.toISOString(),
       status: 'signed_out'
-    }) as Promise<FrozenSectionCase>;
+    } as any) as Promise<FrozenSectionCase>;
   }
 
   async recordFrozenConcordance(caseId: string, data: {

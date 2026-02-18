@@ -1184,12 +1184,15 @@ export class BloodBankService {
     const patientABO = patientType.aboGroup;
     const productABO = productType.aboGroup;
 
-    if (patientABO === 'AB') return true; // Universal recipient for plasma
-    if (productABO === 'O') return true; // Universal donor for RBCs
-    if (patientABO === productABO) return true;
-    if (patientABO === 'A' && productABO === 'O') return true;
-    if (patientABO === 'B' && productABO === 'O') return true;
-    if (patientABO === 'AB' && (productABO === 'A' || productABO === 'B')) return true;
+    const pABO = patientABO as string;
+    const prABO = productABO as string;
+
+    if (pABO === 'AB') return true; // Universal recipient for plasma
+    if (prABO === 'O') return true; // Universal donor for RBCs
+    if (pABO === prABO) return true;
+    if (pABO === 'A' && prABO === 'O') return true;
+    if (pABO === 'B' && prABO === 'O') return true;
+    if (pABO === 'AB' && (prABO === 'A' || prABO === 'B')) return true;
 
     return false;
   }

@@ -207,9 +207,10 @@ export class ComplianceService {
       ))
       .get() as any;
 
-    if (previousCompliance) {
-      previousPeriodPercent = previousCompliance.compliancePercent;
-      const diff = compliancePercent - previousPeriodPercent;
+    if (previousCompliance && previousCompliance.compliancePercent != null) {
+      const prevPercent = previousCompliance.compliancePercent as number;
+      previousPeriodPercent = prevPercent;
+      const diff = compliancePercent - prevPercent;
       if (diff > 5) complianceTrend = 'improving';
       else if (diff < -5) complianceTrend = 'declining';
       else complianceTrend = 'stable';
@@ -588,7 +589,7 @@ export class ComplianceService {
     if (existingPeriod) {
       await drizzleDb
         .update(rpmBillingPeriods)
-        .set(billingData)
+        .set(billingData as any)
         .where(eq(rpmBillingPeriods.id, existingPeriod.id));
     } else {
       await drizzleDb.insert(rpmBillingPeriods).values({

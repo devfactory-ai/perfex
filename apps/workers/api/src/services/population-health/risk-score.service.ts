@@ -163,7 +163,7 @@ export class RiskScoreService {
       .where(
         and(
           eq(healthcarePatients.id, patientId),
-          eq(healthcarePatients.organizationId, organizationId)
+          eq(healthcarePatients.companyId, organizationId)
         )
       );
 
@@ -205,7 +205,7 @@ Generate a realistic risk assessment in JSON format:
 }
 Respond ONLY with JSON.`;
 
-      const response = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      const response = await (ai as any).run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 500,
       });

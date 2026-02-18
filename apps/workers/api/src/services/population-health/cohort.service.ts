@@ -184,19 +184,19 @@ export class CohortService {
 
     // Build patient query based on criteria
     // This is a simplified example - real implementation would be more complex
-    const conditions = [eq(healthcarePatients.organizationId, organizationId)];
+    const conditions = [eq(healthcarePatients.companyId, organizationId)];
 
     // Apply basic criteria filters
     if (criteria.minAge) {
       const maxBirthDate = new Date();
       maxBirthDate.setFullYear(maxBirthDate.getFullYear() - criteria.minAge);
-      conditions.push(lte(healthcarePatients.dateOfBirth, maxBirthDate));
+      conditions.push(lte(healthcarePatients.dateOfBirth, maxBirthDate.toISOString().split('T')[0]));
     }
 
     if (criteria.maxAge) {
       const minBirthDate = new Date();
       minBirthDate.setFullYear(minBirthDate.getFullYear() - criteria.maxAge);
-      conditions.push(gte(healthcarePatients.dateOfBirth, minBirthDate));
+      conditions.push(gte(healthcarePatients.dateOfBirth, minBirthDate.toISOString().split('T')[0]));
     }
 
     if (criteria.gender) {
@@ -246,7 +246,7 @@ export class CohortService {
           patientId,
           addedBy: 'system',
           isActive: true,
-        }))
+        } as any))
       );
     }
 
