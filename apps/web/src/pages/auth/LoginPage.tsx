@@ -11,13 +11,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 import { Eye, EyeOff, Mail, Lock, Croissant, Package, Truck, ChefHat, User } from 'lucide-react';
 
-// Demo accounts for bakery
+// Demo accounts for bakery (only visible on staging/dev)
 const DEMO_ACCOUNTS = [
   { role: 'Gérant', email: 'demo@perfex.io', password: 'Demo@2024!', icon: ChefHat, color: 'amber' },
   { role: 'Boulanger', email: 'boulanger@perfex.io', password: 'Baker@2024!', icon: Croissant, color: 'orange' },
   { role: 'Vendeur', email: 'vente@perfex.io', password: 'Sales@2024!', icon: User, color: 'blue' },
   { role: 'Livreur', email: 'livraison@perfex.io', password: 'Delivery@2024!', icon: Truck, color: 'green' },
 ];
+
+// Show demo accounts only on staging or localhost
+const isDevOrStaging = () => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' ||
+         hostname === '127.0.0.1' ||
+         hostname.includes('staging') ||
+         import.meta.env.DEV;
+};
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -407,51 +416,58 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Demo Credentials - All Roles */}
-          <div className="mt-6 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
-            <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2">
-              <Croissant className="w-4 h-4" />
-              Comptes de démonstration - Boulangerie Au Pain Doré
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO_ACCOUNTS.map((account) => {
-                const IconComponent = account.icon;
-                return (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => {
-                      setValue('email', account.email);
-                      setValue('password', account.password);
-                    }}
-                    className={`flex items-center gap-2 p-2 rounded-lg border transition-all hover:scale-[1.02] ${
-                      account.color === 'amber'
-                        ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-800/40'
-                        : account.color === 'orange'
-                        ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 hover:bg-orange-200 dark:hover:bg-orange-800/40'
-                        : account.color === 'blue'
-                        ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800/40'
-                        : 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800/40'
-                    }`}
-                  >
-                    <IconComponent className={`w-5 h-5 ${
-                      account.color === 'amber' ? 'text-amber-600'
-                      : account.color === 'orange' ? 'text-orange-600'
-                      : account.color === 'blue' ? 'text-blue-600'
-                      : 'text-green-600'
-                    }`} />
-                    <div className="text-left">
-                      <div className="text-xs font-semibold text-gray-800 dark:text-gray-200">{account.role}</div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[100px]">{account.email}</div>
-                    </div>
-                  </button>
-                );
-              })}
+          {/* Demo Credentials - Only on Staging/Dev */}
+          {isDevOrStaging() && (
+            <div className="mt-6 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                  <Croissant className="w-4 h-4" />
+                  Comptes de démonstration
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full font-medium">
+                  STAGING
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {DEMO_ACCOUNTS.map((account) => {
+                  const IconComponent = account.icon;
+                  return (
+                    <button
+                      key={account.email}
+                      type="button"
+                      onClick={() => {
+                        setValue('email', account.email);
+                        setValue('password', account.password);
+                      }}
+                      className={`flex items-center gap-2 p-2 rounded-lg border transition-all hover:scale-[1.02] ${
+                        account.color === 'amber'
+                          ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-800/40'
+                          : account.color === 'orange'
+                          ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 hover:bg-orange-200 dark:hover:bg-orange-800/40'
+                          : account.color === 'blue'
+                          ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800/40'
+                          : 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800/40'
+                      }`}
+                    >
+                      <IconComponent className={`w-5 h-5 ${
+                        account.color === 'amber' ? 'text-amber-600'
+                        : account.color === 'orange' ? 'text-orange-600'
+                        : account.color === 'blue' ? 'text-blue-600'
+                        : 'text-green-600'
+                      }`} />
+                      <div className="text-left">
+                        <div className="text-xs font-semibold text-gray-800 dark:text-gray-200">{account.role}</div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[100px]">{account.email}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[10px] text-amber-600 dark:text-amber-400 text-center">
+                Cliquez sur un rôle pour remplir automatiquement les identifiants
+              </p>
             </div>
-            <p className="mt-3 text-[10px] text-amber-600 dark:text-amber-400 text-center">
-              Cliquez sur un rôle pour remplir automatiquement
-            </p>
-          </div>
+          )}
 
           {/* Register Link */}
           <p className="mt-8 text-center text-gray-600 dark:text-gray-400">
