@@ -73,6 +73,7 @@ const HelpCenterPage = lazy(() => import('./pages/help/HelpCenterPage').then(m =
 const GettingStartedPage = lazy(() => import('./pages/help/GettingStartedPage').then(m => ({ default: m.GettingStartedPage })));
 const FAQPage = lazy(() => import('./pages/help/FAQPage').then(m => ({ default: m.FAQPage })));
 const ModuleGuidesPage = lazy(() => import('./pages/help/ModuleGuidesPage').then(m => ({ default: m.ModuleGuidesPage })));
+const BakeryWorkflowGuidePage = lazy(() => import('./pages/help/BakeryWorkflowGuidePage').then(m => ({ default: m.BakeryWorkflowGuidePage })));
 
 // Settings pages
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
@@ -84,6 +85,24 @@ const RecipeFormPage = lazy(() => import('./pages/recipes/RecipeFormPage').then(
 
 // Traceability pages (HACCP module)
 const TraceabilityPage = lazy(() => import('./pages/traceability/TraceabilityPage').then(m => ({ default: m.TraceabilityPage })));
+
+// POS (Point of Sale) page
+const POSPage = lazy(() => import('./pages/pos/POSPage').then(m => ({ default: m.POSPage })));
+
+// Bakery module pages
+const BakeryDashboardPage = lazy(() => import('./pages/bakery/BakeryDashboardPage').then(m => ({ default: m.BakeryDashboardPage })));
+const BakeryArticlesPage = lazy(() => import('./pages/bakery/BakeryArticlesPage').then(m => ({ default: m.BakeryArticlesPage })));
+const BakeryArticleFormPage = lazy(() => import('./pages/bakery/BakeryArticleFormPage').then(m => ({ default: m.BakeryArticleFormPage })));
+const BakeryStockMovementsPage = lazy(() => import('./pages/bakery/BakeryStockMovementsPage').then(m => ({ default: m.BakeryStockMovementsPage })));
+const BakeryStockAlertsPage = lazy(() => import('./pages/bakery/BakeryStockAlertsPage').then(m => ({ default: m.BakeryStockAlertsPage })));
+const BakeryInventoriesPage = lazy(() => import('./pages/bakery/BakeryInventoriesPage').then(m => ({ default: m.BakeryInventoriesPage })));
+const BakeryProductionPage = lazy(() => import('./pages/bakery/BakeryProductionPage').then(m => ({ default: m.BakeryProductionPage })));
+const BakeryProofingPage = lazy(() => import('./pages/bakery/BakeryProofingPage').then(m => ({ default: m.BakeryProofingPage })));
+const BakeryOvensPage = lazy(() => import('./pages/bakery/BakeryOvensPage').then(m => ({ default: m.BakeryOvensPage })));
+const BakeryQualityPage = lazy(() => import('./pages/bakery/BakeryQualityPage').then(m => ({ default: m.BakeryQualityPage })));
+const BakeryMaintenancePage = lazy(() => import('./pages/bakery/BakeryMaintenancePage').then(m => ({ default: m.BakeryMaintenancePage })));
+const BakerySalesPage = lazy(() => import('./pages/bakery/BakerySalesPage').then(m => ({ default: m.BakerySalesPage })));
+const BakeryReportsPage = lazy(() => import('./pages/bakery/BakeryReportsPage').then(m => ({ default: m.BakeryReportsPage })));
 
 // Payroll pages
 const PayrollPage = lazy(() => import('./pages/payroll/PayrollPage').then(m => ({ default: m.PayrollPage })));
@@ -297,6 +316,7 @@ function App() {
             <Route path="help/faq" element={<Suspense fallback={<PageLoader />}><FAQPage /></Suspense>} />
             <Route path="help/modules" element={<Suspense fallback={<PageLoader />}><ModuleGuidesPage /></Suspense>} />
             <Route path="help/modules/:moduleId" element={<Suspense fallback={<PageLoader />}><ModuleGuidesPage /></Suspense>} />
+            <Route path="help/workflow" element={<Suspense fallback={<PageLoader />}><BakeryWorkflowGuidePage /></Suspense>} />
             <Route path="settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
             <Route path="settings/modules" element={<Suspense fallback={<PageLoader />}><ModulesSettingsPage /></Suspense>} />
             <Route path="recipes" element={<Suspense fallback={<PageLoader />}><RecipesPage /></Suspense>} />
@@ -304,6 +324,22 @@ function App() {
             <Route path="recipes/:id" element={<Suspense fallback={<PageLoader />}><RecipeFormPage /></Suspense>} />
             <Route path="recipes/:id/edit" element={<Suspense fallback={<PageLoader />}><RecipeFormPage /></Suspense>} />
             <Route path="traceability" element={<Suspense fallback={<PageLoader />}><TraceabilityPage /></Suspense>} />
+            <Route path="pos" element={<Suspense fallback={<PageLoader />}><POSPage /></Suspense>} />
+            {/* Bakery module */}
+            <Route path="bakery" element={<Suspense fallback={<PageLoader />}><BakeryDashboardPage /></Suspense>} />
+            <Route path="bakery/articles" element={<Suspense fallback={<PageLoader />}><BakeryArticlesPage /></Suspense>} />
+            <Route path="bakery/articles/new" element={<Suspense fallback={<PageLoader />}><BakeryArticleFormPage /></Suspense>} />
+            <Route path="bakery/articles/:id/edit" element={<Suspense fallback={<PageLoader />}><BakeryArticleFormPage /></Suspense>} />
+            <Route path="bakery/stock/movements" element={<Suspense fallback={<PageLoader />}><BakeryStockMovementsPage /></Suspense>} />
+            <Route path="bakery/stock/alerts" element={<Suspense fallback={<PageLoader />}><BakeryStockAlertsPage /></Suspense>} />
+            <Route path="bakery/inventories" element={<Suspense fallback={<PageLoader />}><BakeryInventoriesPage /></Suspense>} />
+            <Route path="bakery/production" element={<Suspense fallback={<PageLoader />}><BakeryProductionPage /></Suspense>} />
+            <Route path="bakery/proofing" element={<Suspense fallback={<PageLoader />}><BakeryProofingPage /></Suspense>} />
+            <Route path="bakery/ovens" element={<Suspense fallback={<PageLoader />}><BakeryOvensPage /></Suspense>} />
+            <Route path="bakery/quality" element={<Suspense fallback={<PageLoader />}><BakeryQualityPage /></Suspense>} />
+            <Route path="bakery/maintenance" element={<Suspense fallback={<PageLoader />}><BakeryMaintenancePage /></Suspense>} />
+            <Route path="bakery/sales" element={<Suspense fallback={<PageLoader />}><BakerySalesPage /></Suspense>} />
+            <Route path="bakery/reports" element={<Suspense fallback={<PageLoader />}><BakeryReportsPage /></Suspense>} />
             <Route path="payroll" element={<Suspense fallback={<PageLoader />}><PayrollPage /></Suspense>} />
             <Route path="integrations" element={<Suspense fallback={<PageLoader />}><IntegrationsPage /></Suspense>} />
             <Route path="profile" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
