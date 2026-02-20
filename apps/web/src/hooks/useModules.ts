@@ -33,11 +33,10 @@ const CORE_MODULES = [
  * Bakery-specific modules for staging demo
  */
 const BAKERY_MODULES = [
-  'manufacturing', // Production
+  'bakery',        // Module Boulangerie principal (Dashboard, Stock, Production, etc.)
   'recipes',       // Recettes & Formulations
   'traceability',  // Traçabilité & HACCP
   'pos',           // Point de Vente
-  'maintenance',   // Maintenance GMAO
 ];
 
 /**
@@ -45,30 +44,35 @@ const BAKERY_MODULES = [
  * Each role has access to specific modules
  */
 const ROLE_MODULES: Record<string, string[]> = {
-  // Gérant (Manager) - Full access to all modules
+  // Gérant (Manager) - Full access to all bakery modules
   'demo@perfex.io': [
-    ...CORE_MODULES,
-    ...BAKERY_MODULES,
-    'ai', 'audit', 'analytics'
+    'dashboard',
+    'bakery',          // Module Boulangerie complet
+    'recipes',         // Recettes
+    'traceability',    // Traçabilité HACCP
+    'pos',             // Point de Vente
+    'inventory',       // Inventaire général
+    'hr',              // RH (employés)
+    'finance',         // Finance (factures, paiements)
+    'help',
+    'settings'
   ],
 
   // Boulanger (Baker) - Production focused
   'boulanger@perfex.io': [
     'dashboard',
-    'manufacturing',   // Production (main module)
+    'bakery',          // Production, Fours, Chambres, Qualité, Maintenance
     'recipes',         // Recettes
     'traceability',    // Traçabilité HACCP
     'inventory',       // Stock matières premières
-    'maintenance',     // Équipements
     'help'
   ],
 
   // Vendeur (Sales) - Customer & sales focused
   'vente@perfex.io': [
     'dashboard',
+    'bakery',          // Ventes B2B, Rapports
     'pos',             // Point de Vente (main module)
-    'sales',           // Ventes
-    'crm',             // Clients
     'inventory',       // Voir le stock produits
     'help'
   ],
@@ -76,9 +80,7 @@ const ROLE_MODULES: Record<string, string[]> = {
   // Livreur (Delivery) - Logistics focused
   'livraison@perfex.io': [
     'dashboard',
-    'sales',           // Bons de livraison
-    'crm',             // Adresses clients
-    'inventory',       // Vérifier disponibilité
+    'bakery',          // Commandes livraison
     'help'
   ],
 };

@@ -250,8 +250,16 @@ const fr: Translations = {
     dialyse: 'Dialyse',
     cardiology: 'Cardiologie',
     ophthalmology: 'Ophtalmologie',
+    bakery: 'Boulangerie',
   },
   sidebar: {
+    // Bakery
+    bakeryDashboard: 'Tableau de bord',
+    bakeryStock: 'Stock & Articles',
+    bakeryProduction: 'Production',
+    bakerySales: 'Ventes B2B',
+    bakeryMaintenance: 'Maintenance',
+    bakeryReports: 'Rapports',
     // Finance
     accounts: 'Comptes',
     invoices: 'Factures',
@@ -2831,6 +2839,8 @@ const en: Translations = {
     dialyse: 'Dialysis',
     cardiology: 'Cardiology',
     ophthalmology: 'Ophthalmology',
+    bakery: 'Bakery',
+    pos: 'Point of Sale',
   },
   sidebar: {
     accounts: 'Accounts',
@@ -2897,6 +2907,13 @@ const en: Translations = {
     gettingStarted: 'Getting Started',
     faq: 'FAQ',
     moduleGuides: 'Module Guides',
+    bakeryDashboard: 'Dashboard',
+    bakeryStock: 'Stock & Items',
+    bakeryProduction: 'Production',
+    bakerySales: 'B2B Sales',
+    bakeryMaintenance: 'Maintenance',
+    bakeryReports: 'Reports',
+    posDashboard: 'POS Dashboard',
   },
   dashboard: {
     title: 'Dashboard',
@@ -5223,6 +5240,8 @@ const ar: Translations = {
     dialyse: 'غسيل الكلى',
     cardiology: 'أمراض القلب',
     ophthalmology: 'طب العيون',
+    bakery: 'المخبز',
+    pos: 'نقطة البيع',
   },
   sidebar: {
     accounts: 'الحسابات',
@@ -5289,6 +5308,13 @@ const ar: Translations = {
     gettingStarted: 'البدء',
     faq: 'الأسئلة الشائعة',
     moduleGuides: 'أدلة الوحدات',
+    bakeryDashboard: 'لوحة التحكم',
+    bakeryStock: 'المخزون والمنتجات',
+    bakeryProduction: 'الإنتاج',
+    bakerySales: 'مبيعات B2B',
+    bakeryMaintenance: 'الصيانة',
+    bakeryReports: 'التقارير',
+    posDashboard: 'لوحة نقطة البيع',
   },
   dashboard: {
     title: 'لوحة التحكم',
