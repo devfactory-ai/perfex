@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:bakery": "VITE_APP_VARIANT=perfex-bakery vite",
+    "dev:health": "VITE_APP_VARIANT=perfex-health vite",
     "build": "tsc && vite build",
+    "build:bakery": "VITE_APP_VARIANT=perfex-bakery tsc && VITE_APP_VARIANT=perfex-bakery vite build",
+    "build:health": "VITE_APP_VARIANT=perfex-health tsc && VITE_APP_VARIANT=perfex-health vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
