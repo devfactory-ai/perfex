@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { CreateCompanyInput, Company } from '@perfex/shared';
 import { z } from 'zod';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Form schema that matches the UI needs
 const companyFormSchema = z.object({
@@ -44,6 +45,8 @@ export function CompanyModal({
   company,
   isSubmitting = false,
 }: CompanyModalProps) {
+  const { t } = useLanguage();
+
   // Parse tags from JSON string to comma-separated
   const parseTags = (tagsJson: string | null): string => {
     if (!tagsJson) return '';
@@ -138,7 +141,7 @@ export function CompanyModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <h2 className="text-xl font-semibold">
-              {company ? 'Edit Company' : 'Create New Company'}
+              {company ? t('forms.editCompany') : t('forms.createCompany')}
             </h2>
             <button
               type="button"
@@ -155,17 +158,17 @@ export function CompanyModal({
           <div className="p-6 space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Basic Information</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('forms.basicInfo')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-2">
-                    Company Name <span className="text-destructive">*</span>
+                    {t('forms.companyName')} <span className="text-destructive">*</span>
                   </label>
                   <input
                     {...register('name')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Acme Corporation"
+                    placeholder={t('forms.placeholders.companyName')}
                   />
                   {errors.name && (
                     <p className="text-destructive text-sm mt-1">{errors.name.message}</p>
@@ -174,16 +177,16 @@ export function CompanyModal({
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Type <span className="text-destructive">*</span>
+                    {t('common.type')} <span className="text-destructive">*</span>
                   </label>
                   <select
                     {...register('type')}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="customer">Customer</option>
-                    <option value="prospect">Prospect</option>
-                    <option value="partner">Partner</option>
-                    <option value="vendor">Vendor</option>
+                    <option value="customer">{t('forms.companyTypes.customer')}</option>
+                    <option value="prospect">{t('forms.companyTypes.prospect')}</option>
+                    <option value="partner">{t('forms.companyTypes.partner')}</option>
+                    <option value="vendor">{t('forms.companyTypes.vendor')}</option>
                   </select>
                   {errors.type && (
                     <p className="text-destructive text-sm mt-1">{errors.type.message}</p>
@@ -191,12 +194,12 @@ export function CompanyModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Website</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.website')}</label>
                   <input
                     {...register('website')}
                     type="url"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="https://acme.com"
+                    placeholder="https://example.com"
                   />
                 </div>
               </div>
@@ -204,15 +207,15 @@ export function CompanyModal({
 
             {/* Contact Information */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('forms.contactInfo')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <label className="block text-sm font-medium mb-2">{t('common.email')}</label>
                   <input
                     {...register('email')}
                     type="email"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="info@acme.com"
+                    placeholder="info@example.com"
                   />
                   {errors.email && (
                     <p className="text-destructive text-sm mt-1">{errors.email.message}</p>
@@ -220,12 +223,12 @@ export function CompanyModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <label className="block text-sm font-medium mb-2">{t('common.phone')}</label>
                   <input
                     {...register('phone')}
                     type="tel"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+33 1 23 45 67 89"
                   />
                 </div>
               </div>
@@ -233,57 +236,56 @@ export function CompanyModal({
 
             {/* Address */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Address</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('common.address')}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Street Address</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.streetAddress')}</label>
                   <input
                     {...register('address')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="123 Main St"
+                    placeholder={t('forms.placeholders.streetAddress')}
                   />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-medium mb-2">City</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.city')}</label>
                     <input
                       {...register('city')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="New York"
+                      placeholder={t('forms.placeholders.city')}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">State/Province</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.stateProvince')}</label>
                     <input
                       {...register('state')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="NY"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Postal Code</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.postalCode')}</label>
                     <input
                       {...register('postalCode')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="10001"
+                      placeholder="75001"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Country</label>
+                  <label className="block text-sm font-medium mb-2">{t('common.country')}</label>
                   <input
                     {...register('country')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="United States"
+                    placeholder={t('forms.placeholders.country')}
                   />
                 </div>
               </div>
@@ -291,42 +293,42 @@ export function CompanyModal({
 
             {/* Business Details */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Business Details</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('forms.businessDetails')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Industry</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.industry')}</label>
                   <input
                     {...register('industry')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Technology"
+                    placeholder={t('forms.placeholders.industry')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Company Size</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.companySize')}</label>
                   <select
                     {...register('size')}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="">Select size</option>
-                    <option value="small">Small (1-50)</option>
-                    <option value="medium">Medium (51-250)</option>
-                    <option value="large">Large (251-1000)</option>
-                    <option value="enterprise">Enterprise (1000+)</option>
+                    <option value="">{t('forms.selectSize')}</option>
+                    <option value="small">{t('forms.sizes.small')}</option>
+                    <option value="medium">{t('forms.sizes.medium')}</option>
+                    <option value="large">{t('forms.sizes.large')}</option>
+                    <option value="enterprise">{t('forms.sizes.enterprise')}</option>
                   </select>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Tags</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.tags')}</label>
                   <input
                     {...register('tagsInput')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="vip, priority, tech"
+                    placeholder="vip, priority"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Comma-separated tags for categorization
+                    {t('forms.tagsHelp')}
                   </p>
                 </div>
               </div>
@@ -334,12 +336,12 @@ export function CompanyModal({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium mb-2">Notes</label>
+              <label className="block text-sm font-medium mb-2">{t('forms.notes')}</label>
               <textarea
                 {...register('notes')}
                 rows={3}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="Additional notes about this company..."
+                placeholder={t('forms.placeholders.notes')}
               />
             </div>
           </div>
@@ -352,14 +354,14 @@ export function CompanyModal({
               disabled={isSubmitting}
               className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : company ? 'Update Company' : 'Create Company'}
+              {isSubmitting ? t('common.saving') : company ? t('forms.updateCompany') : t('forms.createCompany')}
             </button>
           </div>
         </form>

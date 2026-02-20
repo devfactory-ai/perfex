@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { CreateInventoryItemInput, InventoryItem } from '@perfex/shared';
 import { z } from 'zod';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Form schema that matches the UI needs
 const inventoryItemFormSchema = z.object({
@@ -46,6 +47,8 @@ export function InventoryItemModal({
   item,
   isSubmitting = false,
 }: InventoryItemModalProps) {
+  const { t } = useLanguage();
+
   // Parse tags from JSON string to comma-separated
   const parseTags = (tagsJson: string | null): string => {
     if (!tagsJson) return '';
@@ -155,7 +158,7 @@ export function InventoryItemModal({
         <div className="relative w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              {item ? 'Edit Inventory Item' : 'Create Inventory Item'}
+              {item ? t('forms.editItem') : t('forms.createItem')}
             </h2>
             <button
               onClick={onClose}
@@ -171,12 +174,12 @@ export function InventoryItemModal({
           <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Basic Information</h3>
+              <h3 className="font-medium text-gray-900">{t('forms.basicInfo')}</h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    SKU <span className="text-red-500">*</span>
+                    {t('forms.sku')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -191,7 +194,7 @@ export function InventoryItemModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Barcode
+                    {t('forms.barcode')}
                   </label>
                   <input
                     type="text"
@@ -204,13 +207,13 @@ export function InventoryItemModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Name <span className="text-red-500">*</span>
+                  {t('common.name')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   {...register('name')}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="Product name"
+                  placeholder={t('inventory.itemName')}
                 />
                 {errors.name && (
                   <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
@@ -218,33 +221,31 @@ export function InventoryItemModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-gray-700">{t('common.description')}</label>
                 <textarea
                   {...register('description')}
                   rows={3}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="Product description"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Category</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('inventory.category')}</label>
                   <input
                     type="text"
                     {...register('category')}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    placeholder="Electronics, Furniture, etc."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Unit</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('inventory.unit')}</label>
                   <input
                     type="text"
                     {...register('unit')}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    placeholder="unit, kg, liter, etc."
+                    placeholder="kg, L, pièce..."
                   />
                 </div>
               </div>
@@ -252,11 +253,11 @@ export function InventoryItemModal({
 
             {/* Pricing */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Pricing</h3>
+              <h3 className="font-medium text-gray-900">{t('forms.pricing')}</h3>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Cost Price</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('forms.costPrice')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -267,7 +268,7 @@ export function InventoryItemModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Selling Price</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('forms.sellingPrice')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -278,7 +279,7 @@ export function InventoryItemModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Currency</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('common.currency')}</label>
                   <select
                     {...register('currency')}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
@@ -294,7 +295,7 @@ export function InventoryItemModal({
 
             {/* Inventory Settings */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Inventory Settings</h3>
+              <h3 className="font-medium text-gray-900">{t('forms.inventorySettings')}</h3>
 
               <div className="flex items-center gap-2">
                 <input
@@ -303,14 +304,14 @@ export function InventoryItemModal({
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <label className="text-sm font-medium text-gray-700">
-                  Track inventory levels
+                  {t('forms.trackInventory')}
                 </label>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Min Stock Level
+                    {t('forms.minStockLevel')}
                   </label>
                   <input
                     type="number"
@@ -323,27 +324,27 @@ export function InventoryItemModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Max Stock Level
+                    {t('forms.maxStockLevel')}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     {...register('maxStockLevel')}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    placeholder="Optional"
+                    placeholder={t('forms.optional')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Reorder Quantity
+                    {t('forms.reorderQuantity')}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     {...register('reorderQuantity')}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    placeholder="Optional"
+                    placeholder={t('forms.optional')}
                   />
                 </div>
               </div>
@@ -351,10 +352,10 @@ export function InventoryItemModal({
 
             {/* Additional Details */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Additional Details</h3>
+              <h3 className="font-medium text-gray-900">{t('forms.additionalInfo')}</h3>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                <label className="block text-sm font-medium text-gray-700">{t('forms.imageUrl')}</label>
                 <input
                   type="url"
                   {...register('imageUrl')}
@@ -365,14 +366,14 @@ export function InventoryItemModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Tags (comma-separated)
+                  {t('forms.tags')}
                 </label>
                 <input
                   type="text"
                   {...register('tagsInput')}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="seasonal, featured, clearance"
                 />
+                <p className="mt-1 text-xs text-gray-500">{t('forms.tagsHelp')}</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -382,7 +383,7 @@ export function InventoryItemModal({
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <label className="text-sm font-medium text-gray-700">
-                  Active
+                  {t('common.active')}
                 </label>
               </div>
             </div>
@@ -395,14 +396,14 @@ export function InventoryItemModal({
                 className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-50"
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Saving...' : item ? 'Update Item' : 'Create Item'}
+                {isSubmitting ? t('common.saving') : item ? t('forms.updateItem') : t('forms.createItem')}
               </button>
             </div>
           </form>

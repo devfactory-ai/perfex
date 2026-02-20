@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createContactSchema, type CreateContactInput, type Contact, type Company } from '@perfex/shared';
 import { z } from 'zod';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const contactFormSchema = createContactSchema.extend({
   phone: z.string().optional().nullable(),
@@ -41,6 +42,7 @@ export function ContactModal({
   companies = [],
   isSubmitting = false,
 }: ContactModalProps) {
+  const { t } = useLanguage();
   const {
     register,
     handleSubmit,
@@ -121,7 +123,7 @@ export function ContactModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <h2 className="text-xl font-semibold">
-              {contact ? 'Edit Contact' : 'Create New Contact'}
+              {contact ? t('forms.editContact') : t('forms.createContact')}
             </h2>
             <button
               type="button"
@@ -138,17 +140,17 @@ export function ContactModal({
           <div className="p-6 space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Basic Information</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('forms.basicInfo')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    First Name <span className="text-destructive">*</span>
+                    {t('forms.firstName')} <span className="text-destructive">*</span>
                   </label>
                   <input
                     {...register('firstName')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="John"
+                    placeholder="Jean"
                   />
                   {errors.firstName && (
                     <p className="text-destructive text-sm mt-1">{errors.firstName.message}</p>
@@ -157,13 +159,13 @@ export function ContactModal({
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Last Name <span className="text-destructive">*</span>
+                    {t('forms.lastName')} <span className="text-destructive">*</span>
                   </label>
                   <input
                     {...register('lastName')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Doe"
+                    placeholder="Dupont"
                   />
                   {errors.lastName && (
                     <p className="text-destructive text-sm mt-1">{errors.lastName.message}</p>
@@ -172,13 +174,13 @@ export function ContactModal({
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Email <span className="text-destructive">*</span>
+                    {t('common.email')} <span className="text-destructive">*</span>
                   </label>
                   <input
                     {...register('email')}
                     type="email"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="john.doe@example.com"
+                    placeholder="jean.dupont@example.com"
                   />
                   {errors.email && (
                     <p className="text-destructive text-sm mt-1">{errors.email.message}</p>
@@ -186,12 +188,12 @@ export function ContactModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Company</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.company')}</label>
                   <select
                     {...register('companyId')}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="">No company</option>
+                    <option value="">{t('forms.noCompany')}</option>
                     {companies.map((company) => (
                       <option key={company.id} value={company.id}>
                         {company.name}
@@ -204,45 +206,45 @@ export function ContactModal({
 
             {/* Contact Details */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Contact Details</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('forms.contactInfo')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <label className="block text-sm font-medium mb-2">{t('common.phone')}</label>
                   <input
                     {...register('phone')}
                     type="tel"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+33 1 23 45 67 89"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Mobile</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.mobile')}</label>
                   <input
                     {...register('mobile')}
                     type="tel"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="+1 (555) 987-6543"
+                    placeholder="+33 6 12 34 56 78"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Position</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.position')}</label>
                   <input
                     {...register('position')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Sales Manager"
+                    placeholder="Directeur Commercial"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Department</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.department')}</label>
                   <input
                     {...register('department')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="Sales"
+                    placeholder="Ventes"
                   />
                 </div>
               </div>
@@ -250,57 +252,56 @@ export function ContactModal({
 
             {/* Address */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Address</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('common.address')}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Street Address</label>
+                  <label className="block text-sm font-medium mb-2">{t('forms.streetAddress')}</label>
                   <input
                     {...register('address')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="123 Main St"
+                    placeholder={t('forms.placeholders.streetAddress')}
                   />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-medium mb-2">City</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.city')}</label>
                     <input
                       {...register('city')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="New York"
+                      placeholder={t('forms.placeholders.city')}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">State/Province</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.stateProvince')}</label>
                     <input
                       {...register('state')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="NY"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Postal Code</label>
+                    <label className="block text-sm font-medium mb-2">{t('forms.postalCode')}</label>
                     <input
                       {...register('postalCode')}
                       type="text"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="10001"
+                      placeholder="75001"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Country</label>
+                  <label className="block text-sm font-medium mb-2">{t('common.country')}</label>
                   <input
                     {...register('country')}
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="United States"
+                    placeholder={t('forms.placeholders.country')}
                   />
                 </div>
               </div>
@@ -314,21 +315,21 @@ export function ContactModal({
                   type="checkbox"
                   className="rounded border-input"
                 />
-                <span className="text-sm font-medium">Set as primary contact for company</span>
+                <span className="text-sm font-medium">{t('forms.setPrimaryContact')}</span>
               </label>
               <p className="text-xs text-muted-foreground mt-1">
-                Primary contacts receive important company communications
+                {t('forms.primaryContactHelp')}
               </p>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium mb-2">Notes</label>
+              <label className="block text-sm font-medium mb-2">{t('forms.notes')}</label>
               <textarea
                 {...register('notes')}
                 rows={3}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="Additional notes about this contact..."
+                placeholder={t('forms.placeholders.notes')}
               />
             </div>
           </div>
@@ -341,14 +342,14 @@ export function ContactModal({
               disabled={isSubmitting}
               className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : contact ? 'Update Contact' : 'Create Contact'}
+              {isSubmitting ? t('common.saving') : contact ? t('forms.updateContact') : t('forms.createContact')}
             </button>
           </div>
         </form>

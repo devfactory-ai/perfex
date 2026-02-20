@@ -7,6 +7,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createInvoiceSchema, type CreateInvoiceInput } from '@perfex/shared';
 import { z } from 'zod';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Adjust schema for form - allow empty strings that we'll clean up on submit
 const invoiceFormSchema = createInvoiceSchema.extend({
@@ -26,6 +27,7 @@ interface InvoiceFormProps {
 }
 
 export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultValues }: InvoiceFormProps) {
+  const { t } = useLanguage();
   const {
     register,
     control,
@@ -91,17 +93,16 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Customer Information */}
       <div className="rounded-lg border bg-card p-6">
-        <h3 className="text-lg font-semibold mb-4">Customer Information</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('forms.customerInfo')}</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Customer Name <span className="text-destructive">*</span>
+              {t('forms.customerName')} <span className="text-destructive">*</span>
             </label>
             <input
               {...register('customerName')}
               type="text"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Enter customer name"
             />
             {errors.customerName && (
               <p className="text-destructive text-sm mt-1">{errors.customerName.message}</p>
@@ -109,12 +110,12 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Customer Email</label>
+            <label className="block text-sm font-medium mb-2">{t('forms.customerEmail')}</label>
             <input
               {...register('customerEmail')}
               type="email"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="customer@example.com"
+              placeholder="client@example.com"
             />
             {errors.customerEmail && (
               <p className="text-destructive text-sm mt-1">{errors.customerEmail.message}</p>
@@ -122,12 +123,11 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2">Customer Address</label>
+            <label className="block text-sm font-medium mb-2">{t('forms.customerAddress')}</label>
             <textarea
               {...register('customerAddress')}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Enter customer address"
             />
             {errors.customerAddress && (
               <p className="text-destructive text-sm mt-1">{errors.customerAddress.message}</p>
@@ -138,11 +138,11 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
 
       {/* Invoice Details */}
       <div className="rounded-lg border bg-card p-6">
-        <h3 className="text-lg font-semibold mb-4">Invoice Details</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('forms.invoiceDetails')}</h3>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Invoice Date <span className="text-destructive">*</span>
+              {t('forms.invoiceDate')} <span className="text-destructive">*</span>
             </label>
             <input
               {...register('date')}
@@ -156,7 +156,7 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
 
           <div>
             <label className="block text-sm font-medium mb-2">
-              Due Date <span className="text-destructive">*</span>
+              {t('forms.dueDate')} <span className="text-destructive">*</span>
             </label>
             <input
               {...register('dueDate')}
@@ -169,7 +169,7 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Currency</label>
+            <label className="block text-sm font-medium mb-2">{t('common.currency')}</label>
             <select
               {...register('currency')}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -189,13 +189,13 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
       {/* Line Items */}
       <div className="rounded-lg border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Line Items</h3>
+          <h3 className="text-lg font-semibold">{t('forms.lineItems')}</h3>
           <button
             type="button"
             onClick={() => append({ description: '', quantity: 1, unitPrice: 0, taxRateId: null, accountId: null })}
             className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Add Line
+            {t('common.add')}
           </button>
         </div>
 
@@ -207,7 +207,7 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
                   {...register(`lines.${index}.description` as const)}
                   type="text"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Description"
+                  placeholder={t('common.description')}
                 />
                 {errors.lines?.[index]?.description && (
                   <p className="text-destructive text-sm mt-1">
@@ -223,7 +223,7 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
                   step="0.01"
                   min="0"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Qty"
+                  placeholder={t('forms.qty')}
                 />
               </div>
 
@@ -234,7 +234,7 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
                   step="0.01"
                   min="0"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Unit Price"
+                  placeholder={t('forms.unitPrice')}
                 />
               </div>
 
@@ -263,15 +263,15 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
         {/* Totals */}
         <div className="mt-6 border-t pt-4 space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Subtotal:</span>
+            <span>{t('pos.subtotal')}:</span>
             <span className="font-medium">€{subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Tax (20%):</span>
+            <span>{t('pos.tax')} (20%):</span>
             <span className="font-medium">€{taxAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-lg font-bold border-t pt-2">
-            <span>Total:</span>
+            <span>{t('common.total')}:</span>
             <span>€{total.toFixed(2)}</span>
           </div>
         </div>
@@ -279,25 +279,24 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
 
       {/* Notes and Terms */}
       <div className="rounded-lg border bg-card p-6">
-        <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('forms.additionalInfo')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Notes</label>
+            <label className="block text-sm font-medium mb-2">{t('forms.notes')}</label>
             <textarea
               {...register('notes')}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Add any notes for the customer"
+              placeholder={t('forms.placeholders.notes')}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Terms & Conditions</label>
+            <label className="block text-sm font-medium mb-2">{t('forms.paymentTerms')}</label>
             <textarea
               {...register('terms')}
               rows={3}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Payment terms and conditions"
             />
           </div>
         </div>
@@ -311,14 +310,14 @@ export function InvoiceForm({ onSubmit, onCancel, isSubmitting = false, defaultV
           disabled={isSubmitting}
           className="rounded-md border border-input bg-background px-6 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
           className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {isSubmitting ? 'Creating...' : 'Create Invoice'}
+          {isSubmitting ? t('common.saving') : t('forms.createInvoice')}
         </button>
       </div>
     </form>

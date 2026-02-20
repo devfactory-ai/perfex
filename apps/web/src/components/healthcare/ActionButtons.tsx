@@ -5,6 +5,7 @@
 
 import { Eye, Pencil, Trash2, MoreHorizontal, type LucideIcon } from 'lucide-react';
 import { type HealthcareModule } from './theme';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface ActionButtonProps {
   icon: LucideIcon;
@@ -59,6 +60,7 @@ export function ActionButtons({
   size = 'md',
   showLabels = false,
 }: ActionButtonsProps) {
+  const { t } = useLanguage();
   const iconSize = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
   const padding = size === 'sm' ? 'p-1.5' : 'p-2';
 
@@ -76,10 +78,10 @@ export function ActionButtons({
         <button
           onClick={onView}
           className={`${baseButtonClass} text-muted-foreground hover:text-primary hover:bg-muted`}
-          title="Voir"
+          title={t('common.view')}
         >
           <Eye className={iconSize} />
-          {showLabels && <span className="ml-1 text-xs">Voir</span>}
+          {showLabels && <span className="ml-1 text-xs">{t('common.view')}</span>}
         </button>
       )}
 
@@ -88,10 +90,10 @@ export function ActionButtons({
         <button
           onClick={onEdit}
           className={`${baseButtonClass} text-muted-foreground hover:text-primary hover:bg-muted`}
-          title="Modifier"
+          title={t('common.edit')}
         >
           <Pencil className={iconSize} />
-          {showLabels && <span className="ml-1 text-xs">Modifier</span>}
+          {showLabels && <span className="ml-1 text-xs">{t('common.edit')}</span>}
         </button>
       )}
 
@@ -100,10 +102,10 @@ export function ActionButtons({
         <button
           onClick={onDelete}
           className={`${baseButtonClass} text-muted-foreground hover:text-destructive hover:bg-destructive/10`}
-          title="Supprimer"
+          title={t('common.delete')}
         >
           <Trash2 className={iconSize} />
-          {showLabels && <span className="ml-1 text-xs">Supprimer</span>}
+          {showLabels && <span className="ml-1 text-xs">{t('common.delete')}</span>}
         </button>
       )}
     </div>

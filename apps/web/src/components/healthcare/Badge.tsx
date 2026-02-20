@@ -4,6 +4,7 @@
  */
 
 import { type ReactNode } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export type BadgeVariant =
   | 'default'
@@ -97,33 +98,66 @@ export interface StatusBadgeProps {
   dot?: boolean;
 }
 
-// Default status mappings
-const defaultStatusMap: Record<string, { label: string; variant: BadgeVariant }> = {
-  active: { label: 'Actif', variant: 'success' },
-  inactive: { label: 'Inactif', variant: 'gray' },
-  pending: { label: 'En attente', variant: 'warning' },
-  completed: { label: 'Terminé', variant: 'success' },
-  cancelled: { label: 'Annulé', variant: 'gray' },
-  scheduled: { label: 'Planifié', variant: 'blue' },
-  in_progress: { label: 'En cours', variant: 'yellow' },
-  available: { label: 'Disponible', variant: 'success' },
-  in_use: { label: 'En utilisation', variant: 'blue' },
-  maintenance: { label: 'Maintenance', variant: 'orange' },
-  out_of_service: { label: 'Hors service', variant: 'red' },
-  deceased: { label: 'Décédé', variant: 'gray' },
-  transferred: { label: 'Transféré', variant: 'blue' },
+// Status variant mappings (labels come from translations)
+const statusVariantMap: Record<string, BadgeVariant> = {
+  active: 'success',
+  inactive: 'gray',
+  pending: 'warning',
+  completed: 'success',
+  cancelled: 'gray',
+  scheduled: 'blue',
+  in_progress: 'yellow',
+  available: 'success',
+  in_use: 'blue',
+  maintenance: 'orange',
+  out_of_service: 'red',
+  deceased: 'gray',
+  transferred: 'blue',
+};
+
+// Translation key mapping for statuses
+const statusTranslationKeys: Record<string, string> = {
+  active: 'common.active',
+  inactive: 'common.inactive',
+  pending: 'common.pending',
+  completed: 'common.completed',
+  cancelled: 'common.cancelled',
+  scheduled: 'common.scheduled',
+  in_progress: 'common.inProgress',
+  available: 'common.available',
+  in_use: 'common.inUse',
+  maintenance: 'common.maintenance',
+  out_of_service: 'common.outOfService',
+  deceased: 'common.deceased',
+  transferred: 'common.transferred',
 };
 
 export function StatusBadge({
   status,
-  statusMap = defaultStatusMap,
+  statusMap,
   size = 'sm',
   dot = false,
 }: StatusBadgeProps) {
-  const config = statusMap[status] || { label: status, variant: 'default' as BadgeVariant };
+  const { t } = useLanguage();
+
+  // If custom statusMap is provided, use it (for backwards compatibility)
+  if (statusMap) {
+    const config = statusMap[status] || { label: status, variant: 'default' as BadgeVariant };
+    return (
+      <Badge variant={config.variant} size={size} dot={dot}>
+        {config.label}
+      </Badge>
+    );
+  }
+
+  // Use translations
+  const variant = statusVariantMap[status] || 'default';
+  const translationKey = statusTranslationKeys[status];
+  const label = translationKey ? t(translationKey) : status;
+
   return (
-    <Badge variant={config.variant} size={size} dot={dot}>
-      {config.label}
+    <Badge variant={variant} size={size} dot={dot}>
+      {label}
     </Badge>
   );
 }
@@ -134,20 +168,22 @@ export interface SeverityBadgeProps {
   size?: 'xs' | 'sm' | 'md';
 }
 
-const severityMap: Record<string, { label: string; variant: BadgeVariant }> = {
-  critical: { label: 'Critique', variant: 'red' },
-  high: { label: 'Haute', variant: 'orange' },
-  warning: { label: 'Avertissement', variant: 'orange' },
-  medium: { label: 'Moyenne', variant: 'yellow' },
-  info: { label: 'Information', variant: 'blue' },
-  low: { label: 'Basse', variant: 'gray' },
+const severityVariantMap: Record<string, BadgeVariant> = {
+  critical: 'red',
+  high: 'orange',
+  warning: 'orange',
+  medium: 'yellow',
+  info: 'blue',
+  low: 'gray',
 };
 
 export function SeverityBadge({ severity, size = 'sm' }: SeverityBadgeProps) {
-  const config = severityMap[severity] || { label: severity, variant: 'default' as BadgeVariant };
+  const { t } = useLanguage();
+  const variant = severityVariantMap[severity] || 'default';
+  const label = t(`common.${severity}`);
   return (
-    <Badge variant={config.variant} size={size} dot>
-      {config.label}
+    <Badge variant={variant} size={size} dot>
+      {label}
     </Badge>
   );
 }
@@ -158,18 +194,20 @@ export interface PriorityBadgeProps {
   size?: 'xs' | 'sm' | 'md';
 }
 
-const priorityMap: Record<string, { label: string; variant: BadgeVariant }> = {
-  low: { label: 'Basse', variant: 'gray' },
-  medium: { label: 'Moyenne', variant: 'blue' },
-  high: { label: 'Haute', variant: 'orange' },
-  critical: { label: 'Critique', variant: 'red' },
+const priorityVariantMap: Record<string, BadgeVariant> = {
+  low: 'gray',
+  medium: 'blue',
+  high: 'orange',
+  critical: 'red',
 };
 
 export function PriorityBadge({ priority, size = 'sm' }: PriorityBadgeProps) {
-  const config = priorityMap[priority] || { label: priority, variant: 'default' as BadgeVariant };
+  const { t } = useLanguage();
+  const variant = priorityVariantMap[priority] || 'default';
+  const label = t(`common.${priority}`);
   return (
-    <Badge variant={config.variant} size={size}>
-      {config.label}
+    <Badge variant={variant} size={size}>
+      {label}
     </Badge>
   );
 }
@@ -209,17 +247,25 @@ export interface AlertBadgeProps {
   size?: 'xs' | 'sm' | 'md';
 }
 
-const alertStatusMap: Record<string, { label: string; variant: BadgeVariant }> = {
-  active: { label: 'Active', variant: 'red' },
-  acknowledged: { label: 'Prise en compte', variant: 'yellow' },
-  resolved: { label: 'Résolue', variant: 'green' },
+const alertVariantMap: Record<string, BadgeVariant> = {
+  active: 'red',
+  acknowledged: 'yellow',
+  resolved: 'green',
 };
 
 export function AlertBadge({ status, size = 'sm' }: AlertBadgeProps) {
-  const config = alertStatusMap[status] || { label: status, variant: 'default' as BadgeVariant };
+  const { t } = useLanguage();
+  const variant = alertVariantMap[status] || 'default';
+  // Map status to translation key
+  const labelMap: Record<string, string> = {
+    active: t('common.active'),
+    acknowledged: t('common.acknowledged'),
+    resolved: t('common.resolved'),
+  };
+  const label = labelMap[status] || status;
   return (
-    <Badge variant={config.variant} size={size} dot>
-      {config.label}
+    <Badge variant={variant} size={size} dot>
+      {label}
     </Badge>
   );
 }
