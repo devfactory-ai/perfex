@@ -154,7 +154,7 @@ async function seedBakeryOrganization(db: ReturnType<typeof drizzle>) {
 
   // Create organization memberships
   await db.insert(organizationMembers).values([
-    { id: crypto.randomUUID(), organizationId: orgId, userId: adminId, role: 'admin', joinedAt: now },
+    { id: crypto.randomUUID(), organizationId: orgId, userId: adminId, role: 'owner', joinedAt: now },
     { id: crypto.randomUUID(), organizationId: orgId, userId: bakerId, role: 'member', joinedAt: now },
     { id: crypto.randomUUID(), organizationId: orgId, userId: salesId, role: 'member', joinedAt: now },
     { id: crypto.randomUUID(), organizationId: orgId, userId: deliveryId, role: 'member', joinedAt: now },
@@ -179,6 +179,14 @@ async function seedBakeryOrganization(db: ReturnType<typeof drizzle>) {
         'maintenance:*': true,
         'sales:*': true,
         'reports:*': true,
+        'finance:*': true,
+        'inventory:*': true,
+        'crm:*': true,
+        'hr:*': true,
+        'procurement:*': true,
+        'manufacturing:*': true,
+        'projects:*': true,
+        'admin:*': true,
       }),
       isSystem: true,
       createdBy: adminId,

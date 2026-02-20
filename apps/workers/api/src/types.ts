@@ -43,4 +43,7 @@ export interface Env {
 
   // Email Integration (Resend)
   RESEND_API_KEY?: string;
+
+  // Seed key for demo environments
+  SEED_SECRET_KEY?: string;
 }

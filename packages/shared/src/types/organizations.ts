@@ -150,6 +150,78 @@ export const PERMISSIONS = {
   'audit:schedules:manage': 'Manage audit schedules',
   'audit:config:read': 'View audit configuration',
   'audit:config:manage': 'Manage audit configuration',
+
+  // Finance - Accounts
+  'finance:accounts:read': 'View chart of accounts',
+  'finance:accounts:create': 'Create accounts',
+  'finance:accounts:update': 'Update accounts',
+  'finance:accounts:delete': 'Delete accounts',
+
+  // Inventory
+  'inventory:read': 'View inventory items',
+  'inventory:create': 'Create inventory items',
+  'inventory:update': 'Update inventory items',
+  'inventory:delete': 'Delete inventory items',
+
+  // Manufacturing
+  'manufacturing:read': 'View work orders and BOMs',
+  'manufacturing:create': 'Create work orders',
+  'manufacturing:update': 'Update work orders',
+  'manufacturing:delete': 'Delete work orders',
+
+  // Procurement
+  'procurement:read': 'View suppliers and purchase orders',
+  'procurement:create': 'Create suppliers and purchase orders',
+  'procurement:update': 'Update suppliers and purchase orders',
+  'procurement:delete': 'Delete suppliers and purchase orders',
+
+  // Sales
+  'sales:read': 'View sales orders',
+  'sales:create': 'Create sales orders',
+  'sales:update': 'Update sales orders',
+  'sales:delete': 'Delete sales orders',
+
+  // Recipes
+  'recipes:read': 'View recipes',
+  'recipes:create': 'Create recipes',
+  'recipes:update': 'Update recipes',
+  'recipes:delete': 'Delete recipes',
+
+  // Workflows
+  'workflows:read': 'View workflows',
+  'workflows:create': 'Create workflows',
+  'workflows:update': 'Update workflows',
+  'workflows:delete': 'Delete workflows',
+
+  // Projects
+  'projects:read': 'View projects',
+  'projects:create': 'Create projects',
+  'projects:update': 'Update projects',
+  'projects:delete': 'Delete projects',
+
+  // Traceability
+  'traceability:read': 'View traceability data',
+  'traceability:create': 'Create traceability records',
+  'traceability:update': 'Update traceability records',
+  'traceability:delete': 'Delete traceability records',
+
+  // HR
+  'hr:read': 'View employees',
+  'hr:create': 'Create employees',
+  'hr:update': 'Update employees',
+  'hr:delete': 'Delete employees',
+
+  // Payroll
+  'payroll:read': 'View payroll',
+  'payroll:create': 'Create payroll records',
+  'payroll:update': 'Update payroll records',
+  'payroll:delete': 'Delete payroll records',
+
+  // Assets
+  'assets:read': 'View assets',
+  'assets:create': 'Create assets',
+  'assets:update': 'Update assets',
+  'assets:delete': 'Delete assets',
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -211,6 +283,66 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'audit:schedules:manage',
     'audit:config:read',
     'audit:config:manage',
+    // Finance Accounts
+    'finance:accounts:read',
+    'finance:accounts:create',
+    'finance:accounts:update',
+    'finance:accounts:delete',
+    // Inventory
+    'inventory:read',
+    'inventory:create',
+    'inventory:update',
+    'inventory:delete',
+    // Manufacturing
+    'manufacturing:read',
+    'manufacturing:create',
+    'manufacturing:update',
+    'manufacturing:delete',
+    // Procurement
+    'procurement:read',
+    'procurement:create',
+    'procurement:update',
+    'procurement:delete',
+    // Sales
+    'sales:read',
+    'sales:create',
+    'sales:update',
+    'sales:delete',
+    // Recipes
+    'recipes:read',
+    'recipes:create',
+    'recipes:update',
+    'recipes:delete',
+    // Workflows
+    'workflows:read',
+    'workflows:create',
+    'workflows:update',
+    'workflows:delete',
+    // Projects
+    'projects:read',
+    'projects:create',
+    'projects:update',
+    'projects:delete',
+    // Traceability
+    'traceability:read',
+    'traceability:create',
+    'traceability:update',
+    'traceability:delete',
+    // HR
+    'hr:read',
+    'hr:create',
+    'hr:update',
+    'hr:delete',
+    // Payroll
+    'payroll:read',
+    'payroll:create',
+    'payroll:update',
+    'payroll:delete',
+    // Assets
+    'assets:read',
+    'assets:create',
+    'assets:update',
+    'assets:delete',
   ],
   member: [
     'users:read',
@@ -239,5 +371,27 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<OrganizationRole, PermissionKey[]>
     'audit:proposals:submit',
     'audit:schedules:read',
     'audit:config:read',
+    // Inventory - read only
+    'inventory:read',
+    // Manufacturing - read only
+    'manufacturing:read',
+    // Procurement - read only
+    'procurement:read',
+    // Sales - read and create (for bakery staff)
+    'sales:read',
+    'sales:create',
+    // Recipes - read only
+    'recipes:read',
+    // Workflows - read only
+    'workflows:read',
+    // Projects - read only
+    'projects:read',
+    // Traceability - read and create (for quality control)
+    'traceability:read',
+    'traceability:create',
+    // HR - read only
+    'hr:read',
+    // Assets - read only
+    'assets:read',
   ],
 };
