@@ -54,9 +54,9 @@ const quickLinks: QuickLink[] = [
     color: 'bg-green-500',
   },
   {
-    title: 'Tutoriels Vidéo',
-    description: 'Apprenez visuellement',
-    href: '/help/videos',
+    title: 'Guide Boulangerie',
+    description: 'Workflow par rôle',
+    href: '/help/workflow',
     icon: PlayCircle,
     color: 'bg-purple-500',
   },

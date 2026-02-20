@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { api, type ApiResponse } from '@/lib/api';
-import type { Invoice, Company, Contact, Opportunity } from '@perfex/shared';
+import type { Invoice, Company, Contact, Opportunity, InventoryItem } from '@perfex/shared';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -51,6 +51,29 @@ export function DashboardPage() {
     },
   });
 
+  // Fetch inventory stats
+  const { data: inventoryStats } = useQuery({
+    queryKey: ['inventory-stats'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<{
+        totalItems: number;
+        activeItems: number;
+        totalWarehouses: number;
+        lowStockItems: number;
+      }>>('/inventory/items/stats');
+      return response.data.data;
+    },
+  });
+
+  // Fetch inventory items for low stock alerts
+  const { data: inventoryItems } = useQuery({
+    queryKey: ['inventory-items'],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<InventoryItem[]>>('/inventory/items');
+      return response.data.data;
+    },
+  });
+
   // Calculate metrics
   const totalRevenue = invoices?.reduce((sum, inv) => {
     if (inv.status === 'paid') {
@@ -69,6 +92,10 @@ export function DashboardPage() {
 
   // Get recent invoices
   const recentInvoices = invoices?.slice(0, 5) || [];
+
+  // Calculate inventory metrics
+  const rawMaterials = inventoryItems?.filter(item => item.category === 'raw_material') || [];
+  const finishedProducts = inventoryItems?.filter(item => item.category === 'finished_product') || [];
 
   return (
     <div className="space-y-6">
@@ -128,6 +155,107 @@ export function DashboardPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Bakery / Inventory Section */}
+      <div className="rounded-lg border bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <span>🥖</span> {t('bakery.management')}
+          </h2>
+          <button
+            onClick={() => navigate('/help/workflow')}
+            className="text-sm text-primary hover:underline flex items-center gap-1"
+          >
+            <span>📋</span> {t('common.guide')} Workflow
+          </button>
+        </div>
+
+        {/* Inventory Stats */}
+        <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <div className="rounded-lg border bg-white dark:bg-card p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📦</span>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('bakery.rawMaterials')}</p>
+                <p className="text-xl font-bold">{rawMaterials.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-white dark:bg-card p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🥐</span>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('bakery.finishedProducts')}</p>
+                <p className="text-xl font-bold">{finishedProducts.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-white dark:bg-card p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📊</span>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('inventory.totalItems')}</p>
+                <p className="text-xl font-bold">{inventoryStats?.totalItems || inventoryItems?.length || 0}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-white dark:bg-card p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('inventory.lowStock')}</p>
+                <p className="text-xl font-bold text-orange-600">{inventoryStats?.lowStockItems || 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions for Bakery */}
+        <div className="grid gap-3 md:grid-cols-4">
+          <button
+            onClick={() => navigate('/inventory')}
+            className="flex items-center justify-center gap-2 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-4 py-3 text-sm font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+          >
+            <span>📦</span> {t('common.viewStock')}
+          </button>
+          <button
+            onClick={() => navigate('/recipes')}
+            className="flex items-center justify-center gap-2 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-4 py-3 text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+          >
+            <span>📋</span> {t('bakery.recipes')}
+          </button>
+          <button
+            onClick={() => navigate('/manufacturing/work-orders')}
+            className="flex items-center justify-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-4 py-3 text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+          >
+            <span>🏭</span> {t('bakery.production')}
+          </button>
+          <button
+            onClick={() => navigate('/procurement/suppliers')}
+            className="flex items-center justify-center gap-2 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-4 py-3 text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          >
+            <span>🚚</span> {t('procurement.suppliers')}
+          </button>
+        </div>
+
+        {/* Low Stock Alert */}
+        {(inventoryStats?.lowStockItems || 0) > 0 && (
+          <div className="mt-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 p-4">
+            <h3 className="font-semibold text-orange-800 dark:text-orange-200 flex items-center gap-2 mb-2">
+              <span>⚠️</span> {t('dashboard.lowStockAlerts')}
+            </h3>
+            <p className="text-sm text-orange-700 dark:text-orange-300 mb-2">
+              {t('dashboard.lowStockMessage').replace('{count}', String(inventoryStats?.lowStockItems || 0))}
+            </p>
+            <button
+              onClick={() => navigate('/inventory')}
+              className="text-sm text-orange-700 dark:text-orange-300 hover:underline font-medium"
+            >
+              {t('dashboard.viewStockAndOrder')} →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}

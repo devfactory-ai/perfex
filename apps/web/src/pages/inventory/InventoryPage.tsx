@@ -12,25 +12,47 @@ import type { InventoryItem } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
 
+// Category labels for display
+const CATEGORY_LABELS: Record<string, string> = {
+  raw_material: 'Matières Premières',
+  finished_product: 'Produits Finis',
+  dialyzer: 'Dialyseurs',
+  tubing: 'Lignes/Tubulures',
+  needle: 'Aiguilles',
+  solution: 'Solutions',
+  medication: 'Médicaments',
+  other: 'Autres',
+};
+
+// Main tabs for bakery
+const MAIN_TABS = [
+  { id: 'all', label: 'Tous' },
+  { id: 'raw_material', label: 'Matières Premières' },
+  { id: 'finished_product', label: 'Produits Finis' },
+];
+
 export function InventoryPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Fetch inventory items
   const { data: items, isLoading, error } = useQuery({
-    queryKey: ['inventory-items', searchTerm, categoryFilter, activeFilter],
+    queryKey: ['inventory-items', searchTerm, categoryFilter, activeTab, activeFilter],
     queryFn: async () => {
       let url = '/inventory/items';
       const params: string[] = [];
 
       if (searchTerm) params.push(`search=${encodeURIComponent(searchTerm)}`);
-      if (categoryFilter !== 'all') params.push(`category=${encodeURIComponent(categoryFilter)}`);
+      // Use activeTab for main category filter if set, otherwise use categoryFilter
+      const effectiveCategory = activeTab !== 'all' ? activeTab : categoryFilter;
+      if (effectiveCategory !== 'all') params.push(`category=${encodeURIComponent(effectiveCategory)}`);
       if (activeFilter !== 'all') params.push(`active=${activeFilter}`);
 
       if (params.length > 0) url += `?${params.join('&')}`;
@@ -182,6 +204,28 @@ export function InventoryPage() {
         </div>
       )}
 
+      {/* Category Tabs */}
+      <div className="border-b border-border">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          {MAIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setCurrentPage(1);
+              }}
+              className={`whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       {/* Filters and Search */}
       <div className="flex gap-4">
         <div className="flex-1">
@@ -194,18 +238,20 @@ export function InventoryPage() {
           />
         </div>
         <div className="flex gap-2">
-          <select
-            value={categoryFilter}
-            onChange={(e) => handleCategoryFilterChange(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">{t('inventory.allCategories')}</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          {activeTab === 'all' && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => handleCategoryFilterChange(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="all">{t('inventory.allCategories')}</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {CATEGORY_LABELS[category] || category}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={activeFilter}
             onChange={(e) => handleActiveFilterChange(e.target.value)}
@@ -273,7 +319,15 @@ export function InventoryPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm">{item.category || '-'}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          item.category === 'raw_material' ? 'bg-amber-100 text-amber-800' :
+                          item.category === 'finished_product' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {item.category ? (CATEGORY_LABELS[item.category] || item.category) : '-'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         {formatCurrency(item.costPrice, item.currency)}
                       </td>

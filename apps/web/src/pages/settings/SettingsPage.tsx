@@ -139,17 +139,17 @@ export function SettingsPage() {
           <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
           </svg>
-          Apparence et thème
+          {t('settings.appearance')}
         </h2>
 
         {/* Mode Selection */}
         <div className="mb-6">
-          <p className="text-sm text-muted-foreground mb-3">Mode d'affichage</p>
+          <p className="text-sm text-muted-foreground mb-3">{t('settings.displayMode')}</p>
           <div className="flex gap-3">
             {[
-              { value: 'light' as ThemeMode, label: 'Clair', icon: '☀️' },
-              { value: 'dark' as ThemeMode, label: 'Sombre', icon: '🌙' },
-              { value: 'system' as ThemeMode, label: 'Système', icon: '💻' },
+              { value: 'light' as ThemeMode, label: t('settings.light'), icon: '☀️' },
+              { value: 'dark' as ThemeMode, label: t('settings.dark'), icon: '🌙' },
+              { value: 'system' as ThemeMode, label: t('settings.system'), icon: '💻' },
             ].map((modeOption) => (
               <button
                 key={modeOption.value}
