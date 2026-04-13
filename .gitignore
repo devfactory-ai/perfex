@@ -53,3 +53,8 @@ wrangler-state/
 *.tsbuildinfo
 .cache/
 perfex-vitrine/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

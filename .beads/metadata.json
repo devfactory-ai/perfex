@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "perfex",
+  "project_id": "53cc0aa6-208d-44ec-9876-a158f17fad59"
+}
