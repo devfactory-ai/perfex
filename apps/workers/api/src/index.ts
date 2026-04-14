@@ -8,6 +8,7 @@ import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { logger } from './utils/logger';
+import { AppError } from './utils/errors';
 import { initializeDb } from './db';
 import { csrfMiddleware, setCsrfToken } from './middleware/csrf';
 import { apiRateLimitMiddleware, RATE_LIMITS } from './utils/rate-limit';
@@ -56,6 +57,7 @@ import rpmRoutes from './routes/rpm';
 import imagingAiRoutes from './routes/imaging-ai';
 import populationHealthRoutes from './routes/population-health';
 import bakeryRoutes from './routes/bakery';
+import adminRoutes from './routes/admin';
 import seedRoutes from './routes/seed';
 import { docs as docsRoutes } from './routes/docs';
 import openapi from './openapi';
@@ -99,6 +101,11 @@ app.use(
       const allowedPagesPatterns = [
         /^https:\/\/[a-z0-9-]+\.perfex-web(-dev|-staging)?\.pages\.dev$/,
         /^https:\/\/perfex-web(-dev|-staging)?\.pages\.dev$/,
+        // Bakery and Health variant deployments
+        /^https:\/\/[a-z0-9-]+\.perfex-bakery\.pages\.dev$/,
+        /^https:\/\/perfex-bakery\.pages\.dev$/,
+        /^https:\/\/[a-z0-9-]+\.perfex-health\.pages\.dev$/,
+        /^https:\/\/perfex-health\.pages\.dev$/,
       ];
 
       if (allowedPagesPatterns.some(pattern => pattern.test(origin))) {
@@ -382,6 +389,9 @@ apiV1.route('/population-health', populationHealthRoutes);
 // Mount Bakery routes (Complete bakery ERP module)
 apiV1.route('/bakery', bakeryRoutes);
 
+// Mount Admin routes (Platform management - Super Admin & Admin only)
+apiV1.route('/admin', adminRoutes);
+
 // Mount Seed routes (Demo data seeding - non-production only)
 apiV1.route('/seed', seedRoutes);
 
@@ -421,31 +431,38 @@ app.onError((err, c) => {
   let errorCode = 'INTERNAL_SERVER_ERROR';
   let message = 'An unexpected error occurred';
 
-  const errorMessage = err.message.toLowerCase();
-
-  // Map common error patterns to appropriate HTTP status codes
-  if (errorMessage.includes('not found') || errorMessage.includes('no such')) {
-    statusCode = 404;
-    errorCode = 'NOT_FOUND';
-    message = isProduction ? 'Resource not found' : err.message;
-  } else if (errorMessage.includes('unauthorized') || errorMessage.includes('invalid token') || errorMessage.includes('authentication')) {
-    statusCode = 401;
-    errorCode = 'UNAUTHORIZED';
-    message = isProduction ? 'Authentication required' : err.message;
-  } else if (errorMessage.includes('forbidden') || errorMessage.includes('permission') || errorMessage.includes('access denied')) {
-    statusCode = 403;
-    errorCode = 'FORBIDDEN';
-    message = isProduction ? 'Access denied' : err.message;
-  } else if (errorMessage.includes('validation') || errorMessage.includes('invalid') || errorMessage.includes('required')) {
-    statusCode = 400;
-    errorCode = 'VALIDATION_ERROR';
-    message = isProduction ? 'Invalid request' : err.message;
-  } else if (errorMessage.includes('conflict') || errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
-    statusCode = 409;
-    errorCode = 'CONFLICT';
-    message = isProduction ? 'Resource conflict' : err.message;
+  // Check for structured AppError first
+  if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    errorCode = err.code;
+    message = err.message;
   } else {
-    message = isProduction ? 'An unexpected error occurred' : err.message;
+    // Fallback: string matching for legacy errors
+    const errorMessage = err.message.toLowerCase();
+
+    if (errorMessage.includes('not found') || errorMessage.includes('no such')) {
+      statusCode = 404;
+      errorCode = 'NOT_FOUND';
+      message = isProduction ? 'Resource not found' : err.message;
+    } else if (errorMessage.includes('unauthorized') || errorMessage.includes('invalid token') || errorMessage.includes('authentication')) {
+      statusCode = 401;
+      errorCode = 'UNAUTHORIZED';
+      message = isProduction ? 'Authentication required' : err.message;
+    } else if (errorMessage.includes('forbidden') || errorMessage.includes('permission') || errorMessage.includes('access denied')) {
+      statusCode = 403;
+      errorCode = 'FORBIDDEN';
+      message = isProduction ? 'Access denied' : err.message;
+    } else if (errorMessage.includes('validation') || errorMessage.includes('invalid') || errorMessage.includes('required')) {
+      statusCode = 400;
+      errorCode = 'VALIDATION_ERROR';
+      message = isProduction ? 'Invalid request' : err.message;
+    } else if (errorMessage.includes('conflict') || errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
+      statusCode = 409;
+      errorCode = 'CONFLICT';
+      message = isProduction ? 'Resource conflict' : err.message;
+    } else {
+      message = isProduction ? 'An unexpected error occurred' : err.message;
+    }
   }
 
   // Log error with context
