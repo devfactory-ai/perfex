@@ -20,6 +20,7 @@ import {
   bakeryProductRecipes,
   bakeryRecipeCompositions,
   bakeryStockMovements,
+  bakeryArticles,
   type BakeryProofingChamber,
   type BakeryProofingCart,
   type BakeryOven,
@@ -945,6 +946,141 @@ export class BakeryProductionService {
       items: paginatedItems,
       total: items.length,
     };
+  }
+  /**
+   * Calculate product cost from recipe composition and article PUMP prices
+   * Cost = SUM(article.averagePurchasePrice * composition.quantityNeeded) / recipe.yield
+   */
+  async calculateProductCost(
+    productId: string,
+    organizationId: string
+  ): Promise<{
+    costPrice: number;
+    breakdown: Array<{
+      articleName: string;
+      quantity: number;
+      unitCost: number;
+      totalCost: number;
+    }>;
+  }> {
+    // 1. Get the active recipe for this product
+    const recipe = await getDb()
+      .select()
+      .from(bakeryProductRecipes)
+      .where(and(
+        eq(bakeryProductRecipes.productId, productId),
+        eq(bakeryProductRecipes.organizationId, organizationId),
+        eq(bakeryProductRecipes.isActive, true)
+      ))
+      .get();
+
+    if (!recipe) {
+      throw new Error('No active recipe found for this product');
+    }
+
+    // 2. Get all compositions for that recipe
+    const compositions = await getDb()
+      .select()
+      .from(bakeryRecipeCompositions)
+      .where(eq(bakeryRecipeCompositions.recipeId, recipe.id))
+      .all();
+
+    if (compositions.length === 0) {
+      throw new Error('Recipe has no compositions');
+    }
+
+    // 3. For each composition, get the article's averagePurchasePrice
+    const breakdown: Array<{
+      articleName: string;
+      quantity: number;
+      unitCost: number;
+      totalCost: number;
+    }> = [];
+
+    let totalRawMaterialCost = 0;
+
+    for (const comp of compositions) {
+      const article = await getDb()
+        .select()
+        .from(bakeryArticles)
+        .where(eq(bakeryArticles.id, comp.articleId))
+        .get();
+
+      if (!article) {
+        continue;
+      }
+
+      const unitCost = article.averagePurchasePrice || 0;
+      const totalCost = comp.quantityNeeded * unitCost;
+      totalRawMaterialCost += totalCost;
+
+      breakdown.push({
+        articleName: article.name,
+        quantity: comp.quantityNeeded,
+        unitCost,
+        totalCost,
+      });
+    }
+
+    // 4. Divide by recipe yield to get per-unit cost
+    const recipeYield = recipe.yield || 1;
+    const costPrice = totalRawMaterialCost / recipeYield;
+
+    return {
+      costPrice: Math.round(costPrice * 100) / 100,
+      breakdown,
+    };
+  }
+
+  /**
+   * Recalculate cost prices for all active products and update bakeryProducts.costPrice
+   */
+  async recalculateAllProductCosts(
+    organizationId: string
+  ): Promise<{
+    updated: number;
+    errors: Array<{ productId: string; productName: string; error: string }>;
+  }> {
+    // Get all active products for this organization
+    const products = await getDb()
+      .select()
+      .from(bakeryProducts)
+      .where(and(
+        eq(bakeryProducts.organizationId, organizationId),
+        eq(bakeryProducts.isActive, true)
+      ))
+      .all();
+
+    let updated = 0;
+    const errors: Array<{ productId: string; productName: string; error: string }> = [];
+
+    for (const product of products) {
+      try {
+        const { costPrice } = await this.calculateProductCost(product.id, organizationId);
+
+        await getDb()
+          .update(bakeryProducts)
+          .set({
+            costPrice,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(bakeryProducts.id, product.id),
+            eq(bakeryProducts.organizationId, organizationId)
+          ));
+
+        updated++;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        errors.push({
+          productId: product.id,
+          productName: product.name,
+          error: message,
+        });
+      }
+    }
+
+    return { updated, errors };
   }
 }
 
