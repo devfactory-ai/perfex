@@ -16,14 +16,15 @@ export interface RateLimitConfig {
 
 /**
  * Rate limit presets
+ * Staging-safe limits that prevent brute force while allowing demo usage
  */
 export const RATE_LIMITS = {
-  LOGIN: { maxAttempts: 5, windowMs: 15 * 60 * 1000 }, // 5 attempts per 15 minutes
-  REGISTER: { maxAttempts: 3, windowMs: 60 * 60 * 1000 }, // 3 attempts per hour
-  PASSWORD_RESET: { maxAttempts: 3, windowMs: 60 * 60 * 1000 }, // 3 attempts per hour
+  LOGIN: { maxAttempts: 10, windowMs: 5 * 60 * 1000 }, // 10 attempts per 5 minutes
+  REGISTER: { maxAttempts: 10, windowMs: 60 * 60 * 1000 }, // 10 attempts per hour
+  PASSWORD_RESET: { maxAttempts: 5, windowMs: 60 * 60 * 1000 }, // 5 attempts per hour
   PASSWORDLESS: { maxAttempts: 5, windowMs: 15 * 60 * 1000 }, // 5 attempts per 15 minutes
   API_AUTH: { maxAttempts: 100, windowMs: 60 * 1000 }, // 100 requests per minute
-  API_PUBLIC: { maxAttempts: 30, windowMs: 60 * 1000 }, // 30 requests per minute
+  API_PUBLIC: { maxAttempts: 60, windowMs: 60 * 1000 }, // 60 requests per minute
   API_SENSITIVE: { maxAttempts: 20, windowMs: 60 * 1000 }, // 20 requests per minute for sensitive ops
 } as const;
 
@@ -137,7 +138,11 @@ export const rateLimitMiddleware = (
     const kv = (c.env as { CACHE?: KVNamespace }).CACHE;
 
     if (!kv) {
-      // If no KV, allow request but log warning
+      const env = (c.env as any).ENVIRONMENT;
+      if (env === 'production') {
+        logger.error('Rate limit middleware: KV namespace not available in production');
+        return c.json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'Rate limiting service unavailable' } }, 503);
+      }
       logger.warn('Rate limit middleware: KV namespace not available');
       return next();
     }

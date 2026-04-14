@@ -42,11 +42,6 @@ export const DEFAULT_CSRF_CONFIG: CsrfConfig = {
     '/api/v1/health',
     '/api/v1/test',
     '/api/v1/seed',
-    // Staging: allow API testing without CSRF for demo data
-    '/api/v1/inventory',
-    '/api/v1/crm',
-    '/api/v1/sales',
-    '/api/v1/manufacturing',
   ],
 };
 
@@ -142,6 +137,11 @@ export const csrfMiddleware = (config: Partial<CsrfConfig> = {}) => {
     // Get stored token hash from KV
     const kv = (c.env as { CACHE?: KVNamespace }).CACHE;
     if (!kv) {
+      // In production, KV is required for CSRF protection
+      const env = (c.env as any).ENVIRONMENT;
+      if (env === 'production') {
+        return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Security service unavailable' } }, 503);
+      }
       logger.warn('CSRF middleware: KV namespace not available');
       return next();
     }
