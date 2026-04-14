@@ -17,10 +17,10 @@ export interface Env {
   AI: Ai;
 
   // Vectorize
-  VECTORIZE: VectorizeIndex;
+  VECTORIZE?: VectorizeIndex;
 
   // Queue
-  JOBS: Queue;
+  JOBS?: Queue;
 
   // R2 (when enabled)
   // STORAGE: R2Bucket;
