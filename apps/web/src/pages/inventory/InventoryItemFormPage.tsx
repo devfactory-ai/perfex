@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateInventoryItemInput, InventoryItem } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -122,11 +123,11 @@ export function InventoryItemFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stats'] });
-      alert('Inventory item created successfully!');
+      toast.success('Inventory item created successfully!');
       navigate('/inventory');
     },
     onError: (error) => {
-      alert(`Failed to create item: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create item: ${getErrorMessage(error)}`);
     },
   });
 
@@ -141,11 +142,11 @@ export function InventoryItemFormPage() {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stats'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-item', id] });
-      alert('Inventory item updated successfully!');
+      toast.success('Inventory item updated successfully!');
       navigate('/inventory');
     },
     onError: (error) => {
-      alert(`Failed to update item: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update item: ${getErrorMessage(error)}`);
     },
   });
 

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiKey } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -102,11 +103,11 @@ export function ApiKeyFormPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['api-keys'] });
       // Show the generated API key to the user
-      alert(`API Key created successfully!\n\nYour API Key: ${data.key}\n\nIMPORTANT: Copy this key now. You won't be able to see it again!`);
+      toast.success(`API Key created successfully! Your API Key: ${data.key} -- IMPORTANT: Copy this key now. You won't be able to see it again!`, { duration: 30000 });
       navigate('/workflows?tab=api-keys');
     },
     onError: (error) => {
-      alert(`Failed to create API key: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create API key: ${getErrorMessage(error)}`);
     },
   });
 
@@ -120,11 +121,11 @@ export function ApiKeyFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-keys'] });
       queryClient.invalidateQueries({ queryKey: ['api-key', id] });
-      alert('API key updated successfully!');
+      toast.success('API key updated successfully!');
       navigate('/workflows?tab=api-keys');
     },
     onError: (error) => {
-      alert(`Failed to update API key: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update API key: ${getErrorMessage(error)}`);
     },
   });
 

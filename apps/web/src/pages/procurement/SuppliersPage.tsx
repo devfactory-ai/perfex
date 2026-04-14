@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { Supplier } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 interface ProcurementStats {
   totalSuppliers: number;
@@ -48,7 +49,7 @@ export function SuppliersPage() {
     mutationFn: async (supplierId: string) => await api.delete(`/procurement/suppliers/${supplierId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      alert('Supplier deleted successfully!');
+      toast.success('Supplier deleted successfully!');
     },
   });
 

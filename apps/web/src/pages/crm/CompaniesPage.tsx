@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { Company } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function CompaniesPage() {
   const { t } = useLanguage();
@@ -47,10 +48,10 @@ export function CompaniesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      alert('Company deleted successfully!');
+      toast.success('Company deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete company: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete company: ${getErrorMessage(error)}`);
     },
   });
 

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateEmployeeInput, Employee, Department } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -165,11 +166,11 @@ export function EmployeeFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['hr-stats'] });
-      alert('Employee created successfully!');
+      toast.success('Employee created successfully!');
       navigate('/hr/employees');
     },
     onError: (error) => {
-      alert(`Failed to create employee: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create employee: ${getErrorMessage(error)}`);
     },
   });
 
@@ -184,11 +185,11 @@ export function EmployeeFormPage() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['hr-stats'] });
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
-      alert('Employee updated successfully!');
+      toast.success('Employee updated successfully!');
       navigate('/hr/employees');
     },
     onError: (error) => {
-      alert(`Failed to update employee: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update employee: ${getErrorMessage(error)}`);
     },
   });
 

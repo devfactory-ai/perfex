@@ -7,6 +7,7 @@
 import { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface LineItem {
   description: string;
@@ -63,7 +64,7 @@ export function AIInvoiceExtractor({ onExtracted, onCreateInvoice }: AIInvoiceEx
       }
     },
     onError: (error) => {
-      alert(`Extraction failed: ${getErrorMessage(error)}`);
+      toast.error(`Extraction failed: ${getErrorMessage(error)}`);
       setCurrentStep(0);
     },
   });

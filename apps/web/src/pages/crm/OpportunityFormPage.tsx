@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateOpportunityInput, Opportunity, Company, Contact, PipelineStage } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -135,11 +136,11 @@ export function OpportunityFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-      alert('Opportunity created successfully!');
+      toast.success('Opportunity created successfully!');
       navigate('/crm/pipeline');
     },
     onError: (error) => {
-      alert(`Failed to create opportunity: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create opportunity: ${getErrorMessage(error)}`);
     },
   });
 
@@ -153,11 +154,11 @@ export function OpportunityFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['opportunity', id] });
-      alert('Opportunity updated successfully!');
+      toast.success('Opportunity updated successfully!');
       navigate('/crm/pipeline');
     },
     onError: (error) => {
-      alert(`Failed to update opportunity: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update opportunity: ${getErrorMessage(error)}`);
     },
   });
 

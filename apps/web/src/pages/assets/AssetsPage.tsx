@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { FixedAsset } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function AssetsPage() {
   const { t } = useLanguage();
@@ -46,7 +47,7 @@ export function AssetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
       queryClient.invalidateQueries({ queryKey: ['assets-stats'] });
-      alert('Asset deleted successfully!');
+      toast.success('Asset deleted successfully!');
     },
   });
 

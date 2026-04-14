@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Webhook } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -118,11 +119,11 @@ export function WebhookFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-      alert('Webhook created successfully!');
+      toast.success('Webhook created successfully!');
       navigate('/workflows?tab=webhooks');
     },
     onError: (error) => {
-      alert(`Failed to create webhook: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create webhook: ${getErrorMessage(error)}`);
     },
   });
 
@@ -136,11 +137,11 @@ export function WebhookFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       queryClient.invalidateQueries({ queryKey: ['webhook', id] });
-      alert('Webhook updated successfully!');
+      toast.success('Webhook updated successfully!');
       navigate('/workflows?tab=webhooks');
     },
     onError: (error) => {
-      alert(`Failed to update webhook: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update webhook: ${getErrorMessage(error)}`);
     },
   });
 

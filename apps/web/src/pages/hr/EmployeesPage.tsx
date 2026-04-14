@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { Employee, Department } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function EmployeesPage() {
   const { t } = useLanguage();
@@ -73,10 +74,10 @@ export function EmployeesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['hr-stats'] });
-      alert('Employee deleted successfully!');
+      toast.success('Employee deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete employee: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete employee: ${getErrorMessage(error)}`);
     },
   });
 

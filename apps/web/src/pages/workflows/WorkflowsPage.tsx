@@ -10,6 +10,7 @@ import { api } from '../../lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { Workflow, Webhook, ApiKey, ApiResponse } from '@perfex/shared';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function WorkflowsPage() {
   const { t } = useLanguage();
@@ -73,7 +74,7 @@ export function WorkflowsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       queryClient.invalidateQueries({ queryKey: ['workflows-stats'] });
-      alert('Workflow deleted successfully!');
+      toast.success('Workflow deleted successfully!');
     },
   });
 
@@ -101,7 +102,7 @@ export function WorkflowsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       queryClient.invalidateQueries({ queryKey: ['workflows-stats'] });
-      alert('Webhook deleted successfully!');
+      toast.success('Webhook deleted successfully!');
     },
   });
 
@@ -129,7 +130,7 @@ export function WorkflowsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-keys'] });
       queryClient.invalidateQueries({ queryKey: ['workflows-stats'] });
-      alert('API key deleted successfully!');
+      toast.success('API key deleted successfully!');
     },
   });
 

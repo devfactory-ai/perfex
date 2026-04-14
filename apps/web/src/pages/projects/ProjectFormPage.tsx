@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateProjectInput, Project, Company, Contact } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -134,11 +135,11 @@ export function ProjectFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      alert('Project created successfully!');
+      toast.success('Project created successfully!');
       navigate('/projects');
     },
     onError: (error) => {
-      alert(`Failed to create project: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create project: ${getErrorMessage(error)}`);
     },
   });
 
@@ -152,11 +153,11 @@ export function ProjectFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project', id] });
-      alert('Project updated successfully!');
+      toast.success('Project updated successfully!');
       navigate('/projects');
     },
     onError: (error) => {
-      alert(`Failed to update project: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update project: ${getErrorMessage(error)}`);
     },
   });
 

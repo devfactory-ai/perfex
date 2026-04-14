@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateCompanyInput, Company } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -115,11 +116,11 @@ export function CompanyFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      alert('Company created successfully!');
+      toast.success('Company created successfully!');
       navigate('/crm/companies');
     },
     onError: (error) => {
-      alert(`Failed to create company: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create company: ${getErrorMessage(error)}`);
     },
   });
 
@@ -133,11 +134,11 @@ export function CompanyFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['company', id] });
-      alert('Company updated successfully!');
+      toast.success('Company updated successfully!');
       navigate('/crm/companies');
     },
     onError: (error) => {
-      alert(`Failed to update company: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update company: ${getErrorMessage(error)}`);
     },
   });
 

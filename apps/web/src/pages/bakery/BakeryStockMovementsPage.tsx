@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Plus,
@@ -79,8 +80,12 @@ export function BakeryStockMovementsPage() {
 
       if (params.length > 0) url += `?${params.join('&')}`;
 
-      const response = await api.get<ApiResponse<StockMovement[]>>(url);
-      return response.data.data || [];
+      const response = await api.get<ApiResponse<{ items: StockMovement[]; total: number } | StockMovement[]>>(url);
+      const data = response.data.data;
+      if (data && typeof data === 'object' && 'items' in data) {
+        return data.items as StockMovement[];
+      }
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -93,7 +98,7 @@ export function BakeryStockMovementsPage() {
       queryClient.invalidateQueries({ queryKey: ['bakery-stock-movements'] });
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { WorkOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 interface ManufacturingStats {
   totalBOMs: number;
@@ -55,7 +56,7 @@ export function WorkOrdersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
       queryClient.invalidateQueries({ queryKey: ['manufacturing-stats'] });
-      alert('Work order deleted successfully!');
+      toast.success('Work order deleted successfully!');
     },
   });
 

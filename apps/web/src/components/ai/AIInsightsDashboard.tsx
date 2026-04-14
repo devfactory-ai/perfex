@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface Insight {
   id: string;
@@ -110,7 +111,7 @@ export function AIInsightsDashboard() {
       queryClient.invalidateQueries({ queryKey: ['ai-insights'] });
     },
     onError: (error) => {
-      alert(`Failed to dismiss: ${getErrorMessage(error)}`);
+      toast.error(`Failed to dismiss: ${getErrorMessage(error)}`);
     },
   });
 

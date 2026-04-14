@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Supplier } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -116,11 +117,11 @@ export function SupplierFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      alert('Supplier created successfully!');
+      toast.success('Supplier created successfully!');
       navigate('/procurement/suppliers');
     },
     onError: (error) => {
-      alert(`Failed to create supplier: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create supplier: ${getErrorMessage(error)}`);
     },
   });
 
@@ -134,11 +135,11 @@ export function SupplierFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       queryClient.invalidateQueries({ queryKey: ['supplier', id] });
-      alert('Supplier updated successfully!');
+      toast.success('Supplier updated successfully!');
       navigate('/procurement/suppliers');
     },
     onError: (error) => {
-      alert(`Failed to update supplier: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update supplier: ${getErrorMessage(error)}`);
     },
   });
 

@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { Project } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function ProjectsPage() {
   const { t } = useLanguage();
@@ -47,10 +48,10 @@ export function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      alert('Project deleted successfully!');
+      toast.success('Project deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete project: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete project: ${getErrorMessage(error)}`);
     },
   });
 

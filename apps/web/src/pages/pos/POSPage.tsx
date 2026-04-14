@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ApiResponse } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -120,7 +121,7 @@ export function POSPage() {
 
   const handleOpenSession = () => {
     if (!selectedPOS) {
-      alert(t('pos.selectPOSAlert'));
+      toast.warning(t('pos.selectPOSAlert'));
       return;
     }
     setSessionOpen(true);
@@ -138,11 +139,11 @@ export function POSPage() {
 
   const handleCheckout = () => {
     if (cart.length === 0) {
-      alert(t('pos.emptyCartAlert'));
+      toast.warning(t('pos.emptyCartAlert'));
       return;
     }
     // In a real implementation, this would create a sales transaction
-    alert(`${t('pos.saleRecorded')}\n${t('pos.total')}: ${cartTotal.toFixed(2)} EUR\n${t('pos.items')}: ${cartItemCount}`);
+    toast.success(`${t('pos.saleRecorded')} - ${t('pos.total')}: ${cartTotal.toFixed(2)} EUR - ${t('pos.items')}: ${cartItemCount}`);
     clearCart();
   };
 

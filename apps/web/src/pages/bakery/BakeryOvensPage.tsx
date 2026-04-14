@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Plus,
@@ -70,7 +71,7 @@ export function BakeryOvensPage() {
     queryKey: ['bakery-ovens'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Oven[]>>('/bakery/ovens');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
     refetchInterval: 15000,
   });
@@ -80,7 +81,7 @@ export function BakeryOvensPage() {
     queryKey: ['bakery-oven-passages'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<OvenPassage[]>>('/bakery/oven-passages');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
     refetchInterval: 15000,
   });
@@ -95,7 +96,7 @@ export function BakeryOvensPage() {
       queryClient.invalidateQueries({ queryKey: ['bakery-oven-passages'] });
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

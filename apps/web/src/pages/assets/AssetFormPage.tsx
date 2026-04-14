@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FixedAsset } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -104,11 +105,11 @@ export function AssetFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
-      alert('Asset created successfully!');
+      toast.success('Asset created successfully!');
       navigate('/assets');
     },
     onError: (error) => {
-      alert(`Failed to create asset: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create asset: ${getErrorMessage(error)}`);
     },
   });
 
@@ -122,11 +123,11 @@ export function AssetFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets'] });
       queryClient.invalidateQueries({ queryKey: ['fixed-asset', id] });
-      alert('Asset updated successfully!');
+      toast.success('Asset updated successfully!');
       navigate('/assets');
     },
     onError: (error) => {
-      alert(`Failed to update asset: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update asset: ${getErrorMessage(error)}`);
     },
   });
 

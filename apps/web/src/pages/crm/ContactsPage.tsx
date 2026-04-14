@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { ContactWithCompany } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function ContactsPage() {
   const { t } = useLanguage();
@@ -41,10 +42,10 @@ export function ContactsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      alert('Contact deleted successfully!');
+      toast.success('Contact deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete contact: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete contact: ${getErrorMessage(error)}`);
     },
   });
 

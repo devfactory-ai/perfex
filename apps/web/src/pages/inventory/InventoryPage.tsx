@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { InventoryItem } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 // Category labels for display
 const CATEGORY_LABELS: Record<string, string> = {
@@ -89,10 +90,10 @@ export function InventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stats'] });
-      alert('Inventory item deleted successfully!');
+      toast.success('Inventory item deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete item: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete item: ${getErrorMessage(error)}`);
     },
   });
 

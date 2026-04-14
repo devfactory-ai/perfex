@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateAccountInput, Account } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -86,11 +87,11 @@ export function AccountFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      alert('Account created successfully!');
+      toast.success('Account created successfully!');
       navigate('/finance/accounts');
     },
     onError: (error) => {
-      alert(`Failed to create account: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create account: ${getErrorMessage(error)}`);
     },
   });
 
@@ -104,11 +105,11 @@ export function AccountFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['account', id] });
-      alert('Account updated successfully!');
+      toast.success('Account updated successfully!');
       navigate('/finance/accounts');
     },
     onError: (error) => {
-      alert(`Failed to update account: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update account: ${getErrorMessage(error)}`);
     },
   });
 

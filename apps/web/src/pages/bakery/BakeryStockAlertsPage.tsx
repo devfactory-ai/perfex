@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   AlertTriangle,
@@ -64,7 +65,7 @@ export function BakeryStockAlertsPage() {
     queryKey: ['bakery-stock-alerts', typeFilter, severityFilter, acknowledgedFilter],
     queryFn: async () => {
       const response = await api.get<ApiResponse<StockAlert[]>>('/bakery/stock-alerts');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -77,7 +78,7 @@ export function BakeryStockAlertsPage() {
       queryClient.invalidateQueries({ queryKey: ['bakery-stock-alerts'] });
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

@@ -10,6 +10,7 @@ import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import type { InvoiceWithLines, Payment, CreatePaymentInput } from '@perfex/shared';
 import { PaymentModal } from '@/components/PaymentModal';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,10 +37,10 @@ export function InvoiceDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', id] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      alert('Invoice sent successfully!');
+      toast.success('Invoice sent successfully!');
     },
     onError: (error) => {
-      alert(`Failed to send invoice: ${getErrorMessage(error)}`);
+      toast.error(`Failed to send invoice: ${getErrorMessage(error)}`);
     },
   });
 
@@ -52,10 +53,10 @@ export function InvoiceDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoice', id] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      alert('Invoice cancelled successfully!');
+      toast.success('Invoice cancelled successfully!');
     },
     onError: (error) => {
-      alert(`Failed to cancel invoice: ${getErrorMessage(error)}`);
+      toast.error(`Failed to cancel invoice: ${getErrorMessage(error)}`);
     },
   });
 
@@ -66,11 +67,11 @@ export function InvoiceDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      alert('Invoice deleted successfully!');
+      toast.success('Invoice deleted successfully!');
       navigate('/finance/invoices');
     },
     onError: (error) => {
-      alert(`Failed to delete invoice: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete invoice: ${getErrorMessage(error)}`);
     },
   });
 
@@ -85,10 +86,10 @@ export function InvoiceDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       setIsPaymentModalOpen(false);
-      alert('Payment recorded successfully!');
+      toast.success('Payment recorded successfully!');
     },
     onError: (error) => {
-      alert(`Failed to record payment: ${getErrorMessage(error)}`);
+      toast.error(`Failed to record payment: ${getErrorMessage(error)}`);
     },
   });
 

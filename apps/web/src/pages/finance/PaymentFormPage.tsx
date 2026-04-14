@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreatePaymentInput, Account, Company, Payment } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -76,11 +77,11 @@ export function PaymentFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      alert('Payment recorded successfully!');
+      toast.success('Payment recorded successfully!');
       navigate('/finance/payments');
     },
     onError: (error) => {
-      alert(`Failed to record payment: ${getErrorMessage(error)}`);
+      toast.error(`Failed to record payment: ${getErrorMessage(error)}`);
     },
   });
 

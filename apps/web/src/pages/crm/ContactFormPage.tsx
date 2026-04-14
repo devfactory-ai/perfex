@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateContactInput, Contact, Company } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema that matches the UI needs
@@ -130,11 +131,11 @@ export function ContactFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      alert('Contact created successfully!');
+      toast.success('Contact created successfully!');
       navigate('/crm/contacts');
     },
     onError: (error) => {
-      alert(`Failed to create contact: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create contact: ${getErrorMessage(error)}`);
     },
   });
 
@@ -148,11 +149,11 @@ export function ContactFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact', id] });
-      alert('Contact updated successfully!');
+      toast.success('Contact updated successfully!');
       navigate('/crm/contacts');
     },
     onError: (error) => {
-      alert(`Failed to update contact: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update contact: ${getErrorMessage(error)}`);
     },
   });
 

@@ -8,6 +8,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 
 interface ArticleForm {
@@ -95,7 +96,7 @@ export function BakeryArticleFormPage() {
     queryKey: ['suppliers-list'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Supplier[]>>('/procurement/suppliers?active=true');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -120,7 +121,7 @@ export function BakeryArticleFormPage() {
       navigate('/bakery/stock/articles');
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

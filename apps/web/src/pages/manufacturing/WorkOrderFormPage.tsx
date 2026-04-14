@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { WorkOrder } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -141,11 +142,11 @@ export function WorkOrderFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
-      alert('Work order created successfully!');
+      toast.success('Work order created successfully!');
       navigate('/manufacturing/work-orders');
     },
     onError: (error) => {
-      alert(`Failed to create work order: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create work order: ${getErrorMessage(error)}`);
     },
   });
 
@@ -159,11 +160,11 @@ export function WorkOrderFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
       queryClient.invalidateQueries({ queryKey: ['work-order', id] });
-      alert('Work order updated successfully!');
+      toast.success('Work order updated successfully!');
       navigate('/manufacturing/work-orders');
     },
     onError: (error) => {
-      alert(`Failed to update work order: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update work order: ${getErrorMessage(error)}`);
     },
   });
 

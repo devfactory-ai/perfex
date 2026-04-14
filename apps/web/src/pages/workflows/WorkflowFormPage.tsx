@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Workflow } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -80,11 +81,11 @@ export function WorkflowFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
-      alert('Workflow created successfully!');
+      toast.success('Workflow created successfully!');
       navigate('/workflows');
     },
     onError: (error) => {
-      alert(`Failed to create workflow: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create workflow: ${getErrorMessage(error)}`);
     },
   });
 
@@ -98,11 +99,11 @@ export function WorkflowFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       queryClient.invalidateQueries({ queryKey: ['workflow', id] });
-      alert('Workflow updated successfully!');
+      toast.success('Workflow updated successfully!');
       navigate('/workflows');
     },
     onError: (error) => {
-      alert(`Failed to update workflow: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update workflow: ${getErrorMessage(error)}`);
     },
   });
 

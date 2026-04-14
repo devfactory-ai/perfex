@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SalesOrder, Company, Contact } from '@perfex/shared';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 // Form schema
@@ -141,11 +142,11 @@ export function SalesOrderFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
-      alert('Sales order created successfully!');
+      toast.success('Sales order created successfully!');
       navigate('/sales/orders');
     },
     onError: (error) => {
-      alert(`Failed to create sales order: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create sales order: ${getErrorMessage(error)}`);
     },
   });
 
@@ -159,11 +160,11 @@ export function SalesOrderFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       queryClient.invalidateQueries({ queryKey: ['sales-order', id] });
-      alert('Sales order updated successfully!');
+      toast.success('Sales order updated successfully!');
       navigate('/sales/orders');
     },
     onError: (error) => {
-      alert(`Failed to update sales order: ${getErrorMessage(error)}`);
+      toast.error(`Failed to update sales order: ${getErrorMessage(error)}`);
     },
   });
 

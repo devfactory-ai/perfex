@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { SalesOrder } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 interface SalesOrderStats {
   totalOrders: number;
@@ -53,7 +54,7 @@ export function SalesOrdersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
-      alert('Sales order deleted successfully!');
+      toast.success('Sales order deleted successfully!');
     },
   });
 

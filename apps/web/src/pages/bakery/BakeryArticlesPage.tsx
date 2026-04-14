@@ -10,6 +10,7 @@ import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 import {
   Plus,
   Search,
@@ -90,8 +91,13 @@ export function BakeryArticlesPage() {
 
       if (params.length > 0) url += `?${params.join('&')}`;
 
-      const response = await api.get<ApiResponse<Article[]>>(url);
-      return response.data.data || [];
+      const response = await api.get<ApiResponse<{ items: Article[]; total: number } | Article[]>>(url);
+      const data = response.data.data;
+      // Handle both paginated response { items, total } and array response
+      if (data && 'items' in data) {
+        return data.items;
+      }
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -104,7 +110,7 @@ export function BakeryArticlesPage() {
       queryClient.invalidateQueries({ queryKey: ['bakery-articles'] });
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

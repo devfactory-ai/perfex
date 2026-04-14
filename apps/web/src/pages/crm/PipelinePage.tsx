@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { Opportunity } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function PipelinePage() {
   const { t } = useLanguage();
@@ -48,10 +49,10 @@ export function PipelinePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
-      alert('Opportunity deleted successfully!');
+      toast.success('Opportunity deleted successfully!');
     },
     onError: (error) => {
-      alert(`Failed to delete opportunity: ${getErrorMessage(error)}`);
+      toast.error(`Failed to delete opportunity: ${getErrorMessage(error)}`);
     },
   });
 

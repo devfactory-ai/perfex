@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { type Account } from '@perfex/shared';
 import { EmptyState } from '@/components/EmptyState';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 
 export function AccountsPage() {
   const { t } = useLanguage();
@@ -38,10 +39,10 @@ export function AccountsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      alert('Chart of accounts imported successfully!');
+      toast.success('Chart of accounts imported successfully!');
     },
     onError: (error) => {
-      alert(`Failed to import: ${getErrorMessage(error)}`);
+      toast.error(`Failed to import: ${getErrorMessage(error)}`);
     },
   });
 

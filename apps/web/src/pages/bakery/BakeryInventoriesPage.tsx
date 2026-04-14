@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Plus,
@@ -64,7 +65,7 @@ export function BakeryInventoriesPage() {
     queryKey: ['bakery-inventories', statusFilter, typeFilter],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Inventory[]>>('/bakery/inventories');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -79,7 +80,7 @@ export function BakeryInventoriesPage() {
       setShowNewModal(false);
     },
     onError: (error) => {
-      alert(`Erreur: ${getErrorMessage(error)}`);
+      toast.error(`Erreur: ${getErrorMessage(error)}`);
     },
   });
 

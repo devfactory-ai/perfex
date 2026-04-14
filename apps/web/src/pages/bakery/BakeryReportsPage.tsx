@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   Wrench,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ReportConfig {
   id: string;
@@ -66,7 +67,7 @@ export function BakeryReportsPage() {
     queryKey: ['bakery-report-configs'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<ReportConfig[]>>('/bakery/report-configs');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -91,12 +92,12 @@ export function BakeryReportsPage() {
   };
 
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
-    alert(`Export ${format.toUpperCase()} en cours...`);
+    toast.info(`Export ${format.toUpperCase()} en cours...`);
     // In production, this would call the export API
   };
 
   const handleGenerateReport = async (_reportId: string) => {
-    alert(`Génération du rapport en cours...`);
+    toast.info(`Génération du rapport en cours...`);
     // In production, this would call the report generation API
   };
 

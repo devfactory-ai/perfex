@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { InvoiceForm } from '@/components/InvoiceForm';
 import { api, getErrorMessage, type ApiResponse } from '@/lib/api';
 import type { InvoiceWithLines, CreateInvoiceInput } from '@perfex/shared';
+import { toast } from 'sonner';
 
 export function NewInvoicePage() {
   const navigate = useNavigate();
@@ -20,11 +21,11 @@ export function NewInvoicePage() {
     },
     onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      alert(`Invoice ${invoice.number} created successfully!`);
+      toast.success(`Invoice ${invoice.number} created successfully!`);
       navigate(`/finance/invoices/${invoice.id}`);
     },
     onError: (error) => {
-      alert(`Failed to create invoice: ${getErrorMessage(error)}`);
+      toast.error(`Failed to create invoice: ${getErrorMessage(error)}`);
     },
   });
 
