@@ -31,7 +31,7 @@ export class PaymentService {
       .where(eq(payments.organizationId, organizationId))
       .orderBy(desc(payments.createdAt))
       .limit(1)
-      .get() as any;
+      .get();
 
     // Extract number from last reference (e.g., "PAY-2024-001" -> 1)
     let nextNumber = 1;
@@ -79,7 +79,7 @@ export class PaymentService {
               eq(invoices.organizationId, organizationId)
             )
           )
-          .get() as any;
+          .get();
 
         if (!invoice) {
           throw new Error(`Invoice ${allocation.invoiceId} not found`);
@@ -137,7 +137,7 @@ export class PaymentService {
       .select()
       .from(payments)
       .where(eq(payments.id, paymentId))
-      .get() as any;
+      .get();
 
     if (!payment) {
       throw new Error('Failed to create payment');
@@ -161,7 +161,7 @@ export class PaymentService {
           eq(payments.organizationId, organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!payment) {
       throw new Error('Payment not found');
@@ -186,7 +186,7 @@ export class PaymentService {
       .select()
       .from(paymentAllocations)
       .where(eq(paymentAllocations.paymentId, paymentId))
-      .all() as any[];
+      .all();
 
     return {
       ...payment,
@@ -215,7 +215,7 @@ export class PaymentService {
       .from(payments)
       .where(eq(payments.organizationId, organizationId))
       .orderBy(desc(payments.date))
-      .all() as any[];
+      .all();
 
     // Filter in memory
     let filtered = paymentsList;
@@ -267,7 +267,7 @@ export class PaymentService {
           eq(invoices.organizationId, organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!invoice) {
       throw new Error('Invoice not found');
@@ -278,7 +278,7 @@ export class PaymentService {
       .select()
       .from(paymentAllocations)
       .where(eq(paymentAllocations.invoiceId, invoiceId))
-      .all() as any[];
+      .all();
 
     // Get payment details for each allocation
     const allocationsWithPayments = [];
@@ -307,7 +307,7 @@ export class PaymentService {
       .select()
       .from(paymentAllocations)
       .where(eq(paymentAllocations.paymentId, paymentId))
-      .all() as any[];
+      .all();
 
     // Unallocate from invoices (reverse payment)
     if (allocations.length > 0) {

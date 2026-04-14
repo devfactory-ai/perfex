@@ -71,7 +71,7 @@ export class BakeryReportingService {
         eq(bakeryArticles.organizationId, organizationId),
         eq(bakeryArticles.isActive, true)
       ))
-      .all() as any[];
+      .all();
 
     // Count low stock items
     const lowStockItems = articles.filter(
@@ -151,7 +151,7 @@ export class BakeryReportingService {
         sql`${bakeryQualityControls.controlDate} >= ${today.toISOString()}`,
         sql`${bakeryQualityControls.controlDate} < ${tomorrow.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     const conformingCount = todayControls.filter((c) => c.isConforming).length;
     const nonConformingCount = todayControls.filter((c) => !c.isConforming).length;
@@ -166,7 +166,7 @@ export class BakeryReportingService {
         sql`${bakeryProductionComparisons.comparisonDate} >= ${today.toISOString()}`,
         sql`${bakeryProductionComparisons.comparisonDate} < ${tomorrow.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     const totalTheoretical = comparisons.reduce((sum, c) => sum + (c.theoreticalQuantity || 0), 0);
     const totalConforming = comparisons.reduce((sum, c) => sum + (c.conformingQuantity || 0), 0);
@@ -237,7 +237,7 @@ export class BakeryReportingService {
         sql`${bakeryDeliveryOrders.createdAt} >= ${startDate.toISOString()}`,
         sql`${bakeryDeliveryOrders.createdAt} <= ${endDate.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     const totalB2BRevenue = orders
       .filter((o) => o.status === 'livree' || o.status === 'facturee')
@@ -252,7 +252,7 @@ export class BakeryReportingService {
         sql`${bakerySalesSessions.sessionDate} >= ${startDate.toISOString()}`,
         sql`${bakerySalesSessions.sessionDate} <= ${endDate.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     const totalPOSRevenue = sessions
       .filter((s) => s.status === 'fermee' || s.status === 'validee')
@@ -302,7 +302,7 @@ export class BakeryReportingService {
         eq(bakeryEquipment.organizationId, organizationId),
         eq(bakeryEquipment.isActive, true)
       ))
-      .all() as any[];
+      .all();
 
     // Group by type instead of status (status doesn't exist)
     const byType = equipment.reduce((acc: any, e) => {
@@ -321,7 +321,7 @@ export class BakeryReportingService {
         eq(bakeryInterventions.organizationId, organizationId),
         sql`${bakeryInterventions.interventionDate} >= ${thirtyDaysAgo.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     // Group by type
     const interventionsByType = interventions.reduce((acc: any, i) => {
@@ -421,7 +421,7 @@ export class BakeryReportingService {
         sql`${bakerySalesSessions.sessionDate} >= ${startOfDay.toISOString()}`,
         sql`${bakerySalesSessions.sessionDate} <= ${endOfDay.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     // Split sessions by period
     const morningSessions = sessions.filter(s => s.period === 'matin');
@@ -441,7 +441,7 @@ export class BakeryReportingService {
         sql`${bakeryDeliveryOrders.expectedDeliveryDate} >= ${startOfDay.toISOString()}`,
         sql`${bakeryDeliveryOrders.expectedDeliveryDate} <= ${endOfDay.toISOString()}`
       ))
-      .all() as any[];
+      .all();
 
     const deliveryRevenueHT = orders.reduce((sum, o) => sum + (o.totalAmountHT || 0), 0);
     const deliveryRevenueTTC = orders.reduce((sum, o) => sum + (o.totalAmountTTC || 0), 0);

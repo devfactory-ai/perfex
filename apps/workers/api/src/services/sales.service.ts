@@ -96,7 +96,7 @@ export class SalesService {
       .select()
       .from(salesOrders)
       .where(and(eq(salesOrders.id, orderId), eq(salesOrders.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return order || null;
   }
 
@@ -121,7 +121,7 @@ export class SalesService {
       .from(salesOrders)
       .where(and(...conditions))
       .orderBy(desc(salesOrders.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateSalesOrder(organizationId: string, orderId: string, data: UpdateSalesOrderInput): Promise<SalesOrder> {

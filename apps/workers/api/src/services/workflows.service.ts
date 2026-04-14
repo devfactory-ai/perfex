@@ -94,7 +94,7 @@ export class WorkflowsService {
       .select()
       .from(workflows)
       .where(and(eq(workflows.id, workflowId), eq(workflows.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return (workflow as Workflow) || null;
   }
 
@@ -114,7 +114,7 @@ export class WorkflowsService {
       .from(workflows)
       .where(and(...conditions))
       .orderBy(desc(workflows.createdAt))
-      .all() as any[];
+      .all();
 
     return result as Workflow[];
   }
@@ -182,7 +182,7 @@ export class WorkflowsService {
       .select()
       .from(workflowSteps)
       .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return (step as WorkflowStep) || null;
   }
 
@@ -192,7 +192,7 @@ export class WorkflowsService {
       .from(workflowSteps)
       .where(and(eq(workflowSteps.organizationId, organizationId), eq(workflowSteps.workflowId, workflowId)))
       .orderBy(workflowSteps.position)
-      .all() as any[];
+      .all();
     return result as WorkflowStep[];
   }
 
@@ -230,7 +230,7 @@ export class WorkflowsService {
       .select()
       .from(workflowInstances)
       .where(and(eq(workflowInstances.id, instanceId), eq(workflowInstances.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return (instance as WorkflowInstance) || null;
   }
 
@@ -258,7 +258,7 @@ export class WorkflowsService {
       .from(workflowInstances)
       .where(and(...conditions))
       .orderBy(desc(workflowInstances.createdAt))
-      .all() as any[];
+      .all();
 
     return result as WorkflowInstance[];
   }
@@ -296,7 +296,7 @@ export class WorkflowsService {
       .select()
       .from(approvals)
       .where(and(eq(approvals.id, approvalId), eq(approvals.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return (approval as Approval) || null;
   }
 
@@ -316,7 +316,7 @@ export class WorkflowsService {
       .from(approvals)
       .where(and(...conditions))
       .orderBy(desc(approvals.createdAt))
-      .all() as any[];
+      .all();
 
     return result as Approval[];
   }
@@ -373,7 +373,7 @@ export class WorkflowsService {
       .select()
       .from(activityFeed)
       .where(and(eq(activityFeed.id, activityId), eq(activityFeed.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return activity || null;
   }
 
@@ -397,7 +397,7 @@ export class WorkflowsService {
       .from(activityFeed)
       .where(and(...conditions))
       .orderBy(desc(activityFeed.createdAt))
-      .all() as any[];
+      .all();
   }
 
   // ============================================
@@ -434,7 +434,7 @@ export class WorkflowsService {
       .select()
       .from(comments)
       .where(and(eq(comments.id, commentId), eq(comments.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return comment || null;
   }
 
@@ -450,7 +450,7 @@ export class WorkflowsService {
         )
       )
       .orderBy(comments.createdAt)
-      .all() as any[];
+      .all();
   }
 
   async updateComment(organizationId: string, commentId: string, userId: string, data: UpdateCommentInput): Promise<Comment> {
@@ -519,7 +519,7 @@ export class WorkflowsService {
       .select()
       .from(webhooks)
       .where(and(eq(webhooks.id, webhookId), eq(webhooks.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return webhook || null;
   }
 
@@ -529,7 +529,7 @@ export class WorkflowsService {
       .from(webhooks)
       .where(eq(webhooks.organizationId, organizationId))
       .orderBy(desc(webhooks.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateWebhook(organizationId: string, webhookId: string, data: UpdateWebhookInput): Promise<Webhook> {
@@ -617,7 +617,7 @@ export class WorkflowsService {
       .select()
       .from(apiKeys)
       .where(and(eq(apiKeys.id, apiKeyId), eq(apiKeys.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return apiKey || null;
   }
 
@@ -627,7 +627,7 @@ export class WorkflowsService {
       .from(apiKeys)
       .where(eq(apiKeys.organizationId, organizationId))
       .orderBy(desc(apiKeys.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateApiKey(organizationId: string, apiKeyId: string, data: UpdateApiKeyInput): Promise<ApiKey> {
@@ -695,7 +695,7 @@ export class WorkflowsService {
       .select()
       .from(tags)
       .where(and(eq(tags.id, tagId), eq(tags.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return tag || null;
   }
 
@@ -711,7 +711,7 @@ export class WorkflowsService {
       .from(tags)
       .where(and(...conditions))
       .orderBy(desc(tags.usageCount))
-      .all() as any[];
+      .all();
   }
 
   async updateTag(organizationId: string, tagId: string, data: UpdateTagInput): Promise<Tag> {
@@ -774,7 +774,7 @@ export class WorkflowsService {
       .select()
       .from(entityTags)
       .where(and(eq(entityTags.id, entityTagId), eq(entityTags.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return entityTag || null;
   }
 
@@ -789,7 +789,7 @@ export class WorkflowsService {
           eq(entityTags.entityId, entityId)
         )
       )
-      .all() as any[];
+      .all();
   }
 
   async removeEntityTag(organizationId: string, entityTagId: string): Promise<void> {

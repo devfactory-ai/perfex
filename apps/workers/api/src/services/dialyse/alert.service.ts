@@ -62,7 +62,7 @@ export class AlertService {
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!patient) {
       throw new Error('Patient not found');
@@ -101,7 +101,7 @@ export class AlertService {
       .select()
       .from(clinicalAlerts)
       .where(and(eq(clinicalAlerts.id, alertId), eq(clinicalAlerts.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return alert as ClinicalAlert | null;
   }
@@ -117,7 +117,7 @@ export class AlertService {
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.id, alert.patientId))
-      .get() as any;
+      .get();
 
     if (!patient) return null;
 
@@ -125,7 +125,7 @@ export class AlertService {
       .select()
       .from(contacts)
       .where(eq(contacts.id, patient.contactId))
-      .get() as any;
+      .get();
 
     return {
       ...alert,
@@ -178,13 +178,13 @@ export class AlertService {
       .orderBy(desc(clinicalAlerts.createdAt))
       .limit(limit)
       .offset(offset)
-      .all() as any[];
+      .all();
 
     const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(clinicalAlerts)
       .where(and(...conditions))
-      .get() as any;
+      .get();
 
     return {
       data: alerts as ClinicalAlert[],
@@ -207,7 +207,7 @@ export class AlertService {
         )
       )
       .orderBy(desc(clinicalAlerts.severity), desc(clinicalAlerts.createdAt))
-      .all() as any[];
+      .all();
 
     return alerts as ClinicalAlert[];
   }
@@ -235,7 +235,7 @@ export class AlertService {
         )
       )
       .orderBy(desc(clinicalAlerts.severity), desc(clinicalAlerts.createdAt))
-      .all() as any[];
+      .all();
 
     // Transform joined results into expected structure
     return results.map((row) => ({
@@ -370,7 +370,7 @@ export class AlertService {
           )
         )
       )
-      .all() as any[];
+      .all();
 
     let created = 0;
     for (const patient of patients) {
@@ -385,7 +385,7 @@ export class AlertService {
             eq(clinicalAlerts.status, 'active')
           )
         )
-        .get() as any;
+        .get();
 
       if (!existingAlert) {
         await this.create(organizationId, {
@@ -423,7 +423,7 @@ export class AlertService {
           lte(vascularAccesses.nextControlDate, oneWeekFromNow)
         )
       )
-      .all() as any[];
+      .all();
 
     let created = 0;
     for (const access of accesses) {
@@ -438,7 +438,7 @@ export class AlertService {
             eq(clinicalAlerts.status, 'active')
           )
         )
-        .get() as any;
+        .get();
 
       if (!existingAlert) {
         const isOverdue = access.nextControlDate && new Date(access.nextControlDate) < today;
@@ -478,7 +478,7 @@ export class AlertService {
           isNull(labResults.reviewedBy)
         )
       )
-      .all() as any[];
+      .all();
 
     let created = 0;
     for (const result of results) {
@@ -492,7 +492,7 @@ export class AlertService {
             eq(clinicalAlerts.status, 'active')
           )
         )
-        .get() as any;
+        .get();
 
       if (!existingAlert) {
         const outOfRangeMarkers = safeJsonParse<string[]>(result.outOfRangeMarkers, [], 'alert.generateLabAlerts.outOfRangeMarkers');
@@ -553,7 +553,7 @@ export class AlertService {
       .select()
       .from(clinicalAlerts)
       .where(eq(clinicalAlerts.organizationId, organizationId))
-      .all() as any[];
+      .all();
 
     const byType: Record<string, number> = {};
     for (const alert of alerts) {

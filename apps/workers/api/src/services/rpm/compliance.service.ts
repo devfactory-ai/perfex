@@ -96,7 +96,7 @@ export class ComplianceService {
         eq(rpmEnrollments.id, enrollmentId),
         eq(rpmEnrollments.organizationId, organizationId)
       ))
-      .get() as any;
+      .get();
 
     if (!enrollment) {
       throw new Error('Enrollment not found');
@@ -106,7 +106,7 @@ export class ComplianceService {
       .select()
       .from(rpmPrograms)
       .where(eq(rpmPrograms.id, enrollment.programId))
-      .get() as any;
+      .get();
 
     if (!program) {
       throw new Error('Program not found');
@@ -148,7 +148,7 @@ export class ComplianceService {
         eq(iotReadings.patientId, enrollment.patientId),
         between(iotReadings.measuredAt, periodStart, periodEnd)
       ))
-      .all() as any[];
+      .all();
 
     const actualReadings = readings.length;
     const validReadings = readings.filter(r => r.isValid).length;
@@ -205,7 +205,7 @@ export class ComplianceService {
         eq(rpmCompliance.periodType, periodType),
         eq(rpmCompliance.periodStart, previousStart)
       ))
-      .get() as any;
+      .get();
 
     if (previousCompliance && previousCompliance.compliancePercent != null) {
       const prevPercent = previousCompliance.compliancePercent as number;
@@ -276,7 +276,7 @@ export class ComplianceService {
         eq(rpmCompliance.id, complianceId),
         eq(rpmCompliance.organizationId, organizationId)
       ))
-      .get() as any;
+      .get();
 
     return record as ComplianceRecord || null;
   }
@@ -305,7 +305,7 @@ export class ComplianceService {
       .where(and(...conditions))
       .orderBy(desc(rpmCompliance.periodStart))
       .limit(limit)
-      .all() as any[];
+      .all();
 
     return records as ComplianceRecord[];
   }
@@ -465,7 +465,7 @@ export class ComplianceService {
         eq(rpmTimeLogs.enrollmentId, enrollmentId),
         between(rpmTimeLogs.activityDate, startDate, endDate)
       ))
-      .all() as any[];
+      .all();
 
     const total = logs.reduce((sum, log) => sum + log.durationMinutes, 0);
     const billable = logs
@@ -502,7 +502,7 @@ export class ComplianceService {
       .select()
       .from(rpmEnrollments)
       .where(eq(rpmEnrollments.id, enrollmentId))
-      .get() as any;
+      .get();
 
     if (!enrollment) {
       throw new Error('Enrollment not found');
@@ -516,7 +516,7 @@ export class ComplianceService {
         eq(rpmTimeLogs.enrollmentId, enrollmentId),
         between(rpmTimeLogs.activityDate, periodStart, periodEnd)
       ))
-      .all() as any[];
+      .all();
 
     const totalMinutesLogged = timeLogs.reduce((sum, log) => sum + log.durationMinutes, 0);
     const deviceSetupMinutes = timeLogs
@@ -534,7 +534,7 @@ export class ComplianceService {
         eq(iotReadings.patientId, enrollment.patientId),
         between(iotReadings.measuredAt, periodStart, periodEnd)
       ))
-      .all() as any[];
+      .all();
 
     const totalReadings = readings.length;
     const uniqueDays = new Set(

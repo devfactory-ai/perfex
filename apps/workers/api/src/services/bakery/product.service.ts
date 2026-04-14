@@ -216,7 +216,7 @@ export class BakeryProductService {
         .select()
         .from(bakeryArticles)
         .where(eq(bakeryArticles.id, comp.articleId))
-        .get() as any;
+        .get();
 
       if (article) {
         totalCost += (article.averagePurchasePrice || 0) * comp.quantityNeeded;
@@ -296,7 +296,7 @@ export class BakeryProductService {
               .select()
               .from(bakeryArticles)
               .where(eq(bakeryArticles.id, comp.articleId))
-              .get() as any;
+              .get();
 
             return {
               ...comp,
@@ -357,7 +357,7 @@ export class BakeryProductService {
           .select()
           .from(bakeryArticles)
           .where(eq(bakeryArticles.id, comp.articleId))
-          .get() as any;
+          .get();
 
         return {
           ...comp,

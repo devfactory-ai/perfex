@@ -39,7 +39,7 @@ export class RoleService {
             eq(organizationMembers.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
         throw new Error('Permission denied');
@@ -65,7 +65,7 @@ export class RoleService {
       .select()
       .from(roles)
       .where(eq(roles.id, roleId))
-      .get() as any;
+      .get();
 
     if (!role) {
       throw new Error('Failed to create role');
@@ -97,7 +97,7 @@ export class RoleService {
             eq(organizationMembers.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!member) {
         throw new Error('Access denied');
@@ -119,7 +119,7 @@ export class RoleService {
         .where(isNull(roles.organizationId));
     }
 
-    const rolesList = await query.all() as any[];
+    const rolesList = await query.all();
 
     return rolesList.map(role => ({
       ...role,
@@ -137,7 +137,7 @@ export class RoleService {
       .select()
       .from(roles)
       .where(eq(roles.id, roleId))
-      .get() as any;
+      .get();
 
     if (!role) {
       throw new Error('Role not found');
@@ -172,7 +172,7 @@ export class RoleService {
             eq(organizationMembers.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
         throw new Error('Permission denied');
@@ -214,7 +214,7 @@ export class RoleService {
             eq(organizationMembers.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
         throw new Error('Permission denied');
@@ -257,7 +257,7 @@ export class RoleService {
             eq(organizationMembers.userId, assignedBy)
           )
         )
-        .get() as any;
+        .get();
 
       if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
         throw new Error('Permission denied');
@@ -277,7 +277,7 @@ export class RoleService {
             : isNull(userRoles.organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (existing) {
       throw new Error('Role already assigned to user');
@@ -321,7 +321,7 @@ export class RoleService {
         .where(eq(userRoles.userId, userId));
     }
 
-    const result = await query.all() as any[];
+    const result = await query.all();
 
     return result.map(({ role }) => ({
       ...role,
@@ -362,7 +362,7 @@ export class RoleService {
             eq(organizationMembers.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (member) {
         const { DEFAULT_ROLE_PERMISSIONS } = await import('@perfex/shared');

@@ -37,6 +37,7 @@ import {
   RATE_LIMITS,
 } from '../utils/rate-limit';
 import { EmailService } from '../utils/email';
+import { createTokenRevocationService } from './token-revocation.service';
 
 /**
  * Convert User to SafeUser (remove password hash)
@@ -98,7 +99,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, data.email))
-      .get() as any;
+      .get();
 
     if (existingUser) {
       throw new Error('Email already registered');
@@ -128,7 +129,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.id, userId))
-      .get() as any;
+      .get();
 
     if (!user) {
       throw new Error('Failed to create user');
@@ -204,7 +205,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, data.email))
-      .get() as any;
+      .get();
 
     if (!user) {
       throw new Error('Invalid email or password');
@@ -233,7 +234,7 @@ export class AuthService {
       .select()
       .from(organizationMembers)
       .where(eq(organizationMembers.userId, user.id))
-      .get() as any;
+      .get();
 
     // Generate tokens
     const tokens = await this.generateTokens(
@@ -282,7 +283,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.id, payload.sub))
-      .get() as any;
+      .get();
 
     if (!user || !user.active) {
       throw new Error('User not found or inactive');
@@ -304,20 +305,26 @@ export class AuthService {
    */
   async logout(refreshToken: string): Promise<void> {
     try {
-      const payload = verifyToken<{ sessionId: string }>(
+      const payload = verifyToken<{ sub: string; sessionId: string }>(
         refreshToken,
         this.jwtSecret
       );
+
+      // Revoke all user tokens to invalidate any access tokens still in use
+      const revocationService = createTokenRevocationService(this.cache);
+      await revocationService.revokeAllUserTokens(payload.sub);
 
       // Delete session from KV
       const sessionKey = `session:${payload.sessionId}`;
       await this.sessions.delete(sessionKey);
 
-      // Optionally delete from D1 as well
+      // Delete from D1 as well
       const drizzleDb = drizzle(this.db);
       await drizzleDb
         .delete(sessions)
         .where(eq(sessions.id, payload.sessionId));
+
+      logger.info('User logged out, tokens revoked', { userId: payload.sub });
     } catch (error) {
       // Ignore errors on logout
       logger.error('Logout error', { error });
@@ -335,7 +342,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.id, userId))
-      .get() as any;
+      .get();
 
     if (!user) {
       throw new Error('User not found');
@@ -366,7 +373,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.id, userId))
-      .get() as any;
+      .get();
 
     if (!user) {
       throw new Error('User not found');
@@ -400,7 +407,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, email))
-      .get() as any;
+      .get();
 
     // Don't reveal if user exists
     if (!user) {
@@ -450,7 +457,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, email))
-      .get() as any;
+      .get();
 
     // Don't reveal if user exists
     if (!user) {
@@ -507,7 +514,7 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.id, userId))
-      .get() as any;
+      .get();
 
     if (!user || !user.active) {
       throw new Error('User not found or inactive');
@@ -582,6 +589,10 @@ export class AuthService {
     const drizzleDb = drizzle(this.db);
 
     try {
+      // Revoke all tokens for this user (makes access tokens immediately invalid)
+      const revocationService = createTokenRevocationService(this.cache);
+      await revocationService.revokeAllUserTokens(userId);
+
       // Get all active sessions from D1 database
       const userSessions = await drizzleDb
         .select({ id: sessions.id })
@@ -606,7 +617,7 @@ export class AuthService {
         .delete(sessions)
         .where(eq(sessions.userId, userId));
 
-      logger.info('All user sessions invalidated', {
+      logger.info('All user sessions invalidated and tokens revoked', {
         userId,
         sessionCount: userSessions.length
       });

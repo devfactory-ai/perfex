@@ -63,7 +63,7 @@ export class HRService {
       .select()
       .from(departments)
       .where(and(eq(departments.id, departmentId), eq(departments.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return department || null;
   }
@@ -84,7 +84,7 @@ export class HRService {
       .from(departments)
       .where(and(...conditions))
       .orderBy(desc(departments.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 
@@ -197,7 +197,7 @@ export class HRService {
       .select()
       .from(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return employee || null;
   }
@@ -246,7 +246,7 @@ export class HRService {
       .from(employees)
       .where(and(...conditions))
       .orderBy(desc(employees.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 
@@ -350,7 +350,7 @@ export class HRService {
       .select()
       .from(leaveRequests)
       .where(and(eq(leaveRequests.id, leaveRequestId), eq(leaveRequests.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return leaveRequest || null;
   }
@@ -385,7 +385,7 @@ export class HRService {
       .from(leaveRequests)
       .where(and(...conditions))
       .orderBy(desc(leaveRequests.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 

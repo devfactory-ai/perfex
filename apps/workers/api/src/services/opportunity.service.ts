@@ -65,7 +65,7 @@ export class OpportunityService {
       .select()
       .from(opportunities)
       .where(and(eq(opportunities.id, opportunityId), eq(opportunities.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return opportunity || null;
   }
@@ -84,7 +84,7 @@ export class OpportunityService {
       .select()
       .from(companies)
       .where(eq(companies.id, opportunity.companyId))
-      .get() as any;
+      .get();
 
     if (!company) {
       throw new Error('Company not found');
@@ -96,14 +96,14 @@ export class OpportunityService {
         .select()
         .from(contacts)
         .where(eq(contacts.id, opportunity.contactId))
-        .get() as any;
+        .get();
     }
 
     const stage = await getDb()
       .select()
       .from(pipelineStages)
       .where(eq(pipelineStages.id, opportunity.stageId))
-      .get() as any;
+      .get();
 
     if (!stage) {
       throw new Error('Pipeline stage not found');
@@ -163,7 +163,7 @@ export class OpportunityService {
       .from(opportunities)
       .where(and(...conditions))
       .orderBy(desc(opportunities.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 

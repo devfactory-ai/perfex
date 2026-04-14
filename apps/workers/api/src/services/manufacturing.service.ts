@@ -83,7 +83,7 @@ export class ManufacturingService {
       .select()
       .from(billOfMaterials)
       .where(and(eq(billOfMaterials.id, bomId), eq(billOfMaterials.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return bom || null;
   }
 
@@ -103,7 +103,7 @@ export class ManufacturingService {
       .from(billOfMaterials)
       .where(and(...conditions))
       .orderBy(desc(billOfMaterials.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateBOM(organizationId: string, bomId: string, data: UpdateBOMInput): Promise<BillOfMaterials> {
@@ -188,7 +188,7 @@ export class ManufacturingService {
       .select()
       .from(routings)
       .where(and(eq(routings.id, routingId), eq(routings.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return routing || null;
   }
 
@@ -208,7 +208,7 @@ export class ManufacturingService {
       .from(routings)
       .where(and(...conditions))
       .orderBy(desc(routings.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateRouting(organizationId: string, routingId: string, data: UpdateRoutingInput): Promise<Routing> {
@@ -279,7 +279,7 @@ export class ManufacturingService {
       .select()
       .from(workOrders)
       .where(and(eq(workOrders.id, workOrderId), eq(workOrders.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return workOrder || null;
   }
 
@@ -304,7 +304,7 @@ export class ManufacturingService {
       .from(workOrders)
       .where(and(...conditions))
       .orderBy(desc(workOrders.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateWorkOrder(organizationId: string, workOrderId: string, data: UpdateWorkOrderInput): Promise<WorkOrder> {

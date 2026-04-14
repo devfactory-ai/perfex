@@ -164,7 +164,7 @@ export class ReadingService {
       .select()
       .from(iotReadings)
       .where(and(eq(iotReadings.id, readingId), eq(iotReadings.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return reading as IotReading || null;
   }
@@ -230,7 +230,7 @@ export class ReadingService {
       .orderBy(orderFn(orderColumn as any))
       .limit(limit)
       .offset(offset)
-      .all() as any[];
+      .all();
 
     return { readings: readings as IotReading[], total };
   }
@@ -258,7 +258,7 @@ export class ReadingService {
         ))
         .orderBy(desc(iotReadings.measuredAt))
         .limit(1)
-        .get() as any;
+        .get();
 
       if (reading) {
         latestReadings.push(reading as IotReading);
@@ -378,7 +378,7 @@ export class ReadingService {
         eq(rpmEnrollments.patientId, patientId),
         eq(rpmEnrollments.status, 'active')
       ))
-      .get() as any;
+      .get();
 
     // Default thresholds
     const defaultRanges: Record<string, { min: number; max: number; target?: number }> = {
@@ -435,7 +435,7 @@ export class ReadingService {
         eq(rpmAlertRules.readingType, reading.readingType),
         eq(rpmAlertRules.isActive, true)
       ))
-      .all() as any[];
+      .all();
 
     for (const rule of rules) {
       // Check if rule applies to this patient

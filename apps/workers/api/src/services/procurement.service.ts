@@ -64,7 +64,7 @@ export class ProcurementService {
       .select()
       .from(suppliers)
       .where(and(eq(suppliers.id, supplierId), eq(suppliers.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return supplier || null;
   }
 
@@ -88,7 +88,7 @@ export class ProcurementService {
       .from(suppliers)
       .where(and(...conditions))
       .orderBy(desc(suppliers.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateSupplier(organizationId: string, supplierId: string, data: UpdateSupplierInput): Promise<Supplier> {
@@ -192,7 +192,7 @@ export class ProcurementService {
       .select()
       .from(purchaseOrders)
       .where(and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return order || null;
   }
 
@@ -212,7 +212,7 @@ export class ProcurementService {
       .from(purchaseOrders)
       .where(and(...conditions))
       .orderBy(desc(purchaseOrders.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updatePurchaseOrder(organizationId: string, orderId: string, data: UpdatePurchaseOrderInput): Promise<PurchaseOrder> {

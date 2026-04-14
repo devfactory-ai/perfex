@@ -98,7 +98,7 @@ export class DialyseReportGenerator {
         startDate.toISOString(), endDate.toISOString(),
         startDate.toISOString(), endDate.toISOString(),
         organizationId
-      ).first() as any,
+      ).first(),
 
       // Session statistics
       this.db.prepare(`
@@ -112,7 +112,7 @@ export class DialyseReportGenerator {
         FROM dialyse_sessions
         WHERE organization_id = ?
         AND session_date >= ? AND session_date <= ?
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Kt/V statistics
       this.db.prepare(`
@@ -127,7 +127,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND session_date >= ? AND session_date <= ?
         AND kt_v IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Complications
       this.db.prepare(`
@@ -139,7 +139,7 @@ export class DialyseReportGenerator {
         AND session_date >= ? AND session_date <= ?
         AND complications IS NOT NULL AND complications != '[]'
         GROUP BY complication_type
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).all() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).all(),
 
       // Machine utilization
       this.db.prepare(`
@@ -152,7 +152,7 @@ export class DialyseReportGenerator {
         AND s.session_date >= ? AND s.session_date <= ?
         WHERE m.organization_id = ?
         GROUP BY m.id
-      `).bind(startDate.toISOString(), endDate.toISOString(), organizationId).all() as any,
+      `).bind(startDate.toISOString(), endDate.toISOString(), organizationId).all(),
     ]);
 
     const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(startDate);
@@ -293,7 +293,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND session_date >= ? AND session_date <= ?
         AND kt_v IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Hemoglobin targets
       this.db.prepare(`
@@ -304,7 +304,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND collection_date >= ? AND collection_date <= ?
         AND hemoglobin IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Phosphorus control
       this.db.prepare(`
@@ -315,7 +315,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND collection_date >= ? AND collection_date <= ?
         AND phosphorus IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Calcium control
       this.db.prepare(`
@@ -326,7 +326,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND collection_date >= ? AND collection_date <= ?
         AND calcium IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // PTH control
       this.db.prepare(`
@@ -337,7 +337,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND collection_date >= ? AND collection_date <= ?
         AND pth IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Albumin levels
       this.db.prepare(`
@@ -348,7 +348,7 @@ export class DialyseReportGenerator {
         WHERE organization_id = ?
         AND collection_date >= ? AND collection_date <= ?
         AND albumin IS NOT NULL
-      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first() as any,
+      `).bind(organizationId, startDate.toISOString(), endDate.toISOString()).first(),
 
       // Vascular access distribution
       this.db.prepare(`
@@ -358,7 +358,7 @@ export class DialyseReportGenerator {
         FROM dialyse_patients
         WHERE organization_id = ? AND status = 'active'
         GROUP BY vascular_access_type
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
     ]);
 
     const quarterName = `Q${quarter} ${year}`;
@@ -499,7 +499,7 @@ export class DialyseReportGenerator {
       this.db.prepare(`
         SELECT * FROM dialyse_patients
         WHERE id = ? AND organization_id = ?
-      `).bind(patientId, organizationId).first() as any,
+      `).bind(patientId, organizationId).first(),
 
       this.db.prepare(`
         SELECT
@@ -516,7 +516,7 @@ export class DialyseReportGenerator {
         WHERE patient_id = ? AND organization_id = ?
         AND session_date >= ? AND session_date <= ?
         ORDER BY session_date DESC
-      `).bind(patientId, organizationId, dateRange.start.toISOString(), dateRange.end.toISOString()).all() as any,
+      `).bind(patientId, organizationId, dateRange.start.toISOString(), dateRange.end.toISOString()).all(),
 
       this.db.prepare(`
         SELECT *
@@ -525,14 +525,14 @@ export class DialyseReportGenerator {
         AND collection_date >= ? AND collection_date <= ?
         ORDER BY collection_date DESC
         LIMIT 10
-      `).bind(patientId, organizationId, dateRange.start.toISOString(), dateRange.end.toISOString()).all() as any,
+      `).bind(patientId, organizationId, dateRange.start.toISOString(), dateRange.end.toISOString()).all(),
 
       this.db.prepare(`
         SELECT * FROM dialyse_prescriptions
         WHERE patient_id = ? AND organization_id = ? AND status = 'active'
         ORDER BY created_at DESC
         LIMIT 1
-      `).bind(patientId, organizationId).first() as any,
+      `).bind(patientId, organizationId).first(),
     ]);
 
     if (!patientInfo) {

@@ -126,7 +126,7 @@ export class AuditService {
       .select()
       .from(auditTasks)
       .where(and(eq(auditTasks.id, taskId), eq(auditTasks.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!task) {
       throw new Error('Task not found');
@@ -154,7 +154,7 @@ export class AuditService {
       })
       .from(auditTasks)
       .where(eq(auditTasks.organizationId, organizationId))
-      .get() as any;
+      .get();
 
     return stats;
   }
@@ -334,7 +334,7 @@ Respond in JSON format:
       .select()
       .from(auditFindings)
       .where(eq(auditFindings.id, findingId))
-      .get() as any;
+      .get();
   }
 
   // ============================================
@@ -469,7 +469,7 @@ Provide your analysis in JSON format:
       .select()
       .from(riskAssessments)
       .where(and(eq(riskAssessments.id, assessmentId), eq(riskAssessments.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!assessment) {
       throw new Error('Assessment not found');
@@ -614,7 +614,7 @@ Generate tasks in JSON format:
         .select()
         .from(complianceConversations)
         .where(eq(complianceConversations.id, data.conversationId))
-        .get() as any;
+        .get();
     }
 
     if (!conversation) {
@@ -903,7 +903,7 @@ Provide your analysis in JSON format:
       .select()
       .from(complianceKnowledgeBase)
       .where(eq(complianceKnowledgeBase.id, entryId))
-      .get() as any;
+      .get();
   }
 
   async deleteKnowledgeBaseEntry(organizationId: string, entryId: string) {
@@ -1116,7 +1116,7 @@ Respond in JSON:
       .select()
       .from(commonalityStudies)
       .where(and(eq(commonalityStudies.id, studyId), eq(commonalityStudies.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!study) {
       throw new Error('Study not found');
@@ -1198,7 +1198,7 @@ Respond in JSON:
       .select()
       .from(improvementProposals)
       .where(and(eq(improvementProposals.id, proposalId), eq(improvementProposals.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!proposal) {
       throw new Error('Proposal not found');
@@ -1384,7 +1384,7 @@ Respond in JSON:
       .select()
       .from(auditSchedules)
       .where(eq(auditSchedules.id, scheduleId))
-      .get() as any;
+      .get();
   }
 
   async deleteSchedule(organizationId: string, scheduleId: string) {
@@ -1402,7 +1402,7 @@ Respond in JSON:
       .select()
       .from(auditConfiguration)
       .where(eq(auditConfiguration.organizationId, organizationId))
-      .get() as any;
+      .get();
 
     if (!config) {
       // Create default configuration

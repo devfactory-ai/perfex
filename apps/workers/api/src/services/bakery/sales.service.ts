@@ -697,7 +697,7 @@ export class BakerySalesService {
           eq(bakeryPOSStock.sessionId, sessionId),
           eq(bakeryPOSStock.productId, count.productId)
         ))
-        .get() as any;
+        .get();
 
       if (posStock) {
         const opening = posStock.openingStock || 0;

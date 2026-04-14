@@ -133,7 +133,7 @@ export class PortalAuthService {
           eq(healthcarePatients.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!patient) {
       throw new Error('Patient non trouvé');
@@ -149,7 +149,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (existingPortalUser) {
       throw new Error('Cet email est déjà enregistré');
@@ -165,7 +165,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (existingPatientPortal) {
       throw new Error('Ce patient a déjà un compte portail');
@@ -302,7 +302,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       // Don't reveal if email exists
@@ -364,7 +364,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       await incrementRateLimit(this.cache, rateLimitKey, RATE_LIMITS.LOGIN);
@@ -489,7 +489,7 @@ export class PortalAuthService {
       .select()
       .from(portalUsers)
       .where(eq(portalUsers.id, userId))
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       throw new Error('Utilisateur non trouvé');
@@ -610,7 +610,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     // Always return success to not reveal if email exists
     if (!portalUser) {
@@ -688,7 +688,7 @@ export class PortalAuthService {
       .select()
       .from(portalUsers)
       .where(eq(portalUsers.id, userId))
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       throw new Error('Utilisateur non trouvé');
@@ -737,7 +737,7 @@ export class PortalAuthService {
       .select()
       .from(portalUsers)
       .where(eq(portalUsers.id, userId))
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       throw new Error('Utilisateur non trouvé');
@@ -821,7 +821,7 @@ export class PortalAuthService {
       .select()
       .from(portalUsers)
       .where(eq(portalUsers.id, userId))
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       throw new Error('Utilisateur non trouvé');
@@ -869,7 +869,7 @@ export class PortalAuthService {
           eq(portalSessions.isActive, true)
         )
       )
-      .get() as any;
+      .get();
 
     if (!session) {
       return null;
@@ -908,7 +908,7 @@ export class PortalAuthService {
           eq(portalSessions.isActive, true)
         )
       )
-      .get() as any;
+      .get();
 
     if (!session) {
       throw new Error('Session invalide');
@@ -924,7 +924,7 @@ export class PortalAuthService {
       .select()
       .from(portalUsers)
       .where(eq(portalUsers.id, session.portalUserId))
-      .get() as any;
+      .get();
 
     if (!portalUser || portalUser.status !== 'active') {
       throw new Error('Compte inactif');
@@ -953,7 +953,7 @@ export class PortalAuthService {
           eq(portalSessions.isActive, true)
         )
       )
-      .all() as any[];
+      .all();
 
     return sessions.map((s: any) => ({
       id: s.id,
@@ -999,7 +999,7 @@ export class PortalAuthService {
           eq(portalUsers.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!portalUser) {
       throw new Error('Utilisateur non trouvé');
@@ -1010,7 +1010,7 @@ export class PortalAuthService {
       .select()
       .from(healthcarePatients)
       .where(eq(healthcarePatients.id, portalUser.patientId))
-      .get() as any;
+      .get();
 
     return {
       id: portalUser.id,

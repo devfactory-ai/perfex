@@ -4,8 +4,8 @@
  */
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and } from 'drizzle-orm';
-import { journals, type Journal } from '@perfex/database';
+import { eq, and, count } from 'drizzle-orm';
+import { journals, journalEntries, type Journal } from '@perfex/database';
 import type { CreateJournalInput } from '@perfex/shared';
 
 export class JournalService {
@@ -30,7 +30,7 @@ export class JournalService {
           eq(journals.code, data.code)
         )
       )
-      .get() as any;
+      .get();
 
     if (existing) {
       throw new Error('Journal code already exists');
@@ -54,7 +54,7 @@ export class JournalService {
       .select()
       .from(journals)
       .where(eq(journals.id, journalId))
-      .get() as any;
+      .get();
 
     if (!journal) {
       throw new Error('Failed to create journal');
@@ -76,7 +76,7 @@ export class JournalService {
       .select()
       .from(journals)
       .where(eq(journals.organizationId, organizationId))
-      .all() as any[];
+      .all();
 
     // Filter by type if provided
     let filtered = journalsList;
@@ -105,7 +105,7 @@ export class JournalService {
           eq(journals.organizationId, organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!journal) {
       throw new Error('Journal not found');
@@ -143,7 +143,15 @@ export class JournalService {
 
     await this.getById(journalId, organizationId);
 
-    // TODO: Check if journal is used in journal entries
+    // Check if journal is used in journal entries
+    const usageCount = await drizzleDb
+      .select({ count: count() })
+      .from(journalEntries)
+      .where(eq(journalEntries.journalId, journalId));
+
+    if (usageCount[0]?.count > 0) {
+      throw new Error('Cannot delete journal that has entries');
+    }
 
     await drizzleDb
       .delete(journals)

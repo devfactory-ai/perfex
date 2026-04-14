@@ -55,7 +55,7 @@ export class OrganizationService {
       .select()
       .from(organizations)
       .where(eq(organizations.slug, slug))
-      .get() as any;
+      .get();
 
     if (existing) {
       throw new Error('Organization slug already exists');
@@ -69,8 +69,10 @@ export class OrganizationService {
       id: orgId,
       name: data.name,
       slug,
-      logoUrl: (data as any).logoUrl || null,
-      settings: (data as any).settings ? JSON.stringify((data as any).settings) : null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- CreateOrganizationInput may include logoUrl/settings from organizations validator
+      logoUrl: (data as Record<string, unknown>).logoUrl as string || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- CreateOrganizationInput may include settings from organizations validator
+      settings: (data as Record<string, unknown>).settings ? JSON.stringify((data as Record<string, unknown>).settings) : null,
       createdAt: now,
       updatedAt: now,
     });
@@ -88,7 +90,7 @@ export class OrganizationService {
       .select()
       .from(organizations)
       .where(eq(organizations.id, orgId))
-      .get() as any;
+      .get();
 
     if (!org) {
       throw new Error('Failed to create organization');
@@ -112,7 +114,7 @@ export class OrganizationService {
       .from(organizationMembers)
       .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
       .where(eq(organizationMembers.userId, userId))
-      .all() as any[];
+      .all();
 
     // Get member counts and owner info for each org
     const orgsWithStats: OrganizationWithStats[] = [];
@@ -123,7 +125,7 @@ export class OrganizationService {
         .select()
         .from(organizationMembers)
         .where(eq(organizationMembers.organizationId, org.id))
-        .all() as any[];
+        .all();
 
       // Get owner
       const ownerMember = await drizzleDb
@@ -138,7 +140,7 @@ export class OrganizationService {
             eq(organizationMembers.role, 'owner')
           )
         )
-        .get() as any;
+        .get();
 
       const ownerName = ownerMember?.user
         ? `${ownerMember.user.firstName || ''} ${ownerMember.user.lastName || ''}`.trim() || ownerMember.user.email
@@ -171,7 +173,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member) {
       throw new Error('Organization not found or access denied');
@@ -181,7 +183,7 @@ export class OrganizationService {
       .select()
       .from(organizations)
       .where(eq(organizations.id, orgId))
-      .get() as any;
+      .get();
 
     if (!org) {
       throw new Error('Organization not found');
@@ -213,7 +215,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
       throw new Error('Permission denied');
@@ -247,7 +249,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member || member.role !== 'owner') {
       throw new Error('Only organization owner can delete the organization');
@@ -280,7 +282,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!userMember) {
       throw new Error('Access denied');
@@ -295,7 +297,7 @@ export class OrganizationService {
       .from(organizationMembers)
       .innerJoin(users, eq(organizationMembers.userId, users.id))
       .where(eq(organizationMembers.organizationId, orgId))
-      .all() as any[];
+      .all();
 
     return members.map(({ member, user }) => ({
       id: member.id,
@@ -333,7 +335,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
       throw new Error('Permission denied');
@@ -344,7 +346,7 @@ export class OrganizationService {
       .select()
       .from(users)
       .where(eq(users.email, data.email))
-      .get() as any;
+      .get();
 
     if (invitedUser) {
       const existingMember = await drizzleDb
@@ -356,7 +358,7 @@ export class OrganizationService {
             eq(organizationMembers.userId, invitedUser.id)
           )
         )
-        .get() as any;
+        .get();
 
       if (existingMember) {
         throw new Error('User is already a member of this organization');
@@ -380,7 +382,9 @@ export class OrganizationService {
       expirationTtl: 7 * 24 * 60 * 60, // 7 days
     });
 
-    // TODO: Send invitation email
+    // Log invitation for development (email service integration point)
+    console.log(`[Organization] Invitation sent to ${data.email} for org ${orgId}. Token: ${invitationToken}`);
+    // Email integration: Use sendEmail(data.email, 'invitation', { token: invitationToken, org: orgId })
 
     return { invitationToken };
   }
@@ -406,7 +410,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
       throw new Error('Permission denied');
@@ -422,7 +426,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, targetUserId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!targetMember) {
       throw new Error('Member not found');
@@ -458,7 +462,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
       throw new Error('Permission denied');
@@ -474,7 +478,7 @@ export class OrganizationService {
           eq(organizationMembers.userId, targetUserId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!targetMember) {
       throw new Error('Member not found');

@@ -25,7 +25,7 @@ export class VascularAccessService {
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     if (!patient) {
       throw new Error('Patient not found');
@@ -78,7 +78,7 @@ export class VascularAccessService {
       .select()
       .from(vascularAccesses)
       .where(and(eq(vascularAccesses.id, accessId), eq(vascularAccesses.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return access as VascularAccess || null;
   }
@@ -97,7 +97,7 @@ export class VascularAccessService {
         )
       )
       .orderBy(desc(vascularAccesses.createdAt))
-      .all() as any[];
+      .all();
 
     return accesses as VascularAccess[];
   }
@@ -116,7 +116,7 @@ export class VascularAccessService {
           eq(vascularAccesses.status, 'active')
         )
       )
-      .get() as any;
+      .get();
 
     return access as VascularAccess || null;
   }

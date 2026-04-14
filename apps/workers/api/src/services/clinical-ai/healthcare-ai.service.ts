@@ -297,7 +297,7 @@ export class HealthcareAIService {
       .select()
       .from(healthcarePatients)
       .where(eq(healthcarePatients.id, request.patientId))
-      .get() as any;
+      .get();
 
     if (!patient) {
       throw new Error('Patient not found');
@@ -501,7 +501,7 @@ Génère le document ${request.documentType} de manière professionnelle et comp
           eq(healthcarePatients.companyId, companyId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!patient) {
       throw new Error('Patient not found');
@@ -514,7 +514,7 @@ Génère le document ${request.documentType} de manière professionnelle et comp
       .where(eq(healthcareConsultations.patientId, request.patientId))
       .orderBy(desc(healthcareConsultations.consultationDate))
       .limit(10)
-      .all() as any[];
+      .all();
 
     // Build context
     const patientContext = {
@@ -1060,7 +1060,7 @@ Réponds en JSON avec la structure suivante:
       .where(eq(clinicalAiUsage.companyId, companyId))
       .orderBy(desc(clinicalAiUsage.createdAt))
       .limit(1000)
-      .all() as any[];
+      .all();
 
     // Aggregate by feature
     const byFeature: Record<string, any> = {};

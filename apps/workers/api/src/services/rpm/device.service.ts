@@ -159,7 +159,7 @@ export class DeviceService {
       .select()
       .from(iotDevices)
       .where(and(eq(iotDevices.id, deviceId), eq(iotDevices.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return device as IotDevice || null;
   }
@@ -172,7 +172,7 @@ export class DeviceService {
       .select()
       .from(iotDevices)
       .where(and(eq(iotDevices.serialNumber, serialNumber), eq(iotDevices.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return device as IotDevice || null;
   }
@@ -234,7 +234,7 @@ export class DeviceService {
       .orderBy(orderFn(orderColumn as any))
       .limit(limit)
       .offset(offset)
-      .all() as any[];
+      .all();
 
     return { devices: devices as IotDevice[], total };
   }
@@ -531,7 +531,7 @@ export class DeviceService {
         eq(iotDevices.status, 'active'),
         sql`${iotDevices.nextCalibrationDate} <= ${now.getTime()}`
       ))
-      .all() as any[];
+      .all();
 
     return devices as IotDevice[];
   }
@@ -551,7 +551,7 @@ export class DeviceService {
         eq(iotDevices.status, 'active'),
         sql`${iotDevices.lastConnectionAt} < ${threshold.getTime()}`
       ))
-      .all() as any[];
+      .all();
 
     return devices as IotDevice[];
   }
@@ -568,7 +568,7 @@ export class DeviceService {
         eq(iotDevices.status, 'active'),
         sql`${iotDevices.batteryLevel} <= ${threshold}`
       ))
-      .all() as any[];
+      .all();
 
     return devices as IotDevice[];
   }

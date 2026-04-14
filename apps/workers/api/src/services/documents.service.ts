@@ -62,7 +62,7 @@ export class DocumentsService {
       .select()
       .from(documentCategories)
       .where(and(eq(documentCategories.id, categoryId), eq(documentCategories.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return category || null;
   }
 
@@ -72,7 +72,7 @@ export class DocumentsService {
       .from(documentCategories)
       .where(eq(documentCategories.organizationId, organizationId))
       .orderBy(desc(documentCategories.createdAt))
-      .all() as any[];
+      .all();
   }
 
   // ============================================
@@ -119,7 +119,7 @@ export class DocumentsService {
       .select()
       .from(documents)
       .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return document || null;
   }
 
@@ -148,7 +148,7 @@ export class DocumentsService {
       .from(documents)
       .where(and(...conditions))
       .orderBy(desc(documents.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateDocument(organizationId: string, documentId: string, data: UpdateDocumentInput): Promise<Document> {
@@ -244,7 +244,7 @@ export class DocumentsService {
       .select()
       .from(emailTemplates)
       .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return template || null;
   }
 
@@ -260,7 +260,7 @@ export class DocumentsService {
       .from(emailTemplates)
       .where(and(...conditions))
       .orderBy(desc(emailTemplates.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async queueEmail(organizationId: string, data: QueueEmailInput): Promise<void> {
@@ -328,7 +328,7 @@ export class DocumentsService {
       .select()
       .from(reports)
       .where(and(eq(reports.id, reportId), eq(reports.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return report || null;
   }
 
@@ -344,7 +344,7 @@ export class DocumentsService {
       .from(reports)
       .where(and(...conditions))
       .orderBy(desc(reports.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async getStats(organizationId: string): Promise<{

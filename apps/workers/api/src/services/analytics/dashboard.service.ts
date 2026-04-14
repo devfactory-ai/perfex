@@ -112,7 +112,7 @@ export class DialyseAnalyticsService {
           SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_this_month
         FROM dialyse_patients
         WHERE organization_id = ?
-      `).bind(startOfMonth.toISOString(), organizationId).first() as any,
+      `).bind(startOfMonth.toISOString(), organizationId).first(),
 
       // Today's sessions
       this.db.prepare(`
@@ -120,7 +120,7 @@ export class DialyseAnalyticsService {
         FROM dialyse_sessions
         WHERE organization_id = ?
         AND DATE(session_date) = DATE('now')
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // This month's sessions
       this.db.prepare(`
@@ -132,7 +132,7 @@ export class DialyseAnalyticsService {
         FROM dialyse_sessions
         WHERE organization_id = ?
         AND session_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // Last month's sessions (for comparison)
       this.db.prepare(`
@@ -140,7 +140,7 @@ export class DialyseAnalyticsService {
         FROM dialyse_sessions
         WHERE organization_id = ?
         AND session_date >= ? AND session_date <= ?
-      `).bind(organizationId, startOfLastMonth.toISOString(), endOfLastMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfLastMonth.toISOString(), endOfLastMonth.toISOString()).first(),
 
       // Kt/V statistics
       this.db.prepare(`
@@ -154,7 +154,7 @@ export class DialyseAnalyticsService {
         WHERE organization_id = ?
         AND kt_v IS NOT NULL
         AND session_date >= DATE('now', '-30 days')
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Machine statistics
       this.db.prepare(`
@@ -165,7 +165,7 @@ export class DialyseAnalyticsService {
           SUM(CASE WHEN status = 'out_of_service' THEN 1 ELSE 0 END) as out_of_service
         FROM dialyse_machines
         WHERE organization_id = ?
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Active alerts
       this.db.prepare(`
@@ -176,7 +176,7 @@ export class DialyseAnalyticsService {
         WHERE organization_id = ?
         AND status = 'active'
         GROUP BY severity
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
     ]);
 
     // Calculate KPIs
@@ -216,7 +216,7 @@ export class DialyseAnalyticsService {
       AND session_date >= DATE('now', '-30 days')
       GROUP BY DATE(session_date)
       ORDER BY date
-    `).bind(organizationId).all() as any;
+    `).bind(organizationId).all();
 
     const ktVTrendQuery = await this.db.prepare(`
       SELECT
@@ -228,7 +228,7 @@ export class DialyseAnalyticsService {
       AND session_date >= DATE('now', '-30 days')
       GROUP BY DATE(session_date)
       ORDER BY date
-    `).bind(organizationId).all() as any;
+    `).bind(organizationId).all();
 
     // Get distributions
     const [serologyDist, accessDist, modalityDist, machineStatusDist] = await Promise.all([
@@ -243,28 +243,28 @@ export class DialyseAnalyticsService {
         FROM dialyse_patients
         WHERE organization_id = ? AND status = 'active'
         GROUP BY category
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
 
       this.db.prepare(`
         SELECT vascular_access_type as category, COUNT(*) as count
         FROM dialyse_patients
         WHERE organization_id = ? AND status = 'active'
         GROUP BY vascular_access_type
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
 
       this.db.prepare(`
         SELECT dialysis_modality as category, COUNT(*) as count
         FROM dialyse_patients
         WHERE organization_id = ? AND status = 'active'
         GROUP BY dialysis_modality
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
 
       this.db.prepare(`
         SELECT status as category, COUNT(*) as count
         FROM dialyse_machines
         WHERE organization_id = ?
         GROUP BY status
-      `).bind(organizationId).all() as any,
+      `).bind(organizationId).all(),
     ]);
 
     return {
@@ -418,7 +418,7 @@ export class CardiologyAnalyticsService {
           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
         FROM healthcare_patients
         WHERE company_id = ? AND module = 'cardiology'
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Consultations this month
       this.db.prepare(`
@@ -427,7 +427,7 @@ export class CardiologyAnalyticsService {
         WHERE organization_id = ?
         AND module = 'cardiology'
         AND consultation_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // ECGs this month
       this.db.prepare(`
@@ -435,7 +435,7 @@ export class CardiologyAnalyticsService {
         FROM cardiology_ecg_records
         WHERE organization_id = ?
         AND recording_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // Echocardiograms with LVEF
       this.db.prepare(`
@@ -445,7 +445,7 @@ export class CardiologyAnalyticsService {
         FROM cardiology_echocardiograms
         WHERE organization_id = ?
         AND exam_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // Devices
       this.db.prepare(`
@@ -455,7 +455,7 @@ export class CardiologyAnalyticsService {
           SUM(CASE WHEN device_type = 'icd' THEN 1 ELSE 0 END) as icds
         FROM cardiology_pacemakers
         WHERE organization_id = ? AND status = 'active'
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Risk scores
       this.db.prepare(`
@@ -465,7 +465,7 @@ export class CardiologyAnalyticsService {
         FROM cardiology_risk_scores
         WHERE organization_id = ?
         AND calculated_date >= DATE('now', '-90 days')
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
     ]);
 
     // Get trends
@@ -479,7 +479,7 @@ export class CardiologyAnalyticsService {
       AND consultation_date >= DATE('now', '-30 days')
       GROUP BY DATE(consultation_date)
       ORDER BY date
-    `).bind(organizationId).all() as any;
+    `).bind(organizationId).all();
 
     // Get distributions
     const diagnosisDist = await this.db.prepare(`
@@ -490,7 +490,7 @@ export class CardiologyAnalyticsService {
       GROUP BY primary_diagnosis
       ORDER BY count DESC
       LIMIT 10
-    `).bind(organizationId).all() as any;
+    `).bind(organizationId).all();
 
     return {
       kpis: {
@@ -622,7 +622,7 @@ export class OphthalmologyAnalyticsService {
           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
         FROM healthcare_patients
         WHERE company_id = ? AND module = 'ophthalmology'
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Consultations this month
       this.db.prepare(`
@@ -631,7 +631,7 @@ export class OphthalmologyAnalyticsService {
         WHERE organization_id = ?
         AND module = 'ophthalmology'
         AND consultation_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // OCT scans
       this.db.prepare(`
@@ -639,7 +639,7 @@ export class OphthalmologyAnalyticsService {
         FROM ophthalmology_oct_scans
         WHERE organization_id = ?
         AND scan_date >= ?
-      `).bind(organizationId, startOfMonth.toISOString()).first() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).first(),
 
       // IVT injections
       this.db.prepare(`
@@ -651,7 +651,7 @@ export class OphthalmologyAnalyticsService {
         WHERE organization_id = ?
         AND injection_date >= ?
         GROUP BY drug_name
-      `).bind(organizationId, startOfMonth.toISOString()).all() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).all(),
 
       // Surgeries
       this.db.prepare(`
@@ -663,7 +663,7 @@ export class OphthalmologyAnalyticsService {
         WHERE organization_id = ?
         AND surgery_date >= ?
         GROUP BY surgery_type
-      `).bind(organizationId, startOfMonth.toISOString()).all() as any,
+      `).bind(organizationId, startOfMonth.toISOString()).all(),
 
       // Average IOP from tonometry
       this.db.prepare(`
@@ -673,7 +673,7 @@ export class OphthalmologyAnalyticsService {
         FROM ophthalmology_tonometry
         WHERE organization_id = ?
         AND measurement_date >= DATE('now', '-30 days')
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
     ]);
 
     // Get trends
@@ -687,7 +687,7 @@ export class OphthalmologyAnalyticsService {
       AND consultation_date >= DATE('now', '-30 days')
       GROUP BY DATE(consultation_date)
       ORDER BY date
-    `).bind(organizationId).all() as any;
+    `).bind(organizationId).all();
 
     const avgIOP = iopStats
       ? ((iopStats.avg_iop_right || 0) + (iopStats.avg_iop_left || 0)) / 2
@@ -830,21 +830,21 @@ export class GlobalAnalyticsService {
         SELECT
           (SELECT COUNT(*) FROM dialyse_patients WHERE organization_id = ? AND status = 'active') as patients,
           (SELECT COUNT(*) FROM dialyse_sessions WHERE organization_id = ? AND DATE(session_date) = DATE('now')) as sessions_today
-      `).bind(organizationId, organizationId).first() as any,
+      `).bind(organizationId, organizationId).first(),
 
       // Cardiology
       this.db.prepare(`
         SELECT
           (SELECT COUNT(*) FROM healthcare_patients WHERE company_id = ? AND module = 'cardiology' AND status = 'active') as patients,
           (SELECT COUNT(*) FROM healthcare_consultations WHERE organization_id = ? AND module = 'cardiology' AND DATE(consultation_date) = DATE('now')) as consultations_today
-      `).bind(organizationId, organizationId).first() as any,
+      `).bind(organizationId, organizationId).first(),
 
       // Ophthalmology
       this.db.prepare(`
         SELECT
           (SELECT COUNT(*) FROM healthcare_patients WHERE company_id = ? AND module = 'ophthalmology' AND status = 'active') as patients,
           (SELECT COUNT(*) FROM healthcare_consultations WHERE organization_id = ? AND module = 'ophthalmology' AND DATE(consultation_date) = DATE('now')) as consultations_today
-      `).bind(organizationId, organizationId).first() as any,
+      `).bind(organizationId, organizationId).first(),
 
       // Total consultations this month
       this.db.prepare(`
@@ -852,14 +852,14 @@ export class GlobalAnalyticsService {
         FROM healthcare_consultations
         WHERE organization_id = ?
         AND consultation_date >= DATE('now', 'start of month')
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
 
       // Active alerts
       this.db.prepare(`
         SELECT COUNT(*) as count
         FROM healthcare_alerts
         WHERE organization_id = ? AND status = 'active'
-      `).bind(organizationId).first() as any,
+      `).bind(organizationId).first(),
     ]);
 
     const totalPatients =

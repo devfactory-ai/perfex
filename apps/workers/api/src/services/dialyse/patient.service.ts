@@ -107,7 +107,7 @@ export class PatientService {
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, patientId), eq(dialysePatients.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return patient || null;
   }
@@ -125,7 +125,7 @@ export class PatientService {
       .select()
       .from(contacts)
       .where(eq(contacts.id, patient.contactId))
-      .get() as any;
+      .get();
 
     if (!contact) {
       return null;
@@ -263,14 +263,14 @@ export class PatientService {
       .limit(limit)
       .offset(offset);
 
-    const patients = await patientsQuery.all() as any[];
+    const patients = await patientsQuery.all();
 
     // Get total count
     const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysePatients)
       .where(and(...conditions))
-      .get() as any;
+      .get();
 
     const total = countResult?.count || 0;
 
@@ -454,7 +454,7 @@ export class PatientService {
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.organizationId, organizationId))
-      .all() as any[];
+      .all();
 
     const activePatients = patients.filter((p) => p.patientStatus === 'active').length;
     const isolationPatients = patients.filter((p) => p.requiresIsolation).length;

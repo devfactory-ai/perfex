@@ -122,7 +122,7 @@ export class AIService {
             eq(aiConversations.userId, userId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!conversation) {
         throw new Error('Conversation not found');
@@ -238,7 +238,7 @@ export class AIService {
       )
       .orderBy(desc(aiConversations.updatedAt))
       .limit(limit)
-      .all() as any[];
+      .all();
 
     return conversations;
   }
@@ -259,7 +259,7 @@ export class AIService {
           eq(aiConversations.userId, userId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!conversation) {
       throw new Error('Conversation not found');
@@ -318,7 +318,7 @@ export class AIService {
         .from(invoices)
         .where(eq(invoices.organizationId, organizationId))
         .limit(request.limit || 10)
-        .all() as any[];
+        .all();
 
       for (const invoice of invoiceResults) {
         results.push({
@@ -409,7 +409,7 @@ export class AIService {
           .select()
           .from(invoices)
           .where(eq(invoices.id, entityId))
-          .get() as any;
+          .get();
 
         if (!invoice) {
           throw new Error('Invoice not found');
@@ -420,8 +420,61 @@ export class AIService {
         break;
 
       case 'customer':
-        // TODO: Implement customer insights
-        throw new Error('Customer insights not yet implemented');
+        // Try to find customer as company first, then as contact
+        const company = await drizzleDb
+          .select()
+          .from(companies)
+          .where(eq(companies.id, entityId))
+          .get();
+
+        if (company) {
+          // Get company's invoices for analysis
+          const companyInvoices = await drizzleDb
+            .select()
+            .from(invoices)
+            .where(eq(invoices.customerId, entityId))
+            .limit(20);
+
+          entityData = {
+            type: 'company',
+            ...company,
+            invoices: companyInvoices,
+            totalInvoices: companyInvoices.length,
+            totalRevenue: companyInvoices.reduce((sum: number, inv: any) => sum + (inv.total || 0), 0),
+          };
+
+          prompt = `Analyze this customer (company) and provide business insights:
+Company: ${company.name}
+Industry: ${company.industry || 'Unknown'}
+Status: ${company.status}
+Total Invoices: ${companyInvoices.length}
+Total Revenue: ${entityData.totalRevenue.toFixed(2)} EUR
+Recent Invoices: ${JSON.stringify(companyInvoices.slice(0, 5).map((i: any) => ({ id: i.id, total: i.total, status: i.status, date: i.issueDate })))}
+
+Provide insights on: customer value, payment patterns, engagement recommendations, risk assessment.`;
+          break;
+        }
+
+        const contact = await drizzleDb
+          .select()
+          .from(contacts)
+          .where(eq(contacts.id, entityId))
+          .get();
+
+        if (!contact) {
+          throw new Error('Customer not found');
+        }
+
+        entityData = { type: 'contact', ...contact };
+        prompt = `Analyze this customer contact and provide insights:
+Name: ${contact.firstName} ${contact.lastName}
+Email: ${contact.email}
+Position: ${contact.position || 'Unknown'}
+Company ID: ${contact.companyId || 'None'}
+Status: ${contact.status}
+
+Provide insights on: engagement potential, relationship building recommendations, contact quality.`;
+        break;
 
       default:
         throw new Error(`Unsupported entity type: ${entityType}`);
@@ -495,7 +548,7 @@ export class AIService {
       query = query.where(eq(aiInsights.dismissed, filters.dismissed));
     }
 
-    const results = await query.orderBy(desc(aiInsights.createdAt)).limit(50).all() as any[];
+    const results = await query.orderBy(desc(aiInsights.createdAt)).limit(50).all();
 
     return results.map((r) => ({
       id: r.id,
@@ -544,7 +597,7 @@ export class AIService {
       .where(eq(aiUsage.organizationId, organizationId))
       .$dynamic();
 
-    const results = await query.orderBy(desc(aiUsage.createdAt)).limit(1000).all() as any[];
+    const results = await query.orderBy(desc(aiUsage.createdAt)).limit(1000).all();
 
     // Aggregate stats
     const stats = {

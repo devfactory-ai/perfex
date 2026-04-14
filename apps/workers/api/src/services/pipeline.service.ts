@@ -43,7 +43,7 @@ export class PipelineService {
       .select()
       .from(pipelineStages)
       .where(and(eq(pipelineStages.id, stageId), eq(pipelineStages.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return stage || null;
   }
@@ -63,7 +63,7 @@ export class PipelineService {
       .from(pipelineStages)
       .where(and(...conditions))
       .orderBy(asc(pipelineStages.order))
-      .all() as any[];
+      .all();
     return results;
   }
 

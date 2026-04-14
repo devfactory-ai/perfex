@@ -64,7 +64,7 @@ export class ProjectService {
       .select()
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return project || null;
   }
@@ -116,7 +116,7 @@ export class ProjectService {
       .from(projects)
       .where(and(...conditions))
       .orderBy(desc(projects.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 

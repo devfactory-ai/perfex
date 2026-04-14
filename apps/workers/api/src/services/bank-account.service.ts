@@ -4,8 +4,8 @@
  */
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and } from 'drizzle-orm';
-import { bankAccounts, accounts, type BankAccount } from '@perfex/database';
+import { eq, and, count, or } from 'drizzle-orm';
+import { bankAccounts, accounts, payments, type BankAccount } from '@perfex/database';
 import type { CreateBankAccountInput, UpdateBankAccountInput } from '@perfex/shared';
 
 export class BankAccountService {
@@ -31,7 +31,7 @@ export class BankAccountService {
             eq(accounts.organizationId, organizationId)
           )
         )
-        .get() as any;
+        .get();
 
       if (!account) {
         throw new Error('Linked account not found');
@@ -67,7 +67,7 @@ export class BankAccountService {
       .select()
       .from(bankAccounts)
       .where(eq(bankAccounts.id, bankAccountId))
-      .get() as any;
+      .get();
 
     if (!bankAccount) {
       throw new Error('Failed to create bank account');
@@ -89,7 +89,7 @@ export class BankAccountService {
       .select()
       .from(bankAccounts)
       .where(eq(bankAccounts.organizationId, organizationId))
-      .all() as any[];
+      .all();
 
     // Filter by active if provided
     let filtered = bankAccountsList;
@@ -115,7 +115,7 @@ export class BankAccountService {
           eq(bankAccounts.organizationId, organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!bankAccount) {
       throw new Error('Bank account not found');
@@ -180,7 +180,18 @@ export class BankAccountService {
 
     await this.getById(bankAccountId, organizationId);
 
-    // TODO: Check if bank account is used in journal entries or payments
+    // Check if bank account is used in payments via its linked accounting account
+    const bankAccount = await this.getById(bankAccountId, organizationId);
+    if (bankAccount.accountId) {
+      const paymentCount = await drizzleDb
+        .select({ count: count() })
+        .from(payments)
+        .where(eq(payments.accountId, bankAccount.accountId));
+
+      if (paymentCount[0]?.count > 0) {
+        throw new Error('Cannot delete bank account that has payments recorded');
+      }
+    }
 
     await drizzleDb
       .delete(bankAccounts)

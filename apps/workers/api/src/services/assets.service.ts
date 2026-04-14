@@ -54,7 +54,7 @@ export class AssetsService {
       .select()
       .from(assetCategories)
       .where(and(eq(assetCategories.id, categoryId), eq(assetCategories.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return category || null;
   }
 
@@ -64,7 +64,7 @@ export class AssetsService {
       .from(assetCategories)
       .where(eq(assetCategories.organizationId, organizationId))
       .orderBy(desc(assetCategories.createdAt))
-      .all() as any[];
+      .all();
   }
 
   // ============================================
@@ -118,7 +118,7 @@ export class AssetsService {
       .select()
       .from(fixedAssets)
       .where(and(eq(fixedAssets.id, assetId), eq(fixedAssets.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return asset || null;
   }
 
@@ -143,7 +143,7 @@ export class AssetsService {
       .from(fixedAssets)
       .where(and(...conditions))
       .orderBy(desc(fixedAssets.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async updateAsset(organizationId: string, assetId: string, data: UpdateFixedAssetInput): Promise<FixedAsset> {
@@ -222,7 +222,7 @@ export class AssetsService {
       .select()
       .from(assetMaintenance)
       .where(and(eq(assetMaintenance.id, maintenanceId), eq(assetMaintenance.organizationId, organizationId)))
-      .get() as any;
+      .get();
     return maintenance || null;
   }
 
@@ -242,7 +242,7 @@ export class AssetsService {
       .from(assetMaintenance)
       .where(and(...conditions))
       .orderBy(desc(assetMaintenance.createdAt))
-      .all() as any[];
+      .all();
   }
 
   async getStats(organizationId: string): Promise<{

@@ -149,7 +149,7 @@ export class ProgramService {
       .select()
       .from(rpmPrograms)
       .where(and(eq(rpmPrograms.id, programId), eq(rpmPrograms.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return program as RpmProgram || null;
   }
@@ -209,7 +209,7 @@ export class ProgramService {
       .orderBy(desc(rpmPrograms.createdAt))
       .limit(limit)
       .offset(offset)
-      .all() as any[];
+      .all();
 
     return { programs: programs as RpmProgram[], total };
   }
@@ -392,7 +392,7 @@ export class ProgramService {
       .select()
       .from(rpmEnrollments)
       .where(and(eq(rpmEnrollments.id, enrollmentId), eq(rpmEnrollments.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return enrollment as RpmEnrollment || null;
   }
@@ -442,7 +442,7 @@ export class ProgramService {
       .orderBy(desc(rpmEnrollments.enrolledAt))
       .limit(limit)
       .offset(offset)
-      .all() as any[];
+      .all();
 
     return { enrollments: enrollments as RpmEnrollment[], total };
   }
@@ -466,7 +466,7 @@ export class ProgramService {
       .from(rpmEnrollments)
       .where(and(...conditions))
       .orderBy(desc(rpmEnrollments.enrolledAt))
-      .get() as any;
+      .get();
 
     return enrollment as RpmEnrollment || null;
   }
