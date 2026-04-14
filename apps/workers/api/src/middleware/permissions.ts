@@ -29,6 +29,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'ophthalmology:read', 'ophthalmology:create', 'ophthalmology:update',
     'documents:read', 'documents:create', 'documents:update',
     'reports:read',
+    // Bakery permissions
+    'bakery:*',
   ],
   member: [
     'users:read',
@@ -46,6 +48,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'ophthalmology:read',
     'documents:read',
     'reports:read',
+    // Bakery permissions - full access for bakery staff
+    'bakery:*',
   ],
   viewer: [
     'users:read',
@@ -174,15 +178,10 @@ export const requireAnyPermission = (permissions: string[]) => {
       );
     }
 
-    // Admin users have all permissions
-    if (user.role === 'admin') {
-      return next();
-    }
-
-    // Check if user has any of the required permissions
-    const userPermissions = user.permissions || [];
+    // Check if user has any of the required permissions using role-based lookup
+    const userRole = user.role || 'member';
     const hasAnyPermission = permissions.some(permission =>
-      userPermissions.includes(permission)
+      hasPermissionForRole(userRole, permission)
     );
 
     if (!hasAnyPermission) {
