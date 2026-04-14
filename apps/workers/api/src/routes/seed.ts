@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { getDb } from '../db';
+import { hashPassword } from '../utils/crypto';
 import type { Env } from '../types';
 import {
   organizations,
@@ -35,19 +36,61 @@ import {
 const app = new Hono<{ Bindings: Env }>();
 
 /**
- * Hash password
+ * DELETE /seed/bakery
+ * Clean bakery demo data before re-seeding
  */
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+app.delete('/bakery', async (c) => {
+  try {
+    const env = c.env.ENVIRONMENT || 'development';
+    if (env === 'production') {
+      return c.json({ error: 'Not allowed in production' }, 403);
+    }
+
+    const seedKey = c.req.header('X-Seed-Key');
+    const expectedKey = c.env.SEED_SECRET_KEY;
+    if (!expectedKey) {
+      return c.json({ error: 'SEED_SECRET_KEY not configured' }, 500);
+    }
+    if (seedKey !== expectedKey) {
+      return c.json({ error: 'Invalid seed key' }, 401);
+    }
+
+    const rawDb = c.env.DB;
+
+    // Delete bakery-specific data
+    await rawDb.prepare(`DELETE FROM bakery_report_configs WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_delivery_order_lines WHERE order_id IN (SELECT id FROM bakery_delivery_orders WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%'))`).run();
+    await rawDb.prepare(`DELETE FROM bakery_delivery_orders WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_supplier_order_lines WHERE order_id IN (SELECT id FROM bakery_supplier_orders WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%'))`).run();
+    await rawDb.prepare(`DELETE FROM bakery_supplier_orders WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_stock_movements WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_points_of_sale WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_b2b_clients WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_spare_parts WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_maintenance_plans WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_equipment WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_ovens WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_proofing_chambers WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_recipe_compositions WHERE recipe_id IN (SELECT id FROM bakery_product_recipes WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%'))`).run();
+    await rawDb.prepare(`DELETE FROM bakery_product_recipes WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_products WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM bakery_articles WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM suppliers WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM user_roles WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM roles WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM organization_members WHERE organization_id IN (SELECT id FROM organizations WHERE slug LIKE 'bakery-%')`).run();
+    await rawDb.prepare(`DELETE FROM users WHERE email LIKE 'bakery-%@perfex.io'`).run();
+    await rawDb.prepare(`DELETE FROM organizations WHERE slug LIKE 'bakery-%'`).run();
+
+    return c.json({ success: true, message: 'Bakery data cleaned' });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
 
 /**
  * POST /seed/bakery
- * Seed database with bakery demo data
+ * Seed database with bakery demo data (simplified version)
  */
 app.post('/bakery', async (c) => {
   try {
@@ -58,7 +101,136 @@ app.post('/bakery', async (c) => {
     }
 
     const seedKey = c.req.header('X-Seed-Key');
-    const expectedKey = c.env.SEED_SECRET_KEY || 'perfex-demo-2024';
+    const expectedKey = c.env.SEED_SECRET_KEY;
+    if (!expectedKey) {
+      return c.json({ error: 'SEED_SECRET_KEY not configured' }, 500);
+    }
+    if (seedKey !== expectedKey) {
+      return c.json({ error: 'Invalid seed key' }, 401);
+    }
+
+    const rawDb = c.env.DB;
+    const now = Date.now();
+
+    // IDs - use fixed IDs for consistency
+    const orgId = 'org-bakery-001';
+    const adminId = 'user-bakery-admin';
+    const bakerId = 'user-bakery-baker';
+    const salesId = 'user-bakery-sales';
+    const deliveryId = 'user-bakery-delivery';
+
+    console.log('Creating bakery organization...');
+
+    // Create organization with unique slug using raw SQL
+    await rawDb.prepare(`
+      INSERT OR REPLACE INTO organizations (id, name, slug, settings, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      orgId,
+      'Boulangerie Au Pain Doré',
+      'bakery-pain-dore',
+      JSON.stringify({
+        industry: 'bakery',
+        industryPreset: 'bakery',
+        size: '10-50',
+        country: 'France',
+        timezone: 'Europe/Paris',
+        currency: 'EUR',
+        theme: 'amber',
+        primaryColor: '#F59E0B',
+        modules: {
+          bakery: true,
+          pos: true,
+          inventory: true,
+          finance: true,
+          hr: true
+        }
+      }),
+      now,
+      now
+    ).run();
+
+    // Hash passwords using bcrypt
+    const adminHash = await hashPassword('Demo@2024!');
+    const bakerHash = await hashPassword('Baker@2024!');
+    const salesHash = await hashPassword('Sales@2024!');
+    const deliveryHash = await hashPassword('Delivery@2024!');
+
+    // Create users
+    const userValues = [
+      [adminId, 'bakery-admin@perfex.io', adminHash, 'Jean-Pierre', 'Dupont'],
+      [bakerId, 'bakery-baker@perfex.io', bakerHash, 'Marie', 'Martin'],
+      [salesId, 'bakery-sales@perfex.io', salesHash, 'Sophie', 'Bernard'],
+      [deliveryId, 'bakery-delivery@perfex.io', deliveryHash, 'Pierre', 'Lefebvre'],
+    ];
+
+    for (const [id, email, pwdHash, firstName, lastName] of userValues) {
+      await rawDb.prepare(`
+        INSERT OR REPLACE INTO users (id, email, password_hash, first_name, last_name, active, email_verified, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)
+      `).bind(id, email, pwdHash, firstName, lastName, now, now).run();
+    }
+
+    // Create organization memberships
+    const memberValues = [
+      [crypto.randomUUID(), orgId, adminId, 'admin'],
+      [crypto.randomUUID(), orgId, bakerId, 'member'],
+      [crypto.randomUUID(), orgId, salesId, 'member'],
+      [crypto.randomUUID(), orgId, deliveryId, 'member'],
+    ];
+
+    for (const [id, orgIdVal, userId, role] of memberValues) {
+      await rawDb.prepare(`
+        INSERT OR IGNORE INTO organization_members (id, organization_id, user_id, role, joined_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(id, orgIdVal, userId, role, now).run();
+    }
+
+    console.log('Bakery seed completed successfully!');
+
+    return c.json({
+      success: true,
+      message: 'Boulangerie Au Pain Doré créée avec succès!',
+      data: {
+        organization: {
+          id: orgId,
+          name: 'Boulangerie Au Pain Doré',
+        },
+        accounts: [
+          { role: 'Gérant', email: 'bakery-admin@perfex.io' },
+          { role: 'Boulanger', email: 'bakery-baker@perfex.io' },
+          { role: 'Vendeur', email: 'bakery-sales@perfex.io' },
+          { role: 'Livreur', email: 'bakery-delivery@perfex.io' },
+        ],
+      },
+    });
+  } catch (error: any) {
+    console.error('Seed error:', error);
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to seed database',
+      details: error.stack,
+    }, 500);
+  }
+});
+
+/**
+ * POST /seed/bakery-full (DEPRECATED - needs migration first)
+ * Seed database with bakery demo data including products, recipes, etc.
+ */
+app.post('/bakery-full', async (c) => {
+  try {
+    // Safety check - only staging/dev
+    const env = c.env.ENVIRONMENT || 'development';
+    if (env === 'production') {
+      return c.json({ error: 'Seeding not allowed in production' }, 403);
+    }
+
+    const seedKey = c.req.header('X-Seed-Key');
+    const expectedKey = c.env.SEED_SECRET_KEY;
+    if (!expectedKey) {
+      return c.json({ error: 'SEED_SECRET_KEY not configured' }, 500);
+    }
     if (seedKey !== expectedKey) {
       return c.json({ error: 'Invalid seed key' }, 401);
     }
@@ -66,20 +238,20 @@ app.post('/bakery', async (c) => {
     const db = getDb();
     const now = new Date();
 
-    // IDs
-    const orgId = crypto.randomUUID();
-    const adminId = crypto.randomUUID();
-    const bakerId = crypto.randomUUID();
-    const salesId = crypto.randomUUID();
-    const deliveryId = crypto.randomUUID();
+    // IDs - use fixed IDs for consistency
+    const orgId = 'org-bakery-001';
+    const adminId = 'user-bakery-admin';
+    const bakerId = 'user-bakery-baker';
+    const salesId = 'user-bakery-sales';
+    const deliveryId = 'user-bakery-delivery';
 
     console.log('Creating bakery organization...');
 
-    // Create organization
+    // Create organization with unique slug
     await db.insert(organizations).values({
       id: orgId,
       name: 'Boulangerie Au Pain Doré',
-      slug: 'boulangerie-pain-dore',
+      slug: 'bakery-pain-dore',
       settings: JSON.stringify({
         industry: 'Boulangerie-Pâtisserie',
         size: '10-50',
@@ -101,7 +273,7 @@ app.post('/bakery', async (c) => {
     await db.insert(users).values([
       {
         id: adminId,
-        email: 'demo@perfex.io',
+        email: 'bakery-admin@perfex.io',
         passwordHash: adminHash,
         firstName: 'Jean-Pierre',
         lastName: 'Dupont',
@@ -112,7 +284,7 @@ app.post('/bakery', async (c) => {
       },
       {
         id: bakerId,
-        email: 'boulanger@perfex.io',
+        email: 'bakery-baker@perfex.io',
         passwordHash: bakerHash,
         firstName: 'Marie',
         lastName: 'Martin',
@@ -123,7 +295,7 @@ app.post('/bakery', async (c) => {
       },
       {
         id: salesId,
-        email: 'vente@perfex.io',
+        email: 'bakery-sales@perfex.io',
         passwordHash: salesHash,
         firstName: 'Sophie',
         lastName: 'Bernard',
@@ -134,7 +306,7 @@ app.post('/bakery', async (c) => {
       },
       {
         id: deliveryId,
-        email: 'livraison@perfex.io',
+        email: 'bakery-delivery@perfex.io',
         passwordHash: deliveryHash,
         firstName: 'Pierre',
         lastName: 'Lefebvre',
@@ -495,10 +667,10 @@ app.post('/bakery', async (c) => {
           name: 'Boulangerie Au Pain Doré',
         },
         accounts: [
-          { role: 'Gérant', email: 'demo@perfex.io', password: 'Demo@2024!' },
-          { role: 'Boulanger', email: 'boulanger@perfex.io', password: 'Baker@2024!' },
-          { role: 'Vendeur', email: 'vente@perfex.io', password: 'Sales@2024!' },
-          { role: 'Livreur', email: 'livraison@perfex.io', password: 'Delivery@2024!' },
+          { role: 'Gérant', email: 'bakery-admin@perfex.io' },
+          { role: 'Boulanger', email: 'bakery-baker@perfex.io' },
+          { role: 'Vendeur', email: 'bakery-sales@perfex.io' },
+          { role: 'Livreur', email: 'bakery-delivery@perfex.io' },
         ],
         stats: {
           articles: articlesData.length,
