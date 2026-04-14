@@ -27,19 +27,6 @@ export function getDb() {
 }
 
 /**
- * Export for use in services
- * Note: This will throw if accessed before initialization
- */
-export const drizzleDb = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
-  get(_target, prop) {
-    if (!dbInstance) {
-      throw new Error('Database not initialized. Call initializeDb first.');
-    }
-    return (dbInstance as any)[prop];
-  }
-});
-
-/**
  * Type helper for the database instance
  */
 export type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;

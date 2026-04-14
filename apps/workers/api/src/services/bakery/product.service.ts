@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   bakeryProducts,
   bakeryProductRecipes,
@@ -65,7 +65,7 @@ export class BakeryProductService {
       );
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryProducts)
       .where(and(...conditions))
@@ -93,7 +93,7 @@ export class BakeryProductService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryProducts).values({
+    await getDb().insert(bakeryProducts).values({
       id,
       organizationId,
       reference: data.reference,
@@ -118,7 +118,7 @@ export class BakeryProductService {
    * Get product by ID
    */
   async getProduct(organizationId: string, id: string): Promise<BakeryProduct | null> {
-    const product = await drizzleDb
+    const product = await getDb()
       .select()
       .from(bakeryProducts)
       .where(and(eq(bakeryProducts.id, id), eq(bakeryProducts.organizationId, organizationId)))
@@ -140,7 +140,7 @@ export class BakeryProductService {
       throw new Error('Product not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(bakeryProducts)
       .set({
         ...data,
@@ -165,7 +165,7 @@ export class BakeryProductService {
       throw new Error('Product not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(bakeryProducts)
       .where(and(eq(bakeryProducts.id, id), eq(bakeryProducts.organizationId, organizationId)));
   }
@@ -187,7 +187,7 @@ export class BakeryProductService {
     }
 
     // Get current version
-    const existingRecipes = await drizzleDb
+    const existingRecipes = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(and(
@@ -200,7 +200,7 @@ export class BakeryProductService {
 
     // Set previous active recipe to inactive
     if (existingRecipes.length > 0) {
-      await drizzleDb
+      await getDb()
         .update(bakeryProductRecipes)
         .set({ isActive: false })
         .where(and(
@@ -212,7 +212,7 @@ export class BakeryProductService {
     // Calculate total cost from compositions
     let totalCost = 0;
     for (const comp of data.compositions) {
-      const article = await drizzleDb
+      const article = await getDb()
         .select()
         .from(bakeryArticles)
         .where(eq(bakeryArticles.id, comp.articleId))
@@ -224,7 +224,7 @@ export class BakeryProductService {
     }
 
     // Create recipe (schema has: id, organizationId, productId, name, yield, yieldUnit, isActive, createdAt, updatedAt)
-    await drizzleDb.insert(bakeryProductRecipes).values({
+    await getDb().insert(bakeryProductRecipes).values({
       id,
       organizationId,
       productId: data.productId,
@@ -238,7 +238,7 @@ export class BakeryProductService {
 
     // Create compositions (schema has: id, recipeId, articleId, quantityNeeded, createdAt - NO organizationId)
     for (const comp of data.compositions) {
-      await drizzleDb.insert(bakeryRecipeCompositions).values({
+      await getDb().insert(bakeryRecipeCompositions).values({
         id: crypto.randomUUID(),
         recipeId: id,
         articleId: comp.articleId,
@@ -249,7 +249,7 @@ export class BakeryProductService {
 
     // Update product cost price
     const costPerUnit = data.yield > 0 ? totalCost / data.yield : totalCost;
-    await drizzleDb
+    await getDb()
       .update(bakeryProducts)
       .set({
         costPrice: costPerUnit,
@@ -257,7 +257,7 @@ export class BakeryProductService {
       })
       .where(eq(bakeryProducts.id, data.productId));
 
-    const recipe = await drizzleDb
+    const recipe = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(eq(bakeryProductRecipes.id, id))
@@ -273,7 +273,7 @@ export class BakeryProductService {
     organizationId: string,
     filters: QueryFilters
   ): Promise<{ items: any[]; total: number }> {
-    const recipes = await drizzleDb
+    const recipes = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(eq(bakeryProductRecipes.organizationId, organizationId))
@@ -283,7 +283,7 @@ export class BakeryProductService {
     // Get compositions for each recipe
     const recipesWithCompositions = await Promise.all(
       recipes.map(async (recipe) => {
-        const compositions = await drizzleDb
+        const compositions = await getDb()
           .select()
           .from(bakeryRecipeCompositions)
           .where(eq(bakeryRecipeCompositions.recipeId, recipe.id))
@@ -292,7 +292,7 @@ export class BakeryProductService {
         // Get article details
         const compositionsWithArticles = await Promise.all(
           compositions.map(async (comp) => {
-            const article = await drizzleDb
+            const article = await getDb()
               .select()
               .from(bakeryArticles)
               .where(eq(bakeryArticles.id, comp.articleId))
@@ -334,7 +334,7 @@ export class BakeryProductService {
     organizationId: string,
     recipeId: string
   ): Promise<any | null> {
-    const recipe = await drizzleDb
+    const recipe = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(and(
@@ -345,7 +345,7 @@ export class BakeryProductService {
 
     if (!recipe) return null;
 
-    const compositions = await drizzleDb
+    const compositions = await getDb()
       .select()
       .from(bakeryRecipeCompositions)
       .where(eq(bakeryRecipeCompositions.recipeId, recipeId))
@@ -353,7 +353,7 @@ export class BakeryProductService {
 
     const compositionsWithArticles = await Promise.all(
       compositions.map(async (comp) => {
-        const article = await drizzleDb
+        const article = await getDb()
           .select()
           .from(bakeryArticles)
           .where(eq(bakeryArticles.id, comp.articleId))
@@ -382,7 +382,7 @@ export class BakeryProductService {
     organizationId: string,
     productId: string
   ): Promise<any | null> {
-    const recipe = await drizzleDb
+    const recipe = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(and(

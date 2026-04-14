@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   bakeryProofingChambers,
   bakeryProofingCarts,
@@ -103,7 +103,7 @@ export class BakeryProductionService {
     endOfDay.setHours(23, 59, 59, 999);
 
     // Get stock exits for the day
-    const stockExits = await drizzleDb
+    const stockExits = await getDb()
       .select()
       .from(bakeryStockMovements)
       .where(and(
@@ -115,7 +115,7 @@ export class BakeryProductionService {
       .all();
 
     // Get all active recipes
-    const recipes = await drizzleDb
+    const recipes = await getDb()
       .select()
       .from(bakeryProductRecipes)
       .where(and(
@@ -128,7 +128,7 @@ export class BakeryProductionService {
     const forecast: any[] = [];
 
     for (const recipe of recipes) {
-      const compositions = await drizzleDb
+      const compositions = await getDb()
         .select()
         .from(bakeryRecipeCompositions)
         .where(eq(bakeryRecipeCompositions.recipeId, recipe.id))
@@ -146,7 +146,7 @@ export class BakeryProductionService {
       }
 
       if (minYield !== Infinity && minYield > 0) {
-        const product = await drizzleDb
+        const product = await getDb()
           .select()
           .from(bakeryProducts)
           .where(eq(bakeryProducts.id, recipe.productId))
@@ -172,7 +172,7 @@ export class BakeryProductionService {
    * List proofing chambers
    */
   async listProofingChambers(organizationId: string): Promise<BakeryProofingChamber[]> {
-    const chambers = await drizzleDb
+    const chambers = await getDb()
       .select()
       .from(bakeryProofingChambers)
       .where(eq(bakeryProofingChambers.organizationId, organizationId))
@@ -192,7 +192,7 @@ export class BakeryProductionService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryProofingChambers).values({
+    await getDb().insert(bakeryProofingChambers).values({
       id,
       organizationId,
       name: data.name,
@@ -203,7 +203,7 @@ export class BakeryProductionService {
       createdAt: now,
     });
 
-    const chamber = await drizzleDb
+    const chamber = await getDb()
       .select()
       .from(bakeryProofingChambers)
       .where(eq(bakeryProofingChambers.id, id))
@@ -223,7 +223,7 @@ export class BakeryProductionService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryProofingCarts).values({
+    await getDb().insert(bakeryProofingCarts).values({
       id,
       organizationId,
       cartNumber: data.cartNumber,
@@ -238,7 +238,7 @@ export class BakeryProductionService {
 
     // Create cart lines (no organizationId on cart lines)
     for (const line of data.lines) {
-      await drizzleDb.insert(bakeryCartLines).values({
+      await getDb().insert(bakeryCartLines).values({
         id: crypto.randomUUID(),
         cartId: id,
         productId: line.productId,
@@ -248,7 +248,7 @@ export class BakeryProductionService {
       });
     }
 
-    const cart = await drizzleDb
+    const cart = await getDb()
       .select()
       .from(bakeryProofingCarts)
       .where(eq(bakeryProofingCarts.id, id))
@@ -279,7 +279,7 @@ export class BakeryProductionService {
     const limit = filters.limit || 50;
     const offset = (page - 1) * limit;
 
-    const carts = await drizzleDb
+    const carts = await getDb()
       .select()
       .from(bakeryProofingCarts)
       .where(and(...conditions))
@@ -289,7 +289,7 @@ export class BakeryProductionService {
       .all() as BakeryProofingCart[];
 
     // Get total count for pagination
-    const totalResult = await drizzleDb
+    const totalResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(bakeryProofingCarts)
       .where(and(...conditions))
@@ -302,7 +302,7 @@ export class BakeryProductionService {
 
     // Batch fetch: Get all cart lines in one query
     const cartIds = carts.map(c => c.id);
-    const allLines = await drizzleDb
+    const allLines = await getDb()
       .select()
       .from(bakeryCartLines)
       .where(sql`${bakeryCartLines.cartId} IN (${sql.join(cartIds.map(id => sql`${id}`), sql`, `)})`)
@@ -311,7 +311,7 @@ export class BakeryProductionService {
     // Batch fetch: Get all products in one query
     const productIds = [...new Set((allLines as any[]).map(l => l.productId))];
     const products = productIds.length > 0
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(bakeryProducts)
           .where(sql`${bakeryProducts.id} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`)
@@ -358,7 +358,7 @@ export class BakeryProductionService {
       updateData.exitTime = now;
     }
 
-    await drizzleDb
+    await getDb()
       .update(bakeryProofingCarts)
       .set(updateData)
       .where(and(
@@ -366,7 +366,7 @@ export class BakeryProductionService {
         eq(bakeryProofingCarts.organizationId, organizationId)
       ));
 
-    const cart = await drizzleDb
+    const cart = await getDb()
       .select()
       .from(bakeryProofingCarts)
       .where(eq(bakeryProofingCarts.id, cartId))
@@ -379,7 +379,7 @@ export class BakeryProductionService {
    * List ovens
    */
   async listOvens(organizationId: string): Promise<BakeryOven[]> {
-    const ovens = await drizzleDb
+    const ovens = await getDb()
       .select()
       .from(bakeryOvens)
       .where(eq(bakeryOvens.organizationId, organizationId))
@@ -399,7 +399,7 @@ export class BakeryProductionService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryOvens).values({
+    await getDb().insert(bakeryOvens).values({
       id,
       organizationId,
       name: data.name,
@@ -410,7 +410,7 @@ export class BakeryProductionService {
       createdAt: now,
     });
 
-    const oven = await drizzleDb
+    const oven = await getDb()
       .select()
       .from(bakeryOvens)
       .where(eq(bakeryOvens.id, id))
@@ -434,7 +434,7 @@ export class BakeryProductionService {
     await this.updateCartStatus(organizationId, data.cartId, 'au_four');
 
     // Insert oven passage (no organizationId on oven passages)
-    await drizzleDb.insert(bakeryOvenPassages).values({
+    await getDb().insert(bakeryOvenPassages).values({
       id,
       cartId: data.cartId,
       ovenId: data.ovenId,
@@ -446,7 +446,7 @@ export class BakeryProductionService {
       createdAt: now,
     });
 
-    const passage = await drizzleDb
+    const passage = await getDb()
       .select()
       .from(bakeryOvenPassages)
       .where(eq(bakeryOvenPassages.id, id))
@@ -464,7 +464,7 @@ export class BakeryProductionService {
   ): Promise<BakeryOvenPassage> {
     const now = new Date();
 
-    const passage = await drizzleDb
+    const passage = await getDb()
       .select()
       .from(bakeryOvenPassages)
       .where(eq(bakeryOvenPassages.id, passageId))
@@ -478,7 +478,7 @@ export class BakeryProductionService {
     const entryTime = new Date(passage.entryTime);
     const actualDuration = Math.round((now.getTime() - entryTime.getTime()) / 60000); // in minutes
 
-    await drizzleDb
+    await getDb()
       .update(bakeryOvenPassages)
       .set({
         exitTime: now,
@@ -490,7 +490,7 @@ export class BakeryProductionService {
     // Update cart status
     await this.updateCartStatus(organizationId, passage.cartId, 'termine');
 
-    const updated = await drizzleDb
+    const updated = await getDb()
       .select()
       .from(bakeryOvenPassages)
       .where(eq(bakeryOvenPassages.id, passageId))
@@ -507,7 +507,7 @@ export class BakeryProductionService {
     filters: QueryFilters
   ): Promise<{ items: any[]; total: number }> {
     // Get carts for this organization first (passages don't have organizationId)
-    const orgCarts = await drizzleDb
+    const orgCarts = await getDb()
       .select({ id: bakeryProofingCarts.id })
       .from(bakeryProofingCarts)
       .where(eq(bakeryProofingCarts.organizationId, organizationId))
@@ -537,7 +537,7 @@ export class BakeryProductionService {
       conditions.push(sql`${bakeryOvenPassages.entryTime} <= ${filters.endDate}`);
     }
 
-    const passages = await drizzleDb
+    const passages = await getDb()
       .select()
       .from(bakeryOvenPassages)
       .where(and(...conditions))
@@ -547,13 +547,13 @@ export class BakeryProductionService {
     // Get cart and oven details
     const passagesWithDetails = await Promise.all(
       passages.map(async (passage) => {
-        const cart = await drizzleDb
+        const cart = await getDb()
           .select()
           .from(bakeryProofingCarts)
           .where(eq(bakeryProofingCarts.id, passage.cartId))
           .get();
 
-        const oven = await drizzleDb
+        const oven = await getDb()
           .select()
           .from(bakeryOvens)
           .where(eq(bakeryOvens.id, passage.ovenId))
@@ -589,7 +589,7 @@ export class BakeryProductionService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryQualityControls).values({
+    await getDb().insert(bakeryQualityControls).values({
       id,
       organizationId,
       ovenPassageId: data.ovenPassageId,
@@ -603,7 +603,7 @@ export class BakeryProductionService {
     // Create defects if any (no organizationId on defects)
     if (data.defects && data.defects.length > 0) {
       for (const defect of data.defects) {
-        await drizzleDb.insert(bakeryProductionDefects).values({
+        await getDb().insert(bakeryProductionDefects).values({
           id: crypto.randomUUID(),
           qualityControlId: id,
           productId: defect.productId,
@@ -619,7 +619,7 @@ export class BakeryProductionService {
     // Update comparison data
     await this.updateProductionComparison(organizationId, data.ovenPassageId, data.defects);
 
-    const control = await drizzleDb
+    const control = await getDb()
       .select()
       .from(bakeryQualityControls)
       .where(eq(bakeryQualityControls.id, id))
@@ -641,7 +641,7 @@ export class BakeryProductionService {
     const now = new Date();
 
     // Get passage and cart details
-    const passage = await drizzleDb
+    const passage = await getDb()
       .select()
       .from(bakeryOvenPassages)
       .where(eq(bakeryOvenPassages.id, ovenPassageId))
@@ -649,7 +649,7 @@ export class BakeryProductionService {
 
     if (!passage) return;
 
-    const cartLines = await drizzleDb
+    const cartLines = await getDb()
       .select()
       .from(bakeryCartLines)
       .where(eq(bakeryCartLines.cartId, passage.cartId))
@@ -665,7 +665,7 @@ export class BakeryProductionService {
       const conformityRate = ovenOutputQuantity > 0 ? (conformingQuantity / ovenOutputQuantity) * 100 : 0;
       const lossRate = theoreticalQuantity > 0 ? (Math.abs(theoreticalVariance) / theoreticalQuantity) * 100 : 0;
 
-      await drizzleDb.insert(bakeryProductionComparisons).values({
+      await getDb().insert(bakeryProductionComparisons).values({
         id: crypto.randomUUID(),
         organizationId,
         comparisonDate: now,
@@ -706,7 +706,7 @@ export class BakeryProductionService {
       conditions.push(sql`${bakeryQualityControls.controlDate} <= ${filters.endDate}`);
     }
 
-    const controls = await drizzleDb
+    const controls = await getDb()
       .select()
       .from(bakeryQualityControls)
       .where(and(...conditions))
@@ -716,7 +716,7 @@ export class BakeryProductionService {
     // Get defects for each control
     const controlsWithDefects = await Promise.all(
       controls.map(async (control) => {
-        const defects = await drizzleDb
+        const defects = await getDb()
           .select()
           .from(bakeryProductionDefects)
           .where(eq(bakeryProductionDefects.qualityControlId, control.id))
@@ -757,7 +757,7 @@ export class BakeryProductionService {
       conditions.push(sql`${bakeryProductionComparisons.comparisonDate} <= ${filters.endDate}`);
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryProductionComparisons)
       .where(and(...conditions))
@@ -787,7 +787,7 @@ export class BakeryProductionService {
     const id = crypto.randomUUID();
 
     // Get previous reading to calculate consumption
-    const previousReading = await drizzleDb
+    const previousReading = await getDb()
       .select()
       .from(bakeryMeterReadings)
       .where(and(
@@ -800,7 +800,7 @@ export class BakeryProductionService {
     const previousValue = previousReading?.meterValue || 0;
     const consumption = data.meterValue - previousValue;
 
-    await drizzleDb.insert(bakeryMeterReadings).values({
+    await getDb().insert(bakeryMeterReadings).values({
       id,
       organizationId,
       meterType: data.meterType,
@@ -814,7 +814,7 @@ export class BakeryProductionService {
     // Update daily consumption
     await this.updateDailyConsumption(organizationId, data.meterType, consumption > 0 ? consumption : 0);
 
-    const reading = await drizzleDb
+    const reading = await getDb()
       .select()
       .from(bakeryMeterReadings)
       .where(eq(bakeryMeterReadings.id, id))
@@ -846,7 +846,7 @@ export class BakeryProductionService {
     const totalCost = consumptionValue * unitCost;
 
     // Estimate daily production (simplified - count finished carts)
-    const finishedCarts = await drizzleDb
+    const finishedCarts = await getDb()
       .select()
       .from(bakeryProofingCarts)
       .where(and(
@@ -858,7 +858,7 @@ export class BakeryProductionService {
 
     let dailyProductionQuantity = 0;
     for (const cart of finishedCarts) {
-      const lines = await drizzleDb
+      const lines = await getDb()
         .select()
         .from(bakeryCartLines)
         .where(eq(bakeryCartLines.cartId, cart.id))
@@ -868,7 +868,7 @@ export class BakeryProductionService {
 
     const consumptionRatio = dailyProductionQuantity > 0 ? consumptionValue / dailyProductionQuantity : 0;
 
-    const existing = await drizzleDb
+    const existing = await getDb()
       .select()
       .from(bakeryDailyConsumptions)
       .where(and(
@@ -883,7 +883,7 @@ export class BakeryProductionService {
       const newTotalCost = newConsumption * unitCost;
       const newRatio = dailyProductionQuantity > 0 ? newConsumption / dailyProductionQuantity : 0;
 
-      await drizzleDb
+      await getDb()
         .update(bakeryDailyConsumptions)
         .set({
           consumption: newConsumption,
@@ -893,7 +893,7 @@ export class BakeryProductionService {
         })
         .where(eq(bakeryDailyConsumptions.id, existing.id));
     } else {
-      await drizzleDb.insert(bakeryDailyConsumptions).values({
+      await getDb().insert(bakeryDailyConsumptions).values({
         id: crypto.randomUUID(),
         organizationId,
         consumptionDate: today,
@@ -929,7 +929,7 @@ export class BakeryProductionService {
       conditions.push(sql`${bakeryDailyConsumptions.consumptionDate} <= ${filters.endDate}`);
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryDailyConsumptions)
       .where(and(...conditions))

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, asc, like, or, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { rpmPrograms, rpmEnrollments, healthcarePatients, iotDevices } from '@perfex/database';
 
 // Types
@@ -109,7 +109,7 @@ export class ProgramService {
     const now = new Date();
     const programId = crypto.randomUUID();
 
-    await drizzleDb.insert(rpmPrograms).values({
+    await getDb().insert(rpmPrograms).values({
       id: programId,
       organizationId,
       programCode: data.programCode,
@@ -145,7 +145,7 @@ export class ProgramService {
    * Get program by ID
    */
   async getProgramById(organizationId: string, programId: string): Promise<RpmProgram | null> {
-    const program = await drizzleDb
+    const program = await getDb()
       .select()
       .from(rpmPrograms)
       .where(and(eq(rpmPrograms.id, programId), eq(rpmPrograms.organizationId, organizationId)))
@@ -193,7 +193,7 @@ export class ProgramService {
       );
     }
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmPrograms)
       .where(and(...conditions))
@@ -202,7 +202,7 @@ export class ProgramService {
     const total = countResult?.count || 0;
 
     const offset = (page - 1) * limit;
-    const programs = await drizzleDb
+    const programs = await getDb()
       .select()
       .from(rpmPrograms)
       .where(and(...conditions))
@@ -242,7 +242,7 @@ export class ProgramService {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(rpmPrograms)
       .set(updateData)
       .where(and(eq(rpmPrograms.id, programId), eq(rpmPrograms.organizationId, organizationId)));
@@ -259,7 +259,7 @@ export class ProgramService {
       return false;
     }
 
-    await drizzleDb
+    await getDb()
       .update(rpmPrograms)
       .set({ status: 'archived', updatedAt: new Date() })
       .where(and(eq(rpmPrograms.id, programId), eq(rpmPrograms.organizationId, organizationId)));
@@ -279,7 +279,7 @@ export class ProgramService {
     const enrollmentId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(healthcarePatients)
       .where(and(eq(healthcarePatients.id, data.patientId), eq(healthcarePatients.companyId, organizationId)))
@@ -296,7 +296,7 @@ export class ProgramService {
     }
 
     // Check for existing active enrollment
-    const existingEnrollment = await drizzleDb
+    const existingEnrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(
@@ -312,7 +312,7 @@ export class ProgramService {
     }
 
     // Generate enrollment number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmEnrollments)
       .where(eq(rpmEnrollments.organizationId, organizationId))
@@ -328,7 +328,7 @@ export class ProgramService {
       expectedEndDate.setDate(expectedEndDate.getDate() + program.programDurationDays);
     }
 
-    await drizzleDb.insert(rpmEnrollments).values({
+    await getDb().insert(rpmEnrollments).values({
       id: enrollmentId,
       organizationId,
       patientId: data.patientId,
@@ -360,7 +360,7 @@ export class ProgramService {
     // If devices are assigned, update them
     if (data.assignedDevices && data.assignedDevices.length > 0) {
       for (const deviceId of data.assignedDevices) {
-        await drizzleDb
+        await getDb()
           .update(iotDevices)
           .set({
             assignedPatientId: data.patientId,
@@ -388,7 +388,7 @@ export class ProgramService {
    * Get enrollment by ID
    */
   async getEnrollmentById(organizationId: string, enrollmentId: string): Promise<RpmEnrollment | null> {
-    const enrollment = await drizzleDb
+    const enrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(eq(rpmEnrollments.id, enrollmentId), eq(rpmEnrollments.organizationId, organizationId)))
@@ -426,7 +426,7 @@ export class ProgramService {
       conditions.push(eq(rpmEnrollments.status, status as any));
     }
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmEnrollments)
       .where(and(...conditions))
@@ -435,7 +435,7 @@ export class ProgramService {
     const total = countResult?.count || 0;
 
     const offset = (page - 1) * limit;
-    const enrollments = await drizzleDb
+    const enrollments = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(...conditions))
@@ -461,7 +461,7 @@ export class ProgramService {
       conditions.push(eq(rpmEnrollments.programId, programId));
     }
 
-    const enrollment = await drizzleDb
+    const enrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(...conditions))
@@ -518,7 +518,7 @@ export class ProgramService {
       updateData.consentDocumentUrl = data.consentDocumentUrl;
     }
 
-    await drizzleDb
+    await getDb()
       .update(rpmEnrollments)
       .set(updateData)
       .where(and(eq(rpmEnrollments.id, enrollmentId), eq(rpmEnrollments.organizationId, organizationId)));
@@ -571,7 +571,7 @@ export class ProgramService {
    * Get enrollment count by program
    */
   async getEnrollmentCountsByProgram(organizationId: string): Promise<{ programId: string; programName: string; count: number }[]> {
-    const results = await drizzleDb
+    const results = await getDb()
       .select({
         programId: rpmEnrollments.programId,
         programName: rpmPrograms.programName,

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   dialysePatients,
   vascularAccesses,
@@ -34,7 +34,7 @@ export class PatientService {
     const patientId = crypto.randomUUID();
 
     // Create CRM contact first
-    await drizzleDb.insert(contacts).values({
+    await getDb().insert(contacts).values({
       id: contactId,
       organizationId,
       firstName: data.firstName,
@@ -61,7 +61,7 @@ export class PatientService {
       data.hcvStatus === 'positive';
 
     // Create dialyse patient extension
-    await drizzleDb.insert(dialysePatients).values({
+    await getDb().insert(dialysePatients).values({
       id: patientId,
       organizationId,
       contactId,
@@ -103,7 +103,7 @@ export class PatientService {
    * Get patient by ID
    */
   async getById(organizationId: string, patientId: string): Promise<DialysePatient | null> {
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -121,7 +121,7 @@ export class PatientService {
       return null;
     }
 
-    const contact = await drizzleDb
+    const contact = await getDb()
       .select()
       .from(contacts)
       .where(eq(contacts.id, patient.contactId))
@@ -157,14 +157,14 @@ export class PatientService {
       activeAlertsList,
     ] = await Promise.all([
       // Get contact
-      drizzleDb
+      getDb()
         .select()
         .from(contacts)
         .where(eq(contacts.id, patient.contactId))
         .get(),
 
       // Get active prescription
-      drizzleDb
+      getDb()
         .select()
         .from(dialysePrescriptions)
         .where(
@@ -177,7 +177,7 @@ export class PatientService {
         .get(),
 
       // Get all vascular accesses
-      drizzleDb
+      getDb()
         .select()
         .from(vascularAccesses)
         .where(
@@ -190,7 +190,7 @@ export class PatientService {
         .all(),
 
       // Get most recent lab result
-      drizzleDb
+      getDb()
         .select()
         .from(labResults)
         .where(
@@ -204,7 +204,7 @@ export class PatientService {
         .get(),
 
       // Get active alerts
-      drizzleDb
+      getDb()
         .select()
         .from(clinicalAlerts)
         .where(
@@ -255,7 +255,7 @@ export class PatientService {
     }
 
     // Get patients
-    let patientsQuery = drizzleDb
+    let patientsQuery = getDb()
       .select()
       .from(dialysePatients)
       .where(and(...conditions))
@@ -266,7 +266,7 @@ export class PatientService {
     const patients = await patientsQuery.all() as any[];
 
     // Get total count
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysePatients)
       .where(and(...conditions))
@@ -277,7 +277,7 @@ export class PatientService {
     // Get contact IDs and fetch contacts
     const contactIds = patients.map((p) => p.contactId);
     const contactsList = contactIds.length > 0
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(contacts)
           .where(eq(contacts.organizationId, organizationId))
@@ -333,7 +333,7 @@ export class PatientService {
 
     if (Object.keys(contactFields).length > 0) {
       contactFields.updatedAt = now;
-      await drizzleDb
+      await getDb()
         .update(contacts)
         .set(contactFields)
         .where(eq(contacts.id, existing.contactId));
@@ -359,7 +359,7 @@ export class PatientService {
     if (data.dialysisStartDate !== undefined) patientFields.dialysisStartDate = data.dialysisStartDate ? new Date(data.dialysisStartDate) : null;
     if (data.notes !== undefined) patientFields.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(dialysePatients)
       .set(patientFields)
       .where(and(eq(dialysePatients.id, patientId), eq(dialysePatients.organizationId, organizationId)));
@@ -388,7 +388,7 @@ export class PatientService {
       ? data.requiresIsolation
       : (data.hivStatus === 'positive' || data.hbvStatus === 'positive' || data.hcvStatus === 'positive');
 
-    await drizzleDb
+    await getDb()
       .update(dialysePatients)
       .set({
         hivStatus: data.hivStatus,
@@ -418,12 +418,12 @@ export class PatientService {
     }
 
     // Delete patient (cascade will handle related records)
-    await drizzleDb
+    await getDb()
       .delete(dialysePatients)
       .where(and(eq(dialysePatients.id, patientId), eq(dialysePatients.organizationId, organizationId)));
 
     // Delete the associated contact
-    await drizzleDb
+    await getDb()
       .delete(contacts)
       .where(eq(contacts.id, existing.contactId));
   }
@@ -450,7 +450,7 @@ export class PatientService {
     isolationPatients: number;
     byStatus: Record<string, number>;
   }> {
-    const patients = await drizzleDb
+    const patients = await getDb()
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.organizationId, organizationId))

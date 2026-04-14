@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, between, sql, gte, lte } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   rpmCompliance,
   rpmEnrollments,
@@ -89,7 +89,7 @@ export class ComplianceService {
     const now = new Date();
 
     // Get enrollment and program details
-    const enrollment = await drizzleDb
+    const enrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(
@@ -102,7 +102,7 @@ export class ComplianceService {
       throw new Error('Enrollment not found');
     }
 
-    const program = await drizzleDb
+    const program = await getDb()
       .select()
       .from(rpmPrograms)
       .where(eq(rpmPrograms.id, enrollment.programId))
@@ -140,7 +140,7 @@ export class ComplianceService {
     }
 
     // Get actual readings
-    const readings = await drizzleDb
+    const readings = await getDb()
       .select()
       .from(iotReadings)
       .where(and(
@@ -197,7 +197,7 @@ export class ComplianceService {
     previousStart.setTime(previousStart.getTime() - periodDuration);
     previousEnd.setTime(previousEnd.getTime() - periodDuration);
 
-    const previousCompliance = await drizzleDb
+    const previousCompliance = await getDb()
       .select()
       .from(rpmCompliance)
       .where(and(
@@ -217,7 +217,7 @@ export class ComplianceService {
     }
 
     // Get billing minutes for this period
-    const timeLogs = await drizzleDb
+    const timeLogs = await getDb()
       .select({ total: sql<number>`sum(${rpmTimeLogs.durationMinutes})` })
       .from(rpmTimeLogs)
       .where(and(
@@ -233,7 +233,7 @@ export class ComplianceService {
     // Create or update compliance record
     const complianceId = crypto.randomUUID();
 
-    await drizzleDb.insert(rpmCompliance).values({
+    await getDb().insert(rpmCompliance).values({
       id: complianceId,
       organizationId,
       patientId: enrollment.patientId,
@@ -269,7 +269,7 @@ export class ComplianceService {
    * Get compliance record by ID
    */
   async getComplianceById(organizationId: string, complianceId: string): Promise<ComplianceRecord | null> {
-    const record = await drizzleDb
+    const record = await getDb()
       .select()
       .from(rpmCompliance)
       .where(and(
@@ -299,7 +299,7 @@ export class ComplianceService {
       conditions.push(eq(rpmCompliance.periodType, periodType));
     }
 
-    const records = await drizzleDb
+    const records = await getDb()
       .select()
       .from(rpmCompliance)
       .where(and(...conditions))
@@ -318,7 +318,7 @@ export class ComplianceService {
     thresholdPercent: number = 80
   ): Promise<{ patientId: string; enrollmentId: string; latestCompliancePercent: number; trend: string | null }[]> {
     // Get latest compliance records for all active enrollments
-    const results = await drizzleDb
+    const results = await getDb()
       .select({
         patientId: rpmCompliance.patientId,
         enrollmentId: rpmCompliance.enrollmentId,
@@ -368,7 +368,7 @@ export class ComplianceService {
       return null;
     }
 
-    await drizzleDb
+    await getDb()
       .update(rpmCompliance)
       .set({
         outreachAttempted: true,
@@ -392,7 +392,7 @@ export class ComplianceService {
     const now = new Date();
     const timeLogId = crypto.randomUUID();
 
-    await drizzleDb.insert(rpmTimeLogs).values({
+    await getDb().insert(rpmTimeLogs).values({
       id: timeLogId,
       organizationId,
       patientId: data.patientId,
@@ -413,7 +413,7 @@ export class ComplianceService {
       updatedAt: now,
     });
 
-    return drizzleDb
+    return getDb()
       .select()
       .from(rpmTimeLogs)
       .where(eq(rpmTimeLogs.id, timeLogId))
@@ -438,7 +438,7 @@ export class ComplianceService {
       conditions.push(between(rpmTimeLogs.activityDate, startDate, endDate));
     }
 
-    const logs = await drizzleDb
+    const logs = await getDb()
       .select()
       .from(rpmTimeLogs)
       .where(and(...conditions))
@@ -457,7 +457,7 @@ export class ComplianceService {
     startDate: Date,
     endDate: Date
   ): Promise<{ total: number; billable: number; byType: Record<string, number> }> {
-    const logs = await drizzleDb
+    const logs = await getDb()
       .select()
       .from(rpmTimeLogs)
       .where(and(
@@ -498,7 +498,7 @@ export class ComplianceService {
     const periodEnd = new Date(year, month, 0, 23, 59, 59);
 
     // Get enrollment
-    const enrollment = await drizzleDb
+    const enrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(eq(rpmEnrollments.id, enrollmentId))
@@ -509,7 +509,7 @@ export class ComplianceService {
     }
 
     // Get time logs
-    const timeLogs = await drizzleDb
+    const timeLogs = await getDb()
       .select()
       .from(rpmTimeLogs)
       .where(and(
@@ -527,7 +527,7 @@ export class ComplianceService {
       .reduce((sum, log) => sum + log.durationMinutes, 0);
 
     // Get readings
-    const readings = await drizzleDb
+    const readings = await getDb()
       .select()
       .from(iotReadings)
       .where(and(
@@ -557,7 +557,7 @@ export class ComplianceService {
     }
 
     // Create or update billing period
-    const existingPeriod = await drizzleDb
+    const existingPeriod = await getDb()
       .select()
       .from(rpmBillingPeriods)
       .where(and(
@@ -587,12 +587,12 @@ export class ComplianceService {
     };
 
     if (existingPeriod) {
-      await drizzleDb
+      await getDb()
         .update(rpmBillingPeriods)
         .set(billingData as any)
         .where(eq(rpmBillingPeriods.id, existingPeriod.id));
     } else {
-      await drizzleDb.insert(rpmBillingPeriods).values({
+      await getDb().insert(rpmBillingPeriods).values({
         id: crypto.randomUUID(),
         ...billingData,
         billedAmount: null,
@@ -624,7 +624,7 @@ export class ComplianceService {
    * Get billing periods for an enrollment
    */
   async getBillingPeriods(organizationId: string, enrollmentId: string): Promise<any[]> {
-    const periods = await drizzleDb
+    const periods = await getDb()
       .select()
       .from(rpmBillingPeriods)
       .where(and(
@@ -648,7 +648,7 @@ export class ComplianceService {
   ): Promise<any> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(rpmBillingPeriods)
       .set({
         status: 'billed',
@@ -662,7 +662,7 @@ export class ComplianceService {
         eq(rpmBillingPeriods.organizationId, organizationId)
       ));
 
-    return drizzleDb
+    return getDb()
       .select()
       .from(rpmBillingPeriods)
       .where(eq(rpmBillingPeriods.id, billingPeriodId))
@@ -679,7 +679,7 @@ export class ComplianceService {
   ): Promise<any> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(rpmBillingPeriods)
       .set({
         status: 'paid',
@@ -692,7 +692,7 @@ export class ComplianceService {
         eq(rpmBillingPeriods.organizationId, organizationId)
       ));
 
-    return drizzleDb
+    return getDb()
       .select()
       .from(rpmBillingPeriods)
       .where(eq(rpmBillingPeriods.id, billingPeriodId))
@@ -710,7 +710,7 @@ export class ComplianceService {
     billingReadyCount: number;
   }> {
     // Count active enrollments
-    const enrollmentCount = await drizzleDb
+    const enrollmentCount = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmEnrollments)
       .where(and(
@@ -722,7 +722,7 @@ export class ComplianceService {
     const totalActiveEnrollments = enrollmentCount?.count || 0;
 
     // Get latest compliance for each enrollment
-    const complianceStats = await drizzleDb
+    const complianceStats = await getDb()
       .select({
         avgCompliance: sql<number>`avg(${rpmCompliance.compliancePercent})`,
         compliantCount: sql<number>`sum(case when ${rpmCompliance.isCompliant} = 1 then 1 else 0 end)`,
@@ -738,7 +738,7 @@ export class ComplianceService {
 
     // Count billing-ready periods for current month
     const currentMonth = parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
-    const billingReady = await drizzleDb
+    const billingReady = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmBillingPeriods)
       .where(and(

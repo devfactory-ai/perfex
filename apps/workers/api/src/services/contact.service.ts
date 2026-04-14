@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { contacts, companies } from '@perfex/database';
 import type { Contact, ContactWithCompany, CreateContactInput, UpdateContactInput } from '@perfex/shared';
 
@@ -21,13 +21,13 @@ export class ContactService {
 
     // If setting as primary contact for a company, unset other primary contacts
     if (data.isPrimary && data.companyId) {
-      await drizzleDb
+      await getDb()
         .update(contacts)
         .set({ isPrimary: false })
         .where(and(eq(contacts.companyId, data.companyId), eq(contacts.organizationId, organizationId)));
     }
 
-    await drizzleDb.insert(contacts).values({
+    await getDb().insert(contacts).values({
       id: contactId,
       organizationId,
       companyId: data.companyId || null,
@@ -65,7 +65,7 @@ export class ContactService {
    * Get contact by ID
    */
   async getById(organizationId: string, contactId: string): Promise<Contact | null> {
-    const contact = await drizzleDb
+    const contact = await getDb()
       .select()
       .from(contacts)
       .where(and(eq(contacts.id, contactId), eq(contacts.organizationId, organizationId)))
@@ -85,7 +85,7 @@ export class ContactService {
 
     let company = null;
     if (contact.companyId) {
-      company = await drizzleDb
+      company = await getDb()
         .select()
         .from(companies)
         .where(eq(companies.id, contact.companyId))
@@ -138,7 +138,7 @@ export class ContactService {
       );
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(contacts)
       .where(and(...conditions))
@@ -166,7 +166,7 @@ export class ContactService {
 
     // Fetch companies
     const companiesList = companyIds.length > 0
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(companies)
           .where(eq(companies.organizationId, organizationId))
@@ -194,7 +194,7 @@ export class ContactService {
 
     // If setting as primary contact for a company, unset other primary contacts
     if (data.isPrimary && data.companyId) {
-      await drizzleDb
+      await getDb()
         .update(contacts)
         .set({ isPrimary: false })
         .where(and(eq(contacts.companyId, data.companyId), eq(contacts.organizationId, organizationId)));
@@ -209,7 +209,7 @@ export class ContactService {
       updatedAt: new Date(),
     };
 
-    await drizzleDb
+    await getDb()
       .update(contacts)
       .set(updateData)
       .where(and(eq(contacts.id, contactId), eq(contacts.organizationId, organizationId)));
@@ -232,7 +232,7 @@ export class ContactService {
       throw new Error('Contact not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(contacts)
       .where(and(eq(contacts.id, contactId), eq(contacts.organizationId, organizationId)));
   }

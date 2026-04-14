@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   assetCategories,
   fixedAssets,
@@ -31,7 +31,7 @@ export class AssetsService {
     const now = new Date();
     const categoryId = crypto.randomUUID();
 
-    await drizzleDb.insert(assetCategories).values({
+    await getDb().insert(assetCategories).values({
       id: categoryId,
       organizationId,
       name: data.name,
@@ -50,7 +50,7 @@ export class AssetsService {
   }
 
   async getCategoryById(organizationId: string, categoryId: string): Promise<AssetCategory | null> {
-    const category = await drizzleDb
+    const category = await getDb()
       .select()
       .from(assetCategories)
       .where(and(eq(assetCategories.id, categoryId), eq(assetCategories.organizationId, organizationId)))
@@ -59,7 +59,7 @@ export class AssetsService {
   }
 
   async listCategories(organizationId: string): Promise<AssetCategory[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(assetCategories)
       .where(eq(assetCategories.organizationId, organizationId))
@@ -79,7 +79,7 @@ export class AssetsService {
     const purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : null;
     const warrantyExpiry = data.warrantyExpiry ? new Date(data.warrantyExpiry) : null;
 
-    await drizzleDb.insert(fixedAssets).values({
+    await getDb().insert(fixedAssets).values({
       id: assetId,
       organizationId,
       assetNumber,
@@ -114,7 +114,7 @@ export class AssetsService {
   }
 
   async getAssetById(organizationId: string, assetId: string): Promise<FixedAsset | null> {
-    const asset = await drizzleDb
+    const asset = await getDb()
       .select()
       .from(fixedAssets)
       .where(and(eq(fixedAssets.id, assetId), eq(fixedAssets.organizationId, organizationId)))
@@ -138,7 +138,7 @@ export class AssetsService {
       conditions.push(like(fixedAssets.name, searchTerm));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(fixedAssets)
       .where(and(...conditions))
@@ -159,7 +159,7 @@ export class AssetsService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(fixedAssets)
       .set(updateData)
       .where(and(eq(fixedAssets.id, assetId), eq(fixedAssets.organizationId, organizationId)));
@@ -173,7 +173,7 @@ export class AssetsService {
     const existing = await this.getAssetById(organizationId, assetId);
     if (!existing) throw new Error('Asset not found');
 
-    await drizzleDb
+    await getDb()
       .delete(fixedAssets)
       .where(and(eq(fixedAssets.id, assetId), eq(fixedAssets.organizationId, organizationId)));
   }
@@ -190,7 +190,7 @@ export class AssetsService {
     const scheduledDate = data.scheduledDate ? new Date(data.scheduledDate) : null;
     const nextMaintenanceDate = data.nextMaintenanceDate ? new Date(data.nextMaintenanceDate) : null;
 
-    await drizzleDb.insert(assetMaintenance).values({
+    await getDb().insert(assetMaintenance).values({
       id: maintenanceId,
       organizationId,
       assetId: data.assetId,
@@ -218,7 +218,7 @@ export class AssetsService {
   }
 
   async getMaintenanceById(organizationId: string, maintenanceId: string): Promise<AssetMaintenanceType | null> {
-    const maintenance = await drizzleDb
+    const maintenance = await getDb()
       .select()
       .from(assetMaintenance)
       .where(and(eq(assetMaintenance.id, maintenanceId), eq(assetMaintenance.organizationId, organizationId)))
@@ -237,7 +237,7 @@ export class AssetsService {
       conditions.push(eq(assetMaintenance.status, filters.status as any));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(assetMaintenance)
       .where(and(...conditions))

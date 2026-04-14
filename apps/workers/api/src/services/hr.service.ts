@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { departments, employees, leaveRequests, attendanceRecords } from '@perfex/database';
 import type {
   Department,
@@ -33,7 +33,7 @@ export class HRService {
     const now = new Date();
     const departmentId = crypto.randomUUID();
 
-    await drizzleDb.insert(departments).values({
+    await getDb().insert(departments).values({
       id: departmentId,
       organizationId,
       name: data.name,
@@ -59,7 +59,7 @@ export class HRService {
    * Get department by ID
    */
   async getDepartmentById(organizationId: string, departmentId: string): Promise<Department | null> {
-    const department = await drizzleDb
+    const department = await getDb()
       .select()
       .from(departments)
       .where(and(eq(departments.id, departmentId), eq(departments.organizationId, organizationId)))
@@ -79,7 +79,7 @@ export class HRService {
       conditions.push(eq(departments.active, isActive));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(departments)
       .where(and(...conditions))
@@ -102,7 +102,7 @@ export class HRService {
       updatedAt: new Date(),
     };
 
-    await drizzleDb
+    await getDb()
       .update(departments)
       .set(updateData)
       .where(and(eq(departments.id, departmentId), eq(departments.organizationId, organizationId)));
@@ -124,7 +124,7 @@ export class HRService {
       throw new Error('Department not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(departments)
       .where(and(eq(departments.id, departmentId), eq(departments.organizationId, organizationId)));
   }
@@ -145,7 +145,7 @@ export class HRService {
     const dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
     const terminationDate = data.terminationDate ? new Date(data.terminationDate) : null;
 
-    await drizzleDb.insert(employees).values({
+    await getDb().insert(employees).values({
       id: employeeId,
       organizationId,
       userId: data.userId || null,
@@ -193,7 +193,7 @@ export class HRService {
    * Get employee by ID
    */
   async getEmployeeById(organizationId: string, employeeId: string): Promise<Employee | null> {
-    const employee = await drizzleDb
+    const employee = await getDb()
       .select()
       .from(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.organizationId, organizationId)))
@@ -241,7 +241,7 @@ export class HRService {
       );
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(employees)
       .where(and(...conditions))
@@ -274,7 +274,7 @@ export class HRService {
 
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(employees)
       .set(updateData)
       .where(and(eq(employees.id, employeeId), eq(employees.organizationId, organizationId)));
@@ -296,7 +296,7 @@ export class HRService {
       throw new Error('Employee not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.organizationId, organizationId)));
   }
@@ -315,7 +315,7 @@ export class HRService {
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
 
-    await drizzleDb.insert(leaveRequests).values({
+    await getDb().insert(leaveRequests).values({
       id: leaveRequestId,
       organizationId,
       employeeId: data.employeeId,
@@ -346,7 +346,7 @@ export class HRService {
    * Get leave request by ID
    */
   async getLeaveRequestById(organizationId: string, leaveRequestId: string): Promise<LeaveRequest | null> {
-    const leaveRequest = await drizzleDb
+    const leaveRequest = await getDb()
       .select()
       .from(leaveRequests)
       .where(and(eq(leaveRequests.id, leaveRequestId), eq(leaveRequests.organizationId, organizationId)))
@@ -380,7 +380,7 @@ export class HRService {
       conditions.push(eq(leaveRequests.leaveType, filters.leaveType as any));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(leaveRequests)
       .where(and(...conditions))
@@ -416,7 +416,7 @@ export class HRService {
 
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(leaveRequests)
       .set(updateData)
       .where(and(eq(leaveRequests.id, leaveRequestId), eq(leaveRequests.organizationId, organizationId)));
@@ -438,7 +438,7 @@ export class HRService {
       throw new Error('Leave request not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(leaveRequests)
       .where(and(eq(leaveRequests.id, leaveRequestId), eq(leaveRequests.organizationId, organizationId)));
   }

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   notifications,
   auditLogs,
@@ -29,7 +29,7 @@ export class NotificationsService {
     const now = new Date();
     const notificationId = crypto.randomUUID();
 
-    await drizzleDb.insert(notifications).values({
+    await getDb().insert(notifications).values({
       id: notificationId,
       organizationId,
       userId: data.userId,
@@ -50,7 +50,7 @@ export class NotificationsService {
   }
 
   async getNotificationById(organizationId: string, notificationId: string): Promise<Notification | null> {
-    const notification = await drizzleDb
+    const notification = await getDb()
       .select()
       .from(notifications)
       .where(and(eq(notifications.id, notificationId), eq(notifications.organizationId, organizationId)))
@@ -68,7 +68,7 @@ export class NotificationsService {
       conditions.push(eq(notifications.isRead, false));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(notifications)
       .where(and(...conditions))
@@ -81,7 +81,7 @@ export class NotificationsService {
     const now = new Date();
 
     for (const notificationId of notificationIds) {
-      await drizzleDb
+      await getDb()
         .update(notifications)
         .set({ isRead: true, readAt: now })
         .where(
@@ -97,7 +97,7 @@ export class NotificationsService {
   async markAllAsRead(organizationId: string, userId: string): Promise<void> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(notifications)
       .set({ isRead: true, readAt: now })
       .where(
@@ -131,7 +131,7 @@ export class NotificationsService {
   ): Promise<void> {
     const now = new Date();
 
-    await drizzleDb.insert(auditLogs).values({
+    await getDb().insert(auditLogs).values({
       id: crypto.randomUUID(),
       organizationId,
       userId,
@@ -161,7 +161,7 @@ export class NotificationsService {
       conditions.push(eq(auditLogs.userId, filters.userId));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(auditLogs)
       .where(and(...conditions))
@@ -175,7 +175,7 @@ export class NotificationsService {
   // ============================================
 
   async getSetting(organizationId: string, category: string, key: string): Promise<SystemSetting | null> {
-    const setting = await drizzleDb
+    const setting = await getDb()
       .select()
       .from(systemSettings)
       .where(
@@ -196,7 +196,7 @@ export class NotificationsService {
       conditions.push(eq(systemSettings.category, category));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(systemSettings)
       .where(and(...conditions))
@@ -208,7 +208,7 @@ export class NotificationsService {
     const now = new Date();
     const settingId = crypto.randomUUID();
 
-    await drizzleDb.insert(systemSettings).values({
+    await getDb().insert(systemSettings).values({
       id: settingId,
       organizationId,
       category: data.category,
@@ -234,7 +234,7 @@ export class NotificationsService {
   ): Promise<SystemSetting> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(systemSettings)
       .set({
         value: data.value,

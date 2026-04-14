@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { vascularAccesses, dialysePatients } from '@perfex/database';
 import type {
   VascularAccess,
@@ -21,7 +21,7 @@ export class VascularAccessService {
     const accessId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -33,7 +33,7 @@ export class VascularAccessService {
 
     // If setting as active, deactivate other active accesses for this patient
     if (data.status === 'active') {
-      await drizzleDb
+      await getDb()
         .update(vascularAccesses)
         .set({ status: 'removed', updatedAt: now })
         .where(
@@ -45,7 +45,7 @@ export class VascularAccessService {
         );
     }
 
-    await drizzleDb.insert(vascularAccesses).values({
+    await getDb().insert(vascularAccesses).values({
       id: accessId,
       organizationId,
       patientId: data.patientId,
@@ -74,7 +74,7 @@ export class VascularAccessService {
    * Get vascular access by ID
    */
   async getById(organizationId: string, accessId: string): Promise<VascularAccess | null> {
-    const access = await drizzleDb
+    const access = await getDb()
       .select()
       .from(vascularAccesses)
       .where(and(eq(vascularAccesses.id, accessId), eq(vascularAccesses.organizationId, organizationId)))
@@ -87,7 +87,7 @@ export class VascularAccessService {
    * List vascular accesses for a patient
    */
   async listByPatient(organizationId: string, patientId: string): Promise<VascularAccess[]> {
-    const accesses = await drizzleDb
+    const accesses = await getDb()
       .select()
       .from(vascularAccesses)
       .where(
@@ -106,7 +106,7 @@ export class VascularAccessService {
    * Get active vascular access for a patient
    */
   async getActiveByPatient(organizationId: string, patientId: string): Promise<VascularAccess | null> {
-    const access = await drizzleDb
+    const access = await getDb()
       .select()
       .from(vascularAccesses)
       .where(
@@ -134,7 +134,7 @@ export class VascularAccessService {
 
     // If setting as active, deactivate other active accesses for this patient
     if (data.status === 'active' && existing.status !== 'active') {
-      await drizzleDb
+      await getDb()
         .update(vascularAccesses)
         .set({ status: 'removed', updatedAt: now })
         .where(
@@ -160,7 +160,7 @@ export class VascularAccessService {
     if (data.nextControlDate !== undefined) updateData.nextControlDate = data.nextControlDate ? new Date(data.nextControlDate) : null;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(vascularAccesses)
       .set(updateData)
       .where(and(eq(vascularAccesses.id, accessId), eq(vascularAccesses.organizationId, organizationId)));
@@ -197,7 +197,7 @@ export class VascularAccessService {
       throw new Error('Vascular access not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(vascularAccesses)
       .where(and(eq(vascularAccesses.id, accessId), eq(vascularAccesses.organizationId, organizationId)));
   }

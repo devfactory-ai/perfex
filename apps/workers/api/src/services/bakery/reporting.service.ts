@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   bakeryArticles,
   bakeryStockAlerts,
@@ -64,7 +64,7 @@ export class BakeryReportingService {
    */
   async getStockDashboard(organizationId: string): Promise<any> {
     // Get all articles
-    const articles = await drizzleDb
+    const articles = await getDb()
       .select()
       .from(bakeryArticles)
       .where(and(
@@ -84,7 +84,7 @@ export class BakeryReportingService {
     const outOfStockItems = articles.filter((a) => (a.currentStock || 0) === 0);
 
     // Get active alerts
-    const alerts = await drizzleDb
+    const alerts = await getDb()
       .select()
       .from(bakeryStockAlerts)
       .where(and(
@@ -132,7 +132,7 @@ export class BakeryReportingService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Get today's proofing carts (using entryTime instead of startTime)
-    const todayCarts = await drizzleDb
+    const todayCarts = await getDb()
       .select()
       .from(bakeryProofingCarts)
       .where(and(
@@ -143,7 +143,7 @@ export class BakeryReportingService {
       .all();
 
     // Get today's quality controls (using controlDate instead of controlTime)
-    const todayControls = await drizzleDb
+    const todayControls = await getDb()
       .select()
       .from(bakeryQualityControls)
       .where(and(
@@ -158,7 +158,7 @@ export class BakeryReportingService {
 
     // Get production comparisons for today (using comparisonDate instead of productionDate)
     // Schema uses: conformingQuantity, defectiveQuantity, theoreticalVariance, conformityRate, lossRate
-    const comparisons = await drizzleDb
+    const comparisons = await getDb()
       .select()
       .from(bakeryProductionComparisons)
       .where(and(
@@ -229,7 +229,7 @@ export class BakeryReportingService {
     }
 
     // Get B2B orders (using totalAmountTTC instead of totalTTC)
-    const orders = await drizzleDb
+    const orders = await getDb()
       .select()
       .from(bakeryDeliveryOrders)
       .where(and(
@@ -244,7 +244,7 @@ export class BakeryReportingService {
       .reduce((sum, o) => sum + (o.totalAmountTTC || 0), 0);
 
     // Get sales sessions (using status 'fermee' instead of 'cloturee')
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(and(
@@ -265,7 +265,7 @@ export class BakeryReportingService {
     }, {});
 
     // Get active clients count
-    const activeClients = await drizzleDb
+    const activeClients = await getDb()
       .select()
       .from(bakeryB2BClients)
       .where(and(
@@ -295,7 +295,7 @@ export class BakeryReportingService {
    */
   async getMaintenanceDashboard(organizationId: string): Promise<any> {
     // Get equipment
-    const equipment = await drizzleDb
+    const equipment = await getDb()
       .select()
       .from(bakeryEquipment)
       .where(and(
@@ -314,7 +314,7 @@ export class BakeryReportingService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const interventions = await drizzleDb
+    const interventions = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(and(
@@ -333,7 +333,7 @@ export class BakeryReportingService {
     const totalCost = interventions.reduce((sum, i) => sum + (i.totalCost || 0), 0);
 
     // Get active alerts
-    const alerts = await drizzleDb
+    const alerts = await getDb()
       .select()
       .from(bakeryMaintenanceAlerts)
       .where(and(
@@ -382,7 +382,7 @@ export class BakeryReportingService {
     targetDate.setHours(0, 0, 0, 0);
 
     // Check if summary exists
-    const summary = await drizzleDb
+    const summary = await getDb()
       .select()
       .from(bakeryDailySalesSummary)
       .where(and(
@@ -412,7 +412,7 @@ export class BakeryReportingService {
     endOfDay.setHours(23, 59, 59, 999);
 
     // Get all closed sessions for the day (status 'fermee' or 'validee')
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(and(
@@ -432,7 +432,7 @@ export class BakeryReportingService {
     const onSiteTotalRevenue = onSiteMorningRevenue + onSiteAfternoonRevenue;
 
     // Get delivered orders for the day
-    const orders = await drizzleDb
+    const orders = await getDb()
       .select()
       .from(bakeryDeliveryOrders)
       .where(and(
@@ -454,7 +454,7 @@ export class BakeryReportingService {
     const id = crypto.randomUUID();
     const now = new Date();
 
-    await drizzleDb.insert(bakeryDailySalesSummary).values({
+    await getDb().insert(bakeryDailySalesSummary).values({
       id,
       organizationId,
       summaryDate: startOfDay,
@@ -470,7 +470,7 @@ export class BakeryReportingService {
       createdAt: now,
     });
 
-    const summary = await drizzleDb
+    const summary = await getDb()
       .select()
       .from(bakeryDailySalesSummary)
       .where(eq(bakeryDailySalesSummary.id, id))
@@ -489,7 +489,7 @@ export class BakeryReportingService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryReportConfigs).values({
+    await getDb().insert(bakeryReportConfigs).values({
       id,
       organizationId,
       reportName: data.reportName,
@@ -504,7 +504,7 @@ export class BakeryReportingService {
       updatedAt: now,
     });
 
-    const config = await drizzleDb
+    const config = await getDb()
       .select()
       .from(bakeryReportConfigs)
       .where(eq(bakeryReportConfigs.id, id))
@@ -517,7 +517,7 @@ export class BakeryReportingService {
    * List report configurations
    */
   async listReportConfigs(organizationId: string): Promise<BakeryReportConfig[]> {
-    const configs = await drizzleDb
+    const configs = await getDb()
       .select()
       .from(bakeryReportConfigs)
       .where(eq(bakeryReportConfigs.organizationId, organizationId))
@@ -541,7 +541,7 @@ export class BakeryReportingService {
     // Generate PDF URL (in real implementation, would create actual file)
     const pdfUrl = `/reports/${id}.pdf`;
 
-    await drizzleDb.insert(bakeryGeneratedReports).values({
+    await getDb().insert(bakeryGeneratedReports).values({
       id,
       organizationId,
       configId: data.configId || null,
@@ -553,7 +553,7 @@ export class BakeryReportingService {
       createdAt: now,
     });
 
-    const report = await drizzleDb
+    const report = await getDb()
       .select()
       .from(bakeryGeneratedReports)
       .where(eq(bakeryGeneratedReports.id, id))
@@ -579,7 +579,7 @@ export class BakeryReportingService {
       conditions.push(sql`${bakeryGeneratedReports.generationDate} <= ${filters.endDate}`);
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryGeneratedReports)
       .where(and(...conditions))
@@ -612,7 +612,7 @@ export class BakeryReportingService {
     // Generate file URL
     const fileUrl = `/exports/${id}.${data.format === 'excel' ? 'xlsx' : data.format}`;
 
-    await drizzleDb.insert(bakeryAccountingExports).values({
+    await getDb().insert(bakeryAccountingExports).values({
       id,
       organizationId,
       periodStart: new Date(data.periodStart),
@@ -624,7 +624,7 @@ export class BakeryReportingService {
       generatedAt: now,
     });
 
-    const export_ = await drizzleDb
+    const export_ = await getDb()
       .select()
       .from(bakeryAccountingExports)
       .where(eq(bakeryAccountingExports.id, id))
@@ -650,7 +650,7 @@ export class BakeryReportingService {
       conditions.push(sql`${bakeryAccountingExports.generatedAt} <= ${filters.endDate}`);
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryAccountingExports)
       .where(and(...conditions))

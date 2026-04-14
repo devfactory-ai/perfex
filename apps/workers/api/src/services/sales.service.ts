@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   quotes,
   salesOrders,
@@ -43,7 +43,7 @@ export class SalesService {
     const orderDate = new Date(data.orderDate);
     const expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
 
-    await drizzleDb.insert(salesOrders).values({
+    await getDb().insert(salesOrders).values({
       id: orderId,
       organizationId,
       orderNumber,
@@ -69,7 +69,7 @@ export class SalesService {
 
     // Insert lines
     for (const line of lines) {
-      await drizzleDb.insert(salesOrderLines).values({
+      await getDb().insert(salesOrderLines).values({
         id: crypto.randomUUID(),
         organizationId,
         salesOrderId: orderId,
@@ -92,7 +92,7 @@ export class SalesService {
   }
 
   async getSalesOrderById(organizationId: string, orderId: string): Promise<SalesOrder | null> {
-    const order = await drizzleDb
+    const order = await getDb()
       .select()
       .from(salesOrders)
       .where(and(eq(salesOrders.id, orderId), eq(salesOrders.organizationId, organizationId)))
@@ -116,7 +116,7 @@ export class SalesService {
       conditions.push(like(salesOrders.orderNumber, searchTerm));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(salesOrders)
       .where(and(...conditions))
@@ -134,7 +134,7 @@ export class SalesService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(salesOrders)
       .set(updateData)
       .where(and(eq(salesOrders.id, orderId), eq(salesOrders.organizationId, organizationId)));
@@ -148,7 +148,7 @@ export class SalesService {
     const existing = await this.getSalesOrderById(organizationId, orderId);
     if (!existing) throw new Error('Sales order not found');
 
-    await drizzleDb
+    await getDb()
       .delete(salesOrders)
       .where(and(eq(salesOrders.id, orderId), eq(salesOrders.organizationId, organizationId)));
   }

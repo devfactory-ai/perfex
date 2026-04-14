@@ -5,7 +5,7 @@
 
 import { eq, and, desc, like, or, sql
  } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   bakeryEquipment,
   bakeryInterventions,
@@ -124,7 +124,7 @@ export class BakeryMaintenanceService {
       );
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryEquipment)
       .where(and(...conditions))
@@ -156,7 +156,7 @@ export class BakeryMaintenanceService {
     const warrantyEndDate = new Date(data.purchaseDate);
     warrantyEndDate.setMonth(warrantyEndDate.getMonth() + data.warrantyMonths);
 
-    await drizzleDb.insert(bakeryEquipment).values({
+    await getDb().insert(bakeryEquipment).values({
       id,
       organizationId,
       name: data.name,
@@ -190,7 +190,7 @@ export class BakeryMaintenanceService {
    * Get equipment by ID
    */
   async getEquipment(organizationId: string, id: string): Promise<BakeryEquipment | null> {
-    const equipment = await drizzleDb
+    const equipment = await getDb()
       .select()
       .from(bakeryEquipment)
       .where(and(eq(bakeryEquipment.id, id), eq(bakeryEquipment.organizationId, organizationId)))
@@ -225,7 +225,7 @@ export class BakeryMaintenanceService {
       updateData.commissioningDate = new Date(data.commissioningDate);
     }
 
-    await drizzleDb
+    await getDb()
       .update(bakeryEquipment)
       .set(updateData)
       .where(and(eq(bakeryEquipment.id, id), eq(bakeryEquipment.organizationId, organizationId)));
@@ -252,7 +252,7 @@ export class BakeryMaintenanceService {
     let partsCost = 0;
     if (data.parts && data.parts.length > 0) {
       for (const part of data.parts) {
-        const sparePart = await drizzleDb
+        const sparePart = await getDb()
           .select()
           .from(bakerySpareParts)
           .where(eq(bakerySpareParts.id, part.sparePartId))
@@ -266,7 +266,7 @@ export class BakeryMaintenanceService {
 
     const totalCost = (data.laborCost || 0) + partsCost;
 
-    await drizzleDb.insert(bakeryInterventions).values({
+    await getDb().insert(bakeryInterventions).values({
       id,
       organizationId,
       equipmentId: data.equipmentId,
@@ -292,7 +292,7 @@ export class BakeryMaintenanceService {
     // Create intervention parts records and update stock
     if (data.parts && data.parts.length > 0) {
       for (const part of data.parts) {
-        const sparePart = await drizzleDb
+        const sparePart = await getDb()
           .select()
           .from(bakerySpareParts)
           .where(eq(bakerySpareParts.id, part.sparePartId))
@@ -301,7 +301,7 @@ export class BakeryMaintenanceService {
         const unitPrice = sparePart?.unitPrice || 0;
         const amount = unitPrice * part.quantity;
 
-        await drizzleDb.insert(bakeryInterventionParts).values({
+        await getDb().insert(bakeryInterventionParts).values({
           id: crypto.randomUUID(),
           interventionId: id,
           sparePartId: part.sparePartId,
@@ -316,7 +316,7 @@ export class BakeryMaintenanceService {
       }
     }
 
-    const intervention = await drizzleDb
+    const intervention = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(eq(bakeryInterventions.id, id))
@@ -354,7 +354,7 @@ export class BakeryMaintenanceService {
       conditions.push(sql`${bakeryInterventions.interventionDate} <= ${filters.endDate}`);
     }
 
-    const interventions = await drizzleDb
+    const interventions = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(and(...conditions))
@@ -366,7 +366,7 @@ export class BakeryMaintenanceService {
       interventions.map(async (intervention) => {
         const equipment = await this.getEquipment(organizationId, intervention.equipmentId);
 
-        const parts = await drizzleDb
+        const parts = await getDb()
           .select()
           .from(bakeryInterventionParts)
           .where(eq(bakeryInterventionParts.interventionId, intervention.id))
@@ -400,7 +400,7 @@ export class BakeryMaintenanceService {
   ): Promise<BakeryIntervention> {
     const now = new Date();
 
-    const intervention = await drizzleDb
+    const intervention = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(eq(bakeryInterventions.id, interventionId))
@@ -410,7 +410,7 @@ export class BakeryMaintenanceService {
       throw new Error('Intervention not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(bakeryInterventions)
       .set({
         status: 'terminee',
@@ -421,7 +421,7 @@ export class BakeryMaintenanceService {
     // Update maintenance indicators
     await this.updateMaintenanceIndicators(organizationId, intervention.equipmentId);
 
-    const updated = await drizzleDb
+    const updated = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(eq(bakeryInterventions.id, interventionId))
@@ -447,7 +447,7 @@ export class BakeryMaintenanceService {
       data.interval
     );
 
-    await drizzleDb.insert(bakeryMaintenancePlans).values({
+    await getDb().insert(bakeryMaintenancePlans).values({
       id,
       organizationId,
       equipmentId: data.equipmentId,
@@ -461,7 +461,7 @@ export class BakeryMaintenanceService {
       updatedAt: now,
     });
 
-    const plan = await drizzleDb
+    const plan = await getDb()
       .select()
       .from(bakeryMaintenancePlans)
       .where(eq(bakeryMaintenancePlans.id, id))
@@ -512,7 +512,7 @@ export class BakeryMaintenanceService {
       conditions.push(eq(bakeryMaintenancePlans.equipmentId, filters.equipmentId));
     }
 
-    const plans = await drizzleDb
+    const plans = await getDb()
       .select()
       .from(bakeryMaintenancePlans)
       .where(and(...conditions))
@@ -557,7 +557,7 @@ export class BakeryMaintenanceService {
       conditions.push(eq(bakeryMaintenanceAlerts.isAcknowledged, false));
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryMaintenanceAlerts)
       .where(and(...conditions))
@@ -587,7 +587,7 @@ export class BakeryMaintenanceService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryMaintenanceAlerts).values({
+    await getDb().insert(bakeryMaintenanceAlerts).values({
       id,
       organizationId,
       planId,
@@ -599,7 +599,7 @@ export class BakeryMaintenanceService {
       createdAt: now,
     });
 
-    const alert = await drizzleDb
+    const alert = await getDb()
       .select()
       .from(bakeryMaintenanceAlerts)
       .where(eq(bakeryMaintenanceAlerts.id, id))
@@ -618,7 +618,7 @@ export class BakeryMaintenanceService {
   ): Promise<BakeryMaintenanceAlert> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(bakeryMaintenanceAlerts)
       .set({
         isAcknowledged: true,
@@ -630,7 +630,7 @@ export class BakeryMaintenanceService {
         eq(bakeryMaintenanceAlerts.organizationId, organizationId)
       ));
 
-    const alert = await drizzleDb
+    const alert = await getDb()
       .select()
       .from(bakeryMaintenanceAlerts)
       .where(eq(bakeryMaintenanceAlerts.id, alertId))
@@ -649,7 +649,7 @@ export class BakeryMaintenanceService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakerySpareParts).values({
+    await getDb().insert(bakerySpareParts).values({
       id,
       organizationId,
       reference: data.reference,
@@ -667,7 +667,7 @@ export class BakeryMaintenanceService {
       updatedAt: now,
     });
 
-    const sparePart = await drizzleDb
+    const sparePart = await getDb()
       .select()
       .from(bakerySpareParts)
       .where(eq(bakerySpareParts.id, id))
@@ -695,7 +695,7 @@ export class BakeryMaintenanceService {
       );
     }
 
-    let items = await drizzleDb
+    let items = await getDb()
       .select()
       .from(bakerySpareParts)
       .where(and(...conditions))
@@ -731,7 +731,7 @@ export class BakeryMaintenanceService {
     interventionId: string | null,
     responsibleId: string | null
   ): Promise<void> {
-    const sparePart = await drizzleDb
+    const sparePart = await getDb()
       .select()
       .from(bakerySpareParts)
       .where(eq(bakerySpareParts.id, sparePartId))
@@ -741,7 +741,7 @@ export class BakeryMaintenanceService {
 
     const newStock = (sparePart.currentStock || 0) + quantity;
 
-    await drizzleDb
+    await getDb()
       .update(bakerySpareParts)
       .set({
         currentStock: Math.max(0, newStock),
@@ -752,7 +752,7 @@ export class BakeryMaintenanceService {
     // Record movement (no organizationId, no stockBefore/After)
     const movementType = quantity > 0 ? 'entree' : (interventionId ? 'sortie_intervention' : 'ajustement');
 
-    await drizzleDb.insert(bakerySparePartMovements).values({
+    await getDb().insert(bakerySparePartMovements).values({
       id: crypto.randomUUID(),
       sparePartId,
       type: movementType,
@@ -774,7 +774,7 @@ export class BakeryMaintenanceService {
     responsibleId: string
   ): Promise<void> {
     // Verify spare part belongs to organization
-    const sparePart = await drizzleDb
+    const sparePart = await getDb()
       .select()
       .from(bakerySpareParts)
       .where(and(
@@ -805,7 +805,7 @@ export class BakeryMaintenanceService {
     }
 
     // Get latest indicators for each equipment
-    const indicators = await drizzleDb
+    const indicators = await getDb()
       .select()
       .from(bakeryMaintenanceIndicators)
       .where(and(...conditions))
@@ -859,7 +859,7 @@ export class BakeryMaintenanceService {
     if (!equipment) return;
 
     // Get all interventions for this equipment
-    const interventions = await drizzleDb
+    const interventions = await getDb()
       .select()
       .from(bakeryInterventions)
       .where(and(
@@ -907,7 +907,7 @@ export class BakeryMaintenanceService {
     // Use current month as period
     const period = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    await drizzleDb.insert(bakeryMaintenanceIndicators).values({
+    await getDb().insert(bakeryMaintenanceIndicators).values({
       id: crypto.randomUUID(),
       organizationId,
       equipmentId,

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   bakeryB2BClients,
   bakeryClientPricing,
@@ -125,7 +125,7 @@ export class BakerySalesService {
       );
     }
 
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryB2BClients)
       .where(and(...conditions))
@@ -153,7 +153,7 @@ export class BakerySalesService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryB2BClients).values({
+    await getDb().insert(bakeryB2BClients).values({
       id,
       organizationId,
       commercialName: data.commercialName,
@@ -181,7 +181,7 @@ export class BakerySalesService {
    * Get B2B client by ID
    */
   async getB2BClient(organizationId: string, id: string): Promise<BakeryB2BClient | null> {
-    const client = await drizzleDb
+    const client = await getDb()
       .select()
       .from(bakeryB2BClients)
       .where(and(eq(bakeryB2BClients.id, id), eq(bakeryB2BClients.organizationId, organizationId)))
@@ -203,7 +203,7 @@ export class BakerySalesService {
       throw new Error('Client not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(bakeryB2BClients)
       .set({
         ...data,
@@ -243,7 +243,7 @@ export class BakerySalesService {
     const vatAmount = totalAmountHT * taxRate;
     const totalAmountTTC = totalAmountHT + vatAmount;
 
-    await drizzleDb.insert(bakeryDeliveryOrders).values({
+    await getDb().insert(bakeryDeliveryOrders).values({
       id,
       organizationId,
       clientId: data.clientId,
@@ -265,7 +265,7 @@ export class BakerySalesService {
     for (const line of data.lines) {
       // Get client-specific pricing if exists
       let unitPrice = line.unitPriceHT;
-      const clientPricing = await drizzleDb
+      const clientPricing = await getDb()
         .select()
         .from(bakeryClientPricing)
         .where(and(
@@ -280,7 +280,7 @@ export class BakerySalesService {
 
       const lineAmountHT = line.orderedQuantity * unitPrice;
 
-      await drizzleDb.insert(bakeryDeliveryOrderLines).values({
+      await getDb().insert(bakeryDeliveryOrderLines).values({
         id: crypto.randomUUID(),
         orderId: id,
         productId: line.productId,
@@ -291,7 +291,7 @@ export class BakerySalesService {
       });
     }
 
-    const order = await drizzleDb
+    const order = await getDb()
       .select()
       .from(bakeryDeliveryOrders)
       .where(eq(bakeryDeliveryOrders.id, id))
@@ -330,7 +330,7 @@ export class BakerySalesService {
     const limit = filters.limit || 50;
     const offset = (page - 1) * limit;
 
-    const orders = await drizzleDb
+    const orders = await getDb()
       .select()
       .from(bakeryDeliveryOrders)
       .where(and(...conditions))
@@ -340,7 +340,7 @@ export class BakerySalesService {
       .all() as BakeryDeliveryOrder[];
 
     // Get total count
-    const totalResult = await drizzleDb
+    const totalResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(bakeryDeliveryOrders)
       .where(and(...conditions))
@@ -353,7 +353,7 @@ export class BakerySalesService {
 
     // Batch fetch: Get all clients in one query
     const clientIds = [...new Set(orders.map(o => o.clientId))];
-    const clients = await drizzleDb
+    const clients = await getDb()
       .select()
       .from(bakeryB2BClients)
       .where(sql`${bakeryB2BClients.id} IN (${sql.join(clientIds.map(id => sql`${id}`), sql`, `)})`)
@@ -362,7 +362,7 @@ export class BakerySalesService {
 
     // Batch fetch: Get all order lines in one query
     const orderIds = orders.map(o => o.id);
-    const allLines = await drizzleDb
+    const allLines = await getDb()
       .select()
       .from(bakeryDeliveryOrderLines)
       .where(sql`${bakeryDeliveryOrderLines.orderId} IN (${sql.join(orderIds.map(id => sql`${id}`), sql`, `)})`)
@@ -371,7 +371,7 @@ export class BakerySalesService {
     // Batch fetch: Get all products in one query
     const productIds = [...new Set((allLines as any[]).map(l => l.productId))];
     const products = productIds.length > 0
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(bakeryProducts)
           .where(sql`${bakeryProducts.id} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`)
@@ -413,7 +413,7 @@ export class BakerySalesService {
   ): Promise<BakeryDeliveryOrder> {
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(bakeryDeliveryOrders)
       .set({
         status,
@@ -424,7 +424,7 @@ export class BakerySalesService {
         eq(bakeryDeliveryOrders.organizationId, organizationId)
       ));
 
-    const order = await drizzleDb
+    const order = await getDb()
       .select()
       .from(bakeryDeliveryOrders)
       .where(eq(bakeryDeliveryOrders.id, orderId))
@@ -452,7 +452,7 @@ export class BakerySalesService {
     // Generate note number
     const noteNumber = `BL-${Date.now().toString(36).toUpperCase()}`;
 
-    await drizzleDb.insert(bakeryDeliveryNotes).values({
+    await getDb().insert(bakeryDeliveryNotes).values({
       id,
       orderId: data.orderId,
       noteNumber,
@@ -469,7 +469,7 @@ export class BakerySalesService {
 
     // Update order line delivered quantities
     for (const item of data.deliveredQuantities) {
-      await drizzleDb
+      await getDb()
         .update(bakeryDeliveryOrderLines)
         .set({
           deliveredQuantity: item.quantity,
@@ -483,7 +483,7 @@ export class BakerySalesService {
     // Update order status
     await this.updateOrderStatus(organizationId, data.orderId, 'livree');
 
-    const note = await drizzleDb
+    const note = await getDb()
       .select()
       .from(bakeryDeliveryNotes)
       .where(eq(bakeryDeliveryNotes.id, id))
@@ -496,7 +496,7 @@ export class BakerySalesService {
    * List points of sale
    */
   async listPointsOfSale(organizationId: string): Promise<BakeryPointOfSale[]> {
-    const items = await drizzleDb
+    const items = await getDb()
       .select()
       .from(bakeryPointsOfSale)
       .where(eq(bakeryPointsOfSale.organizationId, organizationId))
@@ -516,7 +516,7 @@ export class BakerySalesService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakeryPointsOfSale).values({
+    await getDb().insert(bakeryPointsOfSale).values({
       id,
       organizationId,
       name: data.name,
@@ -525,7 +525,7 @@ export class BakerySalesService {
       createdAt: now,
     });
 
-    const pos = await drizzleDb
+    const pos = await getDb()
       .select()
       .from(bakeryPointsOfSale)
       .where(eq(bakeryPointsOfSale.id, id))
@@ -546,7 +546,7 @@ export class BakerySalesService {
     const now = new Date();
     const id = crypto.randomUUID();
 
-    await drizzleDb.insert(bakerySalesSessions).values({
+    await getDb().insert(bakerySalesSessions).values({
       id,
       organizationId,
       pointOfSaleId: data.pointOfSaleId,
@@ -561,7 +561,7 @@ export class BakerySalesService {
 
     // Initialize POS stock from products
     // Schema: sessionId, productId, productType, openingStock, dailyEntries, deliveries, defective, closingStock, calculatedSold, unitPrice, productRevenue
-    const products = await drizzleDb
+    const products = await getDb()
       .select()
       .from(bakeryProducts)
       .where(and(
@@ -571,7 +571,7 @@ export class BakerySalesService {
       .all();
 
     for (const product of products as any[]) {
-      await drizzleDb.insert(bakeryPOSStock).values({
+      await getDb().insert(bakeryPOSStock).values({
         id: crypto.randomUUID(),
         sessionId: id,
         productId: product.id,
@@ -589,7 +589,7 @@ export class BakerySalesService {
       });
     }
 
-    const session = await drizzleDb
+    const session = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(eq(bakerySalesSessions.id, id))
@@ -623,7 +623,7 @@ export class BakerySalesService {
       conditions.push(sql`${bakerySalesSessions.sessionDate} <= ${filters.endDate}`);
     }
 
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(and(...conditions))
@@ -633,13 +633,13 @@ export class BakerySalesService {
     // Get point of sale details
     const sessionsWithDetails = await Promise.all(
       sessions.map(async (session) => {
-        const pos = await drizzleDb
+        const pos = await getDb()
           .select()
           .from(bakeryPointsOfSale)
           .where(eq(bakeryPointsOfSale.id, session.pointOfSaleId))
           .get();
 
-        const stock = await drizzleDb
+        const stock = await getDb()
           .select()
           .from(bakeryPOSStock)
           .where(eq(bakeryPOSStock.sessionId, session.id))
@@ -675,7 +675,7 @@ export class BakerySalesService {
     const now = new Date();
 
     // Get session
-    const session = await drizzleDb
+    const session = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(eq(bakerySalesSessions.id, sessionId))
@@ -690,7 +690,7 @@ export class BakerySalesService {
 
     for (const count of data.stockCounts) {
       // Get POS stock entry
-      const posStock = await drizzleDb
+      const posStock = await getDb()
         .select()
         .from(bakeryPOSStock)
         .where(and(
@@ -713,7 +713,7 @@ export class BakerySalesService {
         calculatedRevenue += productRevenue;
 
         // Update POS stock
-        await drizzleDb
+        await getDb()
           .update(bakeryPOSStock)
           .set({
             closingStock: closing,
@@ -728,7 +728,7 @@ export class BakerySalesService {
     // Update session with closing values
     const revenueVariance = data.declaredRevenue ? data.declaredRevenue - calculatedRevenue : null;
 
-    await drizzleDb
+    await getDb()
       .update(bakerySalesSessions)
       .set({
         status: 'fermee',
@@ -740,7 +740,7 @@ export class BakerySalesService {
       })
       .where(eq(bakerySalesSessions.id, sessionId));
 
-    const updated = await drizzleDb
+    const updated = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(eq(bakerySalesSessions.id, sessionId))
@@ -761,7 +761,7 @@ export class BakerySalesService {
     const id = crypto.randomUUID();
 
     // Get morning session
-    const morningSession = await drizzleDb
+    const morningSession = await getDb()
       .select()
       .from(bakerySalesSessions)
       .where(eq(bakerySalesSessions.id, data.morningSessionId))
@@ -772,7 +772,7 @@ export class BakerySalesService {
     }
 
     // Get morning session stock for transfer
-    const morningStock = await drizzleDb
+    const morningStock = await getDb()
       .select()
       .from(bakeryPOSStock)
       .where(eq(bakeryPOSStock.sessionId, data.morningSessionId))
@@ -781,7 +781,7 @@ export class BakerySalesService {
     // Update afternoon session opening stock
     for (const stock of morningStock as any[]) {
       if (stock.closingStock !== null && stock.closingStock !== undefined) {
-        await drizzleDb
+        await getDb()
           .update(bakeryPOSStock)
           .set({
             openingStock: stock.closingStock,
@@ -800,7 +800,7 @@ export class BakerySalesService {
       ? data.declaredMorningRevenue - calculatedMorningRevenue
       : null;
 
-    await drizzleDb.insert(bakeryTeamHandovers).values({
+    await getDb().insert(bakeryTeamHandovers).values({
       id,
       organizationId,
       handoverDate: now,
@@ -819,7 +819,7 @@ export class BakerySalesService {
       createdAt: now,
     });
 
-    const handover = await drizzleDb
+    const handover = await getDb()
       .select()
       .from(bakeryTeamHandovers)
       .where(eq(bakeryTeamHandovers.id, id))

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { labResults, dialysePatients } from '@perfex/database';
 import { safeJsonParse } from '../../utils/json';
 import type {
@@ -42,7 +42,7 @@ export class LabService {
     const labId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -62,7 +62,7 @@ export class LabService {
       ktV = this.calculateKtV(data.ureaPre, data.ureaPost, patient.dryWeight, (data as any).sessionDuration || 240);
     }
 
-    await drizzleDb.insert(labResults).values({
+    await getDb().insert(labResults).values({
       id: labId,
       organizationId,
       patientId: data.patientId,
@@ -139,7 +139,7 @@ export class LabService {
    * Get lab result by ID
    */
   async getById(organizationId: string, labId: string): Promise<LabResult | null> {
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(labResults)
       .where(and(eq(labResults.id, labId), eq(labResults.organizationId, organizationId)))
@@ -176,7 +176,7 @@ export class LabService {
       conditions.push(lte(labResults.labDate, new Date(endDate)));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(labResults)
       .where(and(...conditions))
@@ -185,7 +185,7 @@ export class LabService {
       .offset(offset)
       .all() as any[];
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(labResults)
       .where(and(...conditions))
@@ -205,7 +205,7 @@ export class LabService {
    * Get latest lab result for a patient
    */
   async getLatestByPatient(organizationId: string, patientId: string): Promise<LabResult | null> {
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(labResults)
       .where(and(eq(labResults.patientId, patientId), eq(labResults.organizationId, organizationId)))
@@ -262,7 +262,7 @@ export class LabService {
     updateData.hasOutOfRangeValues = outOfRangeMarkers.length > 0;
     updateData.outOfRangeMarkers = outOfRangeMarkers.length > 0 ? JSON.stringify(outOfRangeMarkers) : null;
 
-    await drizzleDb
+    await getDb()
       .update(labResults)
       .set(updateData)
       .where(and(eq(labResults.id, labId), eq(labResults.organizationId, organizationId)));
@@ -286,7 +286,7 @@ export class LabService {
 
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(labResults)
       .set({
         reviewedBy: userId,
@@ -307,7 +307,7 @@ export class LabService {
       throw new Error('Lab result not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(labResults)
       .where(and(eq(labResults.id, labId), eq(labResults.organizationId, organizationId)));
   }
@@ -324,7 +324,7 @@ export class LabService {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(labResults)
       .where(
@@ -350,7 +350,7 @@ export class LabService {
    */
   async getPatientsWithOutOfRangeValues(organizationId: string): Promise<LabResultWithPatient[]> {
     // Get latest lab result for each patient that has out-of-range values
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(labResults)
       .where(
@@ -445,7 +445,7 @@ export class LabService {
       conditions.push(lte(labResults.labDate, endDate));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(labResults)
       .where(and(...conditions))

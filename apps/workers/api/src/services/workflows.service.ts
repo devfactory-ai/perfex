@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   workflows,
   workflowSteps,
@@ -69,7 +69,7 @@ export class WorkflowsService {
     const now = new Date();
     const workflowId = crypto.randomUUID();
 
-    await drizzleDb.insert(workflows).values({
+    await getDb().insert(workflows).values({
       id: workflowId,
       organizationId,
       name: data.name,
@@ -90,7 +90,7 @@ export class WorkflowsService {
   }
 
   async getWorkflowById(organizationId: string, workflowId: string): Promise<Workflow | null> {
-    const workflow = await drizzleDb
+    const workflow = await getDb()
       .select()
       .from(workflows)
       .where(and(eq(workflows.id, workflowId), eq(workflows.organizationId, organizationId)))
@@ -109,7 +109,7 @@ export class WorkflowsService {
       conditions.push(eq(workflows.isActive, filters.isActive));
     }
 
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(workflows)
       .where(and(...conditions))
@@ -129,7 +129,7 @@ export class WorkflowsService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(workflows)
       .set(updateData)
       .where(and(eq(workflows.id, workflowId), eq(workflows.organizationId, organizationId)));
@@ -143,7 +143,7 @@ export class WorkflowsService {
     const existing = await this.getWorkflowById(organizationId, workflowId);
     if (!existing) throw new Error('Workflow not found');
 
-    await drizzleDb
+    await getDb()
       .delete(workflows)
       .where(and(eq(workflows.id, workflowId), eq(workflows.organizationId, organizationId)));
   }
@@ -156,7 +156,7 @@ export class WorkflowsService {
     const now = new Date();
     const stepId = crypto.randomUUID();
 
-    await drizzleDb.insert(workflowSteps).values({
+    await getDb().insert(workflowSteps).values({
       id: stepId,
       organizationId,
       workflowId: data.workflowId,
@@ -178,7 +178,7 @@ export class WorkflowsService {
   }
 
   async getWorkflowStepById(organizationId: string, stepId: string): Promise<WorkflowStep | null> {
-    const step = await drizzleDb
+    const step = await getDb()
       .select()
       .from(workflowSteps)
       .where(and(eq(workflowSteps.id, stepId), eq(workflowSteps.organizationId, organizationId)))
@@ -187,7 +187,7 @@ export class WorkflowsService {
   }
 
   async listWorkflowSteps(organizationId: string, workflowId: string): Promise<WorkflowStep[]> {
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(workflowSteps)
       .where(and(eq(workflowSteps.organizationId, organizationId), eq(workflowSteps.workflowId, workflowId)))
@@ -204,7 +204,7 @@ export class WorkflowsService {
     const now = new Date();
     const instanceId = crypto.randomUUID();
 
-    await drizzleDb.insert(workflowInstances).values({
+    await getDb().insert(workflowInstances).values({
       id: instanceId,
       organizationId,
       workflowId: data.workflowId,
@@ -226,7 +226,7 @@ export class WorkflowsService {
   }
 
   async getWorkflowInstanceById(organizationId: string, instanceId: string): Promise<WorkflowInstance | null> {
-    const instance = await drizzleDb
+    const instance = await getDb()
       .select()
       .from(workflowInstances)
       .where(and(eq(workflowInstances.id, instanceId), eq(workflowInstances.organizationId, organizationId)))
@@ -253,7 +253,7 @@ export class WorkflowsService {
       conditions.push(eq(workflowInstances.status, filters.status));
     }
 
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(workflowInstances)
       .where(and(...conditions))
@@ -271,7 +271,7 @@ export class WorkflowsService {
     const now = new Date();
     const approvalId = crypto.randomUUID();
 
-    await drizzleDb.insert(approvals).values({
+    await getDb().insert(approvals).values({
       id: approvalId,
       organizationId,
       workflowInstanceId: data.workflowInstanceId || null,
@@ -292,7 +292,7 @@ export class WorkflowsService {
   }
 
   async getApprovalById(organizationId: string, approvalId: string): Promise<Approval | null> {
-    const approval = await drizzleDb
+    const approval = await getDb()
       .select()
       .from(approvals)
       .where(and(eq(approvals.id, approvalId), eq(approvals.organizationId, organizationId)))
@@ -311,7 +311,7 @@ export class WorkflowsService {
       conditions.push(eq(approvals.status, filters.status));
     }
 
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(approvals)
       .where(and(...conditions))
@@ -327,7 +327,7 @@ export class WorkflowsService {
     if (existing.approverId !== userId) throw new Error('Not authorized to respond to this approval');
     if (existing.status !== 'pending') throw new Error('Approval already responded to');
 
-    await drizzleDb
+    await getDb()
       .update(approvals)
       .set({
         status: data.status,
@@ -349,7 +349,7 @@ export class WorkflowsService {
     const now = new Date();
     const activityId = crypto.randomUUID();
 
-    await drizzleDb.insert(activityFeed).values({
+    await getDb().insert(activityFeed).values({
       id: activityId,
       organizationId,
       userId: data.userId || null,
@@ -369,7 +369,7 @@ export class WorkflowsService {
   }
 
   async getActivityById(organizationId: string, activityId: string): Promise<ActivityFeed | null> {
-    const activity = await drizzleDb
+    const activity = await getDb()
       .select()
       .from(activityFeed)
       .where(and(eq(activityFeed.id, activityId), eq(activityFeed.organizationId, organizationId)))
@@ -392,7 +392,7 @@ export class WorkflowsService {
       conditions.push(eq(activityFeed.userId, filters.userId));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(activityFeed)
       .where(and(...conditions))
@@ -408,7 +408,7 @@ export class WorkflowsService {
     const now = new Date();
     const commentId = crypto.randomUUID();
 
-    await drizzleDb.insert(comments).values({
+    await getDb().insert(comments).values({
       id: commentId,
       organizationId,
       entityType: data.entityType,
@@ -430,7 +430,7 @@ export class WorkflowsService {
   }
 
   async getCommentById(organizationId: string, commentId: string): Promise<Comment | null> {
-    const comment = await drizzleDb
+    const comment = await getDb()
       .select()
       .from(comments)
       .where(and(eq(comments.id, commentId), eq(comments.organizationId, organizationId)))
@@ -439,7 +439,7 @@ export class WorkflowsService {
   }
 
   async listComments(organizationId: string, entityType: string, entityId: string): Promise<Comment[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(comments)
       .where(
@@ -458,7 +458,7 @@ export class WorkflowsService {
     if (!existing) throw new Error('Comment not found');
     if (existing.createdBy !== userId) throw new Error('Not authorized to edit this comment');
 
-    await drizzleDb
+    await getDb()
       .update(comments)
       .set({
         content: data.content,
@@ -478,7 +478,7 @@ export class WorkflowsService {
     if (!existing) throw new Error('Comment not found');
     if (existing.createdBy !== userId) throw new Error('Not authorized to delete this comment');
 
-    await drizzleDb
+    await getDb()
       .delete(comments)
       .where(and(eq(comments.id, commentId), eq(comments.organizationId, organizationId)));
   }
@@ -491,7 +491,7 @@ export class WorkflowsService {
     const now = new Date();
     const webhookId = crypto.randomUUID();
 
-    await drizzleDb.insert(webhooks).values({
+    await getDb().insert(webhooks).values({
       id: webhookId,
       organizationId,
       name: data.name,
@@ -515,7 +515,7 @@ export class WorkflowsService {
   }
 
   async getWebhookById(organizationId: string, webhookId: string): Promise<Webhook | null> {
-    const webhook = await drizzleDb
+    const webhook = await getDb()
       .select()
       .from(webhooks)
       .where(and(eq(webhooks.id, webhookId), eq(webhooks.organizationId, organizationId)))
@@ -524,7 +524,7 @@ export class WorkflowsService {
   }
 
   async listWebhooks(organizationId: string): Promise<Webhook[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(webhooks)
       .where(eq(webhooks.organizationId, organizationId))
@@ -545,7 +545,7 @@ export class WorkflowsService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(webhooks)
       .set(updateData)
       .where(and(eq(webhooks.id, webhookId), eq(webhooks.organizationId, organizationId)));
@@ -559,7 +559,7 @@ export class WorkflowsService {
     const existing = await this.getWebhookById(organizationId, webhookId);
     if (!existing) throw new Error('Webhook not found');
 
-    await drizzleDb
+    await getDb()
       .delete(webhooks)
       .where(and(eq(webhooks.id, webhookId), eq(webhooks.organizationId, organizationId)));
   }
@@ -579,7 +579,7 @@ export class WorkflowsService {
     // Hash the key (in production, use bcrypt or similar)
     const keyHash = await this.hashApiKey(plainKey);
 
-    await drizzleDb.insert(apiKeys).values({
+    await getDb().insert(apiKeys).values({
       id: apiKeyId,
       organizationId,
       name: data.name,
@@ -613,7 +613,7 @@ export class WorkflowsService {
   }
 
   async getApiKeyById(organizationId: string, apiKeyId: string): Promise<ApiKey | null> {
-    const apiKey = await drizzleDb
+    const apiKey = await getDb()
       .select()
       .from(apiKeys)
       .where(and(eq(apiKeys.id, apiKeyId), eq(apiKeys.organizationId, organizationId)))
@@ -622,7 +622,7 @@ export class WorkflowsService {
   }
 
   async listApiKeys(organizationId: string): Promise<ApiKey[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(apiKeys)
       .where(eq(apiKeys.organizationId, organizationId))
@@ -646,7 +646,7 @@ export class WorkflowsService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(apiKeys)
       .set(updateData)
       .where(and(eq(apiKeys.id, apiKeyId), eq(apiKeys.organizationId, organizationId)));
@@ -660,7 +660,7 @@ export class WorkflowsService {
     const existing = await this.getApiKeyById(organizationId, apiKeyId);
     if (!existing) throw new Error('API key not found');
 
-    await drizzleDb
+    await getDb()
       .delete(apiKeys)
       .where(and(eq(apiKeys.id, apiKeyId), eq(apiKeys.organizationId, organizationId)));
   }
@@ -673,7 +673,7 @@ export class WorkflowsService {
     const now = new Date();
     const tagId = crypto.randomUUID();
 
-    await drizzleDb.insert(tags).values({
+    await getDb().insert(tags).values({
       id: tagId,
       organizationId,
       name: data.name,
@@ -691,7 +691,7 @@ export class WorkflowsService {
   }
 
   async getTagById(organizationId: string, tagId: string): Promise<Tag | null> {
-    const tag = await drizzleDb
+    const tag = await getDb()
       .select()
       .from(tags)
       .where(and(eq(tags.id, tagId), eq(tags.organizationId, organizationId)))
@@ -706,7 +706,7 @@ export class WorkflowsService {
       conditions.push(eq(tags.category, category));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(tags)
       .where(and(...conditions))
@@ -718,7 +718,7 @@ export class WorkflowsService {
     const existing = await this.getTagById(organizationId, tagId);
     if (!existing) throw new Error('Tag not found');
 
-    await drizzleDb
+    await getDb()
       .update(tags)
       .set(data)
       .where(and(eq(tags.id, tagId), eq(tags.organizationId, organizationId)));
@@ -732,7 +732,7 @@ export class WorkflowsService {
     const existing = await this.getTagById(organizationId, tagId);
     if (!existing) throw new Error('Tag not found');
 
-    await drizzleDb
+    await getDb()
       .delete(tags)
       .where(and(eq(tags.id, tagId), eq(tags.organizationId, organizationId)));
   }
@@ -745,7 +745,7 @@ export class WorkflowsService {
     const now = new Date();
     const entityTagId = crypto.randomUUID();
 
-    await drizzleDb.insert(entityTags).values({
+    await getDb().insert(entityTags).values({
       id: entityTagId,
       organizationId,
       tagId: data.tagId,
@@ -758,7 +758,7 @@ export class WorkflowsService {
     // Increment tag usage count
     const tag = await this.getTagById(organizationId, data.tagId);
     if (tag) {
-      await drizzleDb
+      await getDb()
         .update(tags)
         .set({ usageCount: tag.usageCount + 1 })
         .where(and(eq(tags.id, data.tagId), eq(tags.organizationId, organizationId)));
@@ -770,7 +770,7 @@ export class WorkflowsService {
   }
 
   async getEntityTagById(organizationId: string, entityTagId: string): Promise<EntityTag | null> {
-    const entityTag = await drizzleDb
+    const entityTag = await getDb()
       .select()
       .from(entityTags)
       .where(and(eq(entityTags.id, entityTagId), eq(entityTags.organizationId, organizationId)))
@@ -779,7 +779,7 @@ export class WorkflowsService {
   }
 
   async listEntityTags(organizationId: string, entityType: string, entityId: string): Promise<EntityTag[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(entityTags)
       .where(
@@ -796,14 +796,14 @@ export class WorkflowsService {
     const existing = await this.getEntityTagById(organizationId, entityTagId);
     if (!existing) throw new Error('Entity tag not found');
 
-    await drizzleDb
+    await getDb()
       .delete(entityTags)
       .where(and(eq(entityTags.id, entityTagId), eq(entityTags.organizationId, organizationId)));
 
     // Decrement tag usage count
     const tag = await this.getTagById(organizationId, existing.tagId);
     if (tag && tag.usageCount > 0) {
-      await drizzleDb
+      await getDb()
         .update(tags)
         .set({ usageCount: tag.usageCount - 1 })
         .where(and(eq(tags.id, existing.tagId), eq(tags.organizationId, organizationId)));

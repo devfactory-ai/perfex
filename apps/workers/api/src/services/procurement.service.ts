@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   suppliers,
   purchaseOrders,
@@ -28,7 +28,7 @@ export class ProcurementService {
     const now = new Date();
     const supplierId = crypto.randomUUID();
 
-    await drizzleDb.insert(suppliers).values({
+    await getDb().insert(suppliers).values({
       id: supplierId,
       organizationId,
       supplierNumber: data.supplierNumber,
@@ -60,7 +60,7 @@ export class ProcurementService {
   }
 
   async getSupplierById(organizationId: string, supplierId: string): Promise<Supplier | null> {
-    const supplier = await drizzleDb
+    const supplier = await getDb()
       .select()
       .from(suppliers)
       .where(and(eq(suppliers.id, supplierId), eq(suppliers.organizationId, organizationId)))
@@ -83,7 +83,7 @@ export class ProcurementService {
       );
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(suppliers)
       .where(and(...conditions))
@@ -95,7 +95,7 @@ export class ProcurementService {
     const existing = await this.getSupplierById(organizationId, supplierId);
     if (!existing) throw new Error('Supplier not found');
 
-    await drizzleDb
+    await getDb()
       .update(suppliers)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(suppliers.id, supplierId), eq(suppliers.organizationId, organizationId)));
@@ -109,7 +109,7 @@ export class ProcurementService {
     const existing = await this.getSupplierById(organizationId, supplierId);
     if (!existing) throw new Error('Supplier not found');
 
-    await drizzleDb
+    await getDb()
       .delete(suppliers)
       .where(and(eq(suppliers.id, supplierId), eq(suppliers.organizationId, organizationId)));
   }
@@ -137,7 +137,7 @@ export class ProcurementService {
     const orderDate = new Date(data.orderDate);
     const expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
 
-    await drizzleDb.insert(purchaseOrders).values({
+    await getDb().insert(purchaseOrders).values({
       id: orderId,
       organizationId,
       orderNumber,
@@ -164,7 +164,7 @@ export class ProcurementService {
 
     // Insert lines
     for (const line of lines) {
-      await drizzleDb.insert(purchaseOrderLines).values({
+      await getDb().insert(purchaseOrderLines).values({
         id: crypto.randomUUID(),
         organizationId,
         purchaseOrderId: orderId,
@@ -188,7 +188,7 @@ export class ProcurementService {
   }
 
   async getPurchaseOrderById(organizationId: string, orderId: string): Promise<PurchaseOrder | null> {
-    const order = await drizzleDb
+    const order = await getDb()
       .select()
       .from(purchaseOrders)
       .where(and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.organizationId, organizationId)))
@@ -207,7 +207,7 @@ export class ProcurementService {
       conditions.push(eq(purchaseOrders.status, filters.status as any));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(purchaseOrders)
       .where(and(...conditions))
@@ -225,7 +225,7 @@ export class ProcurementService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(purchaseOrders)
       .set(updateData)
       .where(and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.organizationId, organizationId)));
@@ -239,7 +239,7 @@ export class ProcurementService {
     const existing = await this.getPurchaseOrderById(organizationId, orderId);
     if (!existing) throw new Error('Purchase order not found');
 
-    await drizzleDb
+    await getDb()
       .delete(purchaseOrders)
       .where(and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.organizationId, organizationId)));
   }

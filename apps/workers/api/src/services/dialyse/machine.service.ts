@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { dialysisMachines, machineMaintenanceRecords } from '@perfex/database';
 import type {
   DialysisMachine,
@@ -24,7 +24,7 @@ export class MachineService {
     const now = new Date();
     const machineId = crypto.randomUUID();
 
-    await drizzleDb.insert(dialysisMachines).values({
+    await getDb().insert(dialysisMachines).values({
       id: machineId,
       organizationId,
       warehouseId: data.warehouseId || null,
@@ -57,7 +57,7 @@ export class MachineService {
    * Get machine by ID
    */
   async getById(organizationId: string, machineId: string): Promise<DialysisMachine | null> {
-    const machine = await drizzleDb
+    const machine = await getDb()
       .select()
       .from(dialysisMachines)
       .where(and(eq(dialysisMachines.id, machineId), eq(dialysisMachines.organizationId, organizationId)))
@@ -75,7 +75,7 @@ export class MachineService {
       return null;
     }
 
-    const maintenanceRecords = await drizzleDb
+    const maintenanceRecords = await getDb()
       .select()
       .from(machineMaintenanceRecords)
       .where(
@@ -110,7 +110,7 @@ export class MachineService {
       conditions.push(eq(dialysisMachines.isolationOnly, isolationOnly));
     }
 
-    const machines = await drizzleDb
+    const machines = await getDb()
       .select()
       .from(dialysisMachines)
       .where(and(...conditions))
@@ -119,7 +119,7 @@ export class MachineService {
       .offset(offset)
       .all() as any[];
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysisMachines)
       .where(and(...conditions))
@@ -148,7 +148,7 @@ export class MachineService {
       conditions.push(eq(dialysisMachines.isolationOnly, false));
     }
 
-    const machines = await drizzleDb
+    const machines = await getDb()
       .select()
       .from(dialysisMachines)
       .where(and(...conditions))
@@ -184,7 +184,7 @@ export class MachineService {
     if (data.warrantyExpiry !== undefined) updateData.warrantyExpiry = data.warrantyExpiry ? new Date(data.warrantyExpiry) : null;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(dialysisMachines)
       .set(updateData)
       .where(and(eq(dialysisMachines.id, machineId), eq(dialysisMachines.organizationId, organizationId)));
@@ -208,7 +208,7 @@ export class MachineService {
 
     const hoursToAdd = Math.round(durationMinutes / 60 * 10) / 10; // Round to 1 decimal
 
-    await drizzleDb
+    await getDb()
       .update(dialysisMachines)
       .set({
         totalHours: (existing.totalHours || 0) + hoursToAdd,
@@ -227,7 +227,7 @@ export class MachineService {
       throw new Error('Machine not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(dialysisMachines)
       .where(and(eq(dialysisMachines.id, machineId), eq(dialysisMachines.organizationId, organizationId)));
   }
@@ -243,7 +243,7 @@ export class MachineService {
     outOfServiceMachines: number;
     isolationMachines: number;
   }> {
-    const machines = await drizzleDb
+    const machines = await getDb()
       .select()
       .from(dialysisMachines)
       .where(eq(dialysisMachines.organizationId, organizationId))
@@ -277,7 +277,7 @@ export class MachineService {
     }
 
     // Generate maintenance number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(machineMaintenanceRecords)
       .where(eq(machineMaintenanceRecords.organizationId, organizationId))
@@ -285,7 +285,7 @@ export class MachineService {
     const count = (countResult?.count || 0) + 1;
     const maintenanceNumber = `MNT-${now.getFullYear()}-${String(count).padStart(5, '0')}`;
 
-    await drizzleDb.insert(machineMaintenanceRecords).values({
+    await getDb().insert(machineMaintenanceRecords).values({
       id: maintenanceId,
       organizationId,
       machineId: data.machineId,
@@ -313,7 +313,7 @@ export class MachineService {
    * Get maintenance record by ID
    */
   async getMaintenanceById(organizationId: string, maintenanceId: string): Promise<MachineMaintenanceRecord | null> {
-    const record = await drizzleDb
+    const record = await getDb()
       .select()
       .from(machineMaintenanceRecords)
       .where(and(eq(machineMaintenanceRecords.id, maintenanceId), eq(machineMaintenanceRecords.organizationId, organizationId)))
@@ -326,7 +326,7 @@ export class MachineService {
    * List maintenance records for a machine
    */
   async listMaintenanceByMachine(organizationId: string, machineId: string): Promise<MachineMaintenanceRecord[]> {
-    const records = await drizzleDb
+    const records = await getDb()
       .select()
       .from(machineMaintenanceRecords)
       .where(
@@ -366,7 +366,7 @@ export class MachineService {
     }
 
     // Get data with machine info
-    const records = await drizzleDb
+    const records = await getDb()
       .select({
         id: machineMaintenanceRecords.id,
         machineId: machineMaintenanceRecords.machineId,
@@ -394,7 +394,7 @@ export class MachineService {
       .all() as any[];
 
     // Get count
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(machineMaintenanceRecords)
       .where(and(...conditions))
@@ -440,7 +440,7 @@ export class MachineService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-    const result = await drizzleDb.run(sql.raw(`
+    const result = await getDb().run(sql.raw(`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled,
@@ -467,7 +467,7 @@ export class MachineService {
    * Delete maintenance record
    */
   async deleteMaintenance(organizationId: string, maintenanceId: string): Promise<void> {
-    await drizzleDb
+    await getDb()
       .delete(machineMaintenanceRecords)
       .where(
         and(
@@ -502,14 +502,14 @@ export class MachineService {
     if (data.partsReplaced !== undefined) updateData.partsReplaced = JSON.stringify(data.partsReplaced);
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(machineMaintenanceRecords)
       .set(updateData)
       .where(and(eq(machineMaintenanceRecords.id, maintenanceId), eq(machineMaintenanceRecords.organizationId, organizationId)));
 
     // If completing maintenance, update machine's last/next maintenance dates
     if (data.status === 'completed' && data.completedDate) {
-      await drizzleDb
+      await getDb()
         .update(dialysisMachines)
         .set({
           lastMaintenanceDate: new Date(data.completedDate),
@@ -531,12 +531,12 @@ export class MachineService {
    * Start maintenance (set machine to maintenance status)
    */
   async startMaintenance(organizationId: string, machineId: string, maintenanceId: string): Promise<void> {
-    await drizzleDb
+    await getDb()
       .update(dialysisMachines)
       .set({ status: 'maintenance', updatedAt: new Date() })
       .where(and(eq(dialysisMachines.id, machineId), eq(dialysisMachines.organizationId, organizationId)));
 
-    await drizzleDb
+    await getDb()
       .update(machineMaintenanceRecords)
       .set({ status: 'in_progress', updatedAt: new Date() })
       .where(eq(machineMaintenanceRecords.id, maintenanceId));

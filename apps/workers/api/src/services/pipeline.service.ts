@@ -4,7 +4,7 @@
  */
 
 import { eq, and, asc } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { pipelineStages } from '@perfex/database';
 import type { PipelineStage, CreatePipelineStageInput, UpdatePipelineStageInput } from '@perfex/shared';
 
@@ -16,7 +16,7 @@ export class PipelineService {
     const now = new Date();
     const stageId = crypto.randomUUID();
 
-    await drizzleDb.insert(pipelineStages).values({
+    await getDb().insert(pipelineStages).values({
       id: stageId,
       organizationId,
       name: data.name,
@@ -39,7 +39,7 @@ export class PipelineService {
    * Get pipeline stage by ID
    */
   async getById(organizationId: string, stageId: string): Promise<PipelineStage | null> {
-    const stage = await drizzleDb
+    const stage = await getDb()
       .select()
       .from(pipelineStages)
       .where(and(eq(pipelineStages.id, stageId), eq(pipelineStages.organizationId, organizationId)))
@@ -58,7 +58,7 @@ export class PipelineService {
       conditions.push(eq(pipelineStages.active, true));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(pipelineStages)
       .where(and(...conditions))
@@ -77,7 +77,7 @@ export class PipelineService {
       throw new Error('Pipeline stage not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(pipelineStages)
       .set(data)
       .where(and(eq(pipelineStages.id, stageId), eq(pipelineStages.organizationId, organizationId)));
@@ -103,7 +103,7 @@ export class PipelineService {
     // Note: In production, you'd want to check if any opportunities use this stage
     // and either prevent deletion or reassign them to another stage
 
-    await drizzleDb
+    await getDb()
       .delete(pipelineStages)
       .where(and(eq(pipelineStages.id, stageId), eq(pipelineStages.organizationId, organizationId)));
   }

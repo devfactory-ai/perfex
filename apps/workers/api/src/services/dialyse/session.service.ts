@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, gte, lte, sql, or } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   dialysisSessions,
   dialysisSessionSlots,
@@ -53,7 +53,7 @@ export class SessionService {
     const now = new Date();
     const slotId = crypto.randomUUID();
 
-    await drizzleDb.insert(dialysisSessionSlots).values({
+    await getDb().insert(dialysisSessionSlots).values({
       id: slotId,
       organizationId,
       name: data.name,
@@ -78,7 +78,7 @@ export class SessionService {
    * Get session slot by ID
    */
   async getSlotById(organizationId: string, slotId: string): Promise<DialysisSessionSlot | null> {
-    const slot = await drizzleDb
+    const slot = await getDb()
       .select()
       .from(dialysisSessionSlots)
       .where(and(eq(dialysisSessionSlots.id, slotId), eq(dialysisSessionSlots.organizationId, organizationId)))
@@ -101,7 +101,7 @@ export class SessionService {
       conditions.push(eq(dialysisSessionSlots.active, true));
     }
 
-    const slots = await drizzleDb
+    const slots = await getDb()
       .select()
       .from(dialysisSessionSlots)
       .where(and(...conditions))
@@ -133,7 +133,7 @@ export class SessionService {
     if (data.maxPatients !== undefined) updateData.maxPatients = data.maxPatients;
     if (data.active !== undefined) updateData.active = data.active;
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessionSlots)
       .set(updateData)
       .where(and(eq(dialysisSessionSlots.id, slotId), eq(dialysisSessionSlots.organizationId, organizationId)));
@@ -158,7 +158,7 @@ export class SessionService {
     const sessionId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -169,7 +169,7 @@ export class SessionService {
     }
 
     // Verify prescription exists
-    const prescription = await drizzleDb
+    const prescription = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(and(eq(dialysePrescriptions.id, data.prescriptionId), eq(dialysePrescriptions.organizationId, organizationId)))
@@ -180,7 +180,7 @@ export class SessionService {
     }
 
     // Generate session number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysisSessions)
       .where(eq(dialysisSessions.organizationId, organizationId))
@@ -188,7 +188,7 @@ export class SessionService {
     const count = (countResult?.count || 0) + 1;
     const sessionNumber = `SES-${now.getFullYear()}-${String(count).padStart(6, '0')}`;
 
-    await drizzleDb.insert(dialysisSessions).values({
+    await getDb().insert(dialysisSessions).values({
       id: sessionId,
       organizationId,
       patientId: data.patientId,
@@ -230,7 +230,7 @@ export class SessionService {
     const sessions: DialysisSession[] = [];
 
     // Get prescription to know frequency
-    const prescription = await drizzleDb
+    const prescription = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(eq(dialysePrescriptions.id, data.prescriptionId))
@@ -265,7 +265,7 @@ export class SessionService {
    * Get session by ID
    */
   async getById(organizationId: string, sessionId: string): Promise<DialysisSession | null> {
-    const session = await drizzleDb
+    const session = await getDb()
       .select()
       .from(dialysisSessions)
       .where(and(eq(dialysisSessions.id, sessionId), eq(dialysisSessions.organizationId, organizationId)))
@@ -282,14 +282,14 @@ export class SessionService {
     if (!session) return null;
 
     // Get patient with contact
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.id, session.patientId))
       .get() as any;
 
     const contact = patient
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(contacts)
           .where(eq(contacts.id, patient.contactId))
@@ -297,7 +297,7 @@ export class SessionService {
       : null;
 
     // Get prescription
-    const prescription = await drizzleDb
+    const prescription = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(eq(dialysePrescriptions.id, session.prescriptionId))
@@ -305,7 +305,7 @@ export class SessionService {
 
     // Get machine
     const machine = session.machineId
-      ? await drizzleDb
+      ? await getDb()
           .select()
           .from(dialysisMachines)
           .where(eq(dialysisMachines.id, session.machineId))
@@ -374,7 +374,7 @@ export class SessionService {
       conditions.push(eq(dialysisSessions.status, filters.status as any));
     }
 
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(dialysisSessions)
       .where(and(...conditions))
@@ -388,7 +388,7 @@ export class SessionService {
    * List sessions for a patient
    */
   async listByPatient(organizationId: string, patientId: string): Promise<DialysisSession[]> {
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(dialysisSessions)
       .where(
@@ -433,7 +433,7 @@ export class SessionService {
     if (data.supervisingDoctorId !== undefined) updateData.supervisingDoctorId = data.supervisingDoctorId;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessions)
       .set(updateData)
       .where(and(eq(dialysisSessions.id, sessionId), eq(dialysisSessions.organizationId, organizationId)));
@@ -459,7 +459,7 @@ export class SessionService {
       throw new Error('Session must be in scheduled status to check in');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessions)
       .set({ status: 'checked_in', updatedAt: new Date() })
       .where(eq(dialysisSessions.id, sessionId));
@@ -492,13 +492,13 @@ export class SessionService {
       updateData.machineId = machineId;
 
       // Mark machine as in use
-      await drizzleDb
+      await getDb()
         .update(dialysisMachines)
         .set({ status: 'in_use', updatedAt: now })
         .where(eq(dialysisMachines.id, machineId));
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessions)
       .set(updateData)
       .where(eq(dialysisSessions.id, sessionId));
@@ -524,7 +524,7 @@ export class SessionService {
       ? Math.round((now.getTime() - new Date(session.actualStartTime).getTime()) / 60000)
       : null;
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessions)
       .set({
         status: 'completed',
@@ -537,7 +537,7 @@ export class SessionService {
     // Release machine and update counters
     if (session.machineId && actualDuration) {
       await machineService.updateCounters(organizationId, session.machineId, actualDuration);
-      await drizzleDb
+      await getDb()
         .update(dialysisMachines)
         .set({ status: 'available', updatedAt: now })
         .where(eq(dialysisMachines.id, session.machineId));
@@ -566,7 +566,7 @@ export class SessionService {
 
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(dialysisSessions)
       .set({
         status: 'cancelled',
@@ -579,7 +579,7 @@ export class SessionService {
 
     // Release machine if assigned
     if (session.machineId && session.status === 'in_progress') {
-      await drizzleDb
+      await getDb()
         .update(dialysisMachines)
         .set({ status: 'available', updatedAt: now })
         .where(eq(dialysisMachines.id, session.machineId));
@@ -599,7 +599,7 @@ export class SessionService {
     const now = new Date();
     const recordId = crypto.randomUUID();
 
-    await drizzleDb.insert(sessionRecords).values({
+    await getDb().insert(sessionRecords).values({
       id: recordId,
       sessionId,
       phase: data.phase,
@@ -625,7 +625,7 @@ export class SessionService {
       createdAt: now,
     });
 
-    const record = await drizzleDb
+    const record = await getDb()
       .select()
       .from(sessionRecords)
       .where(eq(sessionRecords.id, recordId))
@@ -638,7 +638,7 @@ export class SessionService {
    * List records for a session
    */
   async listRecords(sessionId: string): Promise<SessionRecord[]> {
-    const records = await drizzleDb
+    const records = await getDb()
       .select()
       .from(sessionRecords)
       .where(eq(sessionRecords.sessionId, sessionId))
@@ -659,7 +659,7 @@ export class SessionService {
     const now = new Date();
     const incidentId = crypto.randomUUID();
 
-    await drizzleDb.insert(sessionIncidents).values({
+    await getDb().insert(sessionIncidents).values({
       id: incidentId,
       sessionId,
       sessionRecordId: data.sessionRecordId || null,
@@ -675,13 +675,13 @@ export class SessionService {
 
     // Mark the associated record as having an incident
     if (data.sessionRecordId) {
-      await drizzleDb
+      await getDb()
         .update(sessionRecords)
         .set({ hasIncident: true })
         .where(eq(sessionRecords.id, data.sessionRecordId));
     }
 
-    const incident = await drizzleDb
+    const incident = await getDb()
       .select()
       .from(sessionIncidents)
       .where(eq(sessionIncidents.id, incidentId))
@@ -694,7 +694,7 @@ export class SessionService {
    * List incidents for a session
    */
   async listIncidents(sessionId: string): Promise<SessionIncident[]> {
-    const incidents = await drizzleDb
+    const incidents = await getDb()
       .select()
       .from(sessionIncidents)
       .where(eq(sessionIncidents.sessionId, sessionId))
@@ -715,7 +715,7 @@ export class SessionService {
     const now = new Date();
     const medicationId = crypto.randomUUID();
 
-    await drizzleDb.insert(sessionMedications).values({
+    await getDb().insert(sessionMedications).values({
       id: medicationId,
       sessionId,
       medicationName: data.medicationName,
@@ -728,7 +728,7 @@ export class SessionService {
       createdAt: now,
     });
 
-    const medication = await drizzleDb
+    const medication = await getDb()
       .select()
       .from(sessionMedications)
       .where(eq(sessionMedications.id, medicationId))
@@ -741,7 +741,7 @@ export class SessionService {
    * List medications for a session
    */
   async listMedications(sessionId: string): Promise<SessionMedication[]> {
-    const medications = await drizzleDb
+    const medications = await getDb()
       .select()
       .from(sessionMedications)
       .where(eq(sessionMedications.sessionId, sessionId))
@@ -762,7 +762,7 @@ export class SessionService {
     const now = new Date();
     const consumableId = crypto.randomUUID();
 
-    await drizzleDb.insert(sessionConsumables).values({
+    await getDb().insert(sessionConsumables).values({
       id: consumableId,
       sessionId,
       inventoryItemId: data.inventoryItemId,
@@ -772,7 +772,7 @@ export class SessionService {
       createdAt: now,
     });
 
-    const consumable = await drizzleDb
+    const consumable = await getDb()
       .select()
       .from(sessionConsumables)
       .where(eq(sessionConsumables.id, consumableId))
@@ -785,7 +785,7 @@ export class SessionService {
    * List consumables for a session
    */
   async listConsumables(sessionId: string): Promise<SessionConsumable[]> {
-    const consumables = await drizzleDb
+    const consumables = await getDb()
       .select()
       .from(sessionConsumables)
       .where(eq(sessionConsumables.sessionId, sessionId))
@@ -810,7 +810,7 @@ export class SessionService {
     const now = new Date();
     const signatureId = crypto.randomUUID();
 
-    await drizzleDb.insert(sessionSignatures).values({
+    await getDb().insert(sessionSignatures).values({
       id: signatureId,
       sessionId,
       signatureType,
@@ -820,7 +820,7 @@ export class SessionService {
       createdAt: now,
     });
 
-    const signature = await drizzleDb
+    const signature = await getDb()
       .select()
       .from(sessionSignatures)
       .where(eq(sessionSignatures.id, signatureId))
@@ -833,7 +833,7 @@ export class SessionService {
    * List signatures for a session
    */
   async listSignatures(sessionId: string): Promise<SessionSignature[]> {
-    const signatures = await drizzleDb
+    const signatures = await getDb()
       .select()
       .from(sessionSignatures)
       .where(eq(sessionSignatures.sessionId, sessionId))
@@ -867,7 +867,7 @@ export class SessionService {
       conditions.push(lte(dialysisSessions.sessionDate, endDate));
     }
 
-    const sessions = await drizzleDb
+    const sessions = await getDb()
       .select()
       .from(dialysisSessions)
       .where(and(...conditions))
@@ -880,7 +880,7 @@ export class SessionService {
     const sessionIds = sessions.map((s) => s.id);
     let incidentCount = 0;
     if (sessionIds.length > 0) {
-      const incidents = await drizzleDb
+      const incidents = await getDb()
         .select({ count: sql<number>`count(*)` })
         .from(sessionIncidents)
         .where(sql`${sessionIncidents.sessionId} IN (${sessionIds.join(',')})`)

@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { projects } from '@perfex/database';
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@perfex/shared';
 
@@ -23,7 +23,7 @@ export class ProjectService {
     const startDate = data.startDate ? new Date(data.startDate) : null;
     const dueDate = data.dueDate ? new Date(data.dueDate) : null;
 
-    await drizzleDb.insert(projects).values({
+    await getDb().insert(projects).values({
       id: projectId,
       organizationId,
       name: data.name,
@@ -60,7 +60,7 @@ export class ProjectService {
    * Get project by ID
    */
   async getById(organizationId: string, projectId: string): Promise<Project | null> {
-    const project = await drizzleDb
+    const project = await getDb()
       .select()
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId)))
@@ -111,7 +111,7 @@ export class ProjectService {
       );
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(projects)
       .where(and(...conditions))
@@ -152,7 +152,7 @@ export class ProjectService {
       updateData.completedDate = new Date(data.completedDate);
     }
 
-    await drizzleDb
+    await getDb()
       .update(projects)
       .set(updateData)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId)));
@@ -175,7 +175,7 @@ export class ProjectService {
       throw new Error('Project not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(projects)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId)));
   }

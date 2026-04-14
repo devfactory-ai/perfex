@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, gte, lte, sql, or, isNull } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { clinicalAlerts, dialysePatients, labResults, vascularAccesses, contacts } from '@perfex/database';
 import { safeJsonParse } from '../../utils/json';
 import type {
@@ -58,7 +58,7 @@ export class AlertService {
     const alertId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -68,7 +68,7 @@ export class AlertService {
       throw new Error('Patient not found');
     }
 
-    await drizzleDb.insert(clinicalAlerts).values({
+    await getDb().insert(clinicalAlerts).values({
       id: alertId,
       organizationId,
       patientId: data.patientId,
@@ -97,7 +97,7 @@ export class AlertService {
    * Get alert by ID
    */
   async getById(organizationId: string, alertId: string): Promise<ClinicalAlert | null> {
-    const alert = await drizzleDb
+    const alert = await getDb()
       .select()
       .from(clinicalAlerts)
       .where(and(eq(clinicalAlerts.id, alertId), eq(clinicalAlerts.organizationId, organizationId)))
@@ -113,7 +113,7 @@ export class AlertService {
     const alert = await this.getById(organizationId, alertId);
     if (!alert) return null;
 
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.id, alert.patientId))
@@ -121,7 +121,7 @@ export class AlertService {
 
     if (!patient) return null;
 
-    const contact = await drizzleDb
+    const contact = await getDb()
       .select()
       .from(contacts)
       .where(eq(contacts.id, patient.contactId))
@@ -171,7 +171,7 @@ export class AlertService {
       conditions.push(eq(clinicalAlerts.assignedTo, assignedTo));
     }
 
-    const alerts = await drizzleDb
+    const alerts = await getDb()
       .select()
       .from(clinicalAlerts)
       .where(and(...conditions))
@@ -180,7 +180,7 @@ export class AlertService {
       .offset(offset)
       .all() as any[];
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(clinicalAlerts)
       .where(and(...conditions))
@@ -196,7 +196,7 @@ export class AlertService {
    * Get active alerts for a patient
    */
   async getActiveByPatient(organizationId: string, patientId: string): Promise<ClinicalAlert[]> {
-    const alerts = await drizzleDb
+    const alerts = await getDb()
       .select()
       .from(clinicalAlerts)
       .where(
@@ -218,7 +218,7 @@ export class AlertService {
    */
   async getCriticalAlerts(organizationId: string): Promise<ClinicalAlertWithPatient[]> {
     // Single query with JOINs - replaces N+1 pattern (was 1 + N*2 queries, now 1 query)
-    const results = await drizzleDb
+    const results = await getDb()
       .select({
         alert: clinicalAlerts,
         patient: dialysePatients,
@@ -263,7 +263,7 @@ export class AlertService {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.assignedTo !== undefined) updateData.assignedTo = data.assignedTo;
 
-    await drizzleDb
+    await getDb()
       .update(clinicalAlerts)
       .set(updateData)
       .where(and(eq(clinicalAlerts.id, alertId), eq(clinicalAlerts.organizationId, organizationId)));
@@ -287,7 +287,7 @@ export class AlertService {
 
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(clinicalAlerts)
       .set({
         status: 'acknowledged',
@@ -311,7 +311,7 @@ export class AlertService {
 
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(clinicalAlerts)
       .set({
         status: 'resolved',
@@ -334,7 +334,7 @@ export class AlertService {
       throw new Error('Alert not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(clinicalAlerts)
       .set({
         status: 'dismissed',
@@ -357,7 +357,7 @@ export class AlertService {
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     // Get patients with outdated serology
-    const patients = await drizzleDb
+    const patients = await getDb()
       .select()
       .from(dialysePatients)
       .where(
@@ -375,7 +375,7 @@ export class AlertService {
     let created = 0;
     for (const patient of patients) {
       // Check if alert already exists
-      const existingAlert = await drizzleDb
+      const existingAlert = await getDb()
         .select()
         .from(clinicalAlerts)
         .where(
@@ -413,7 +413,7 @@ export class AlertService {
     oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
 
     // Get accesses with control due soon or overdue
-    const accesses = await drizzleDb
+    const accesses = await getDb()
       .select()
       .from(vascularAccesses)
       .where(
@@ -427,7 +427,7 @@ export class AlertService {
 
     let created = 0;
     for (const access of accesses) {
-      const existingAlert = await drizzleDb
+      const existingAlert = await getDb()
         .select()
         .from(clinicalAlerts)
         .where(
@@ -467,7 +467,7 @@ export class AlertService {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(labResults)
       .where(
@@ -482,7 +482,7 @@ export class AlertService {
 
     let created = 0;
     for (const result of results) {
-      const existingAlert = await drizzleDb
+      const existingAlert = await getDb()
         .select()
         .from(clinicalAlerts)
         .where(
@@ -549,7 +549,7 @@ export class AlertService {
     low: number;
     byType: Record<string, number>;
   }> {
-    const alerts = await drizzleDb
+    const alerts = await getDb()
       .select()
       .from(clinicalAlerts)
       .where(eq(clinicalAlerts.organizationId, organizationId))

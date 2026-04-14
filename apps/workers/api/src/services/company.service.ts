@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { companies } from '@perfex/database';
 import type { Company, CreateCompanyInput, UpdateCompanyInput } from '@perfex/shared';
 
@@ -19,7 +19,7 @@ export class CompanyService {
     // Convert tags array to JSON string if provided
     const tagsJson = data.tags ? JSON.stringify(data.tags) : null;
 
-    await drizzleDb.insert(companies).values({
+    await getDb().insert(companies).values({
       id: companyId,
       organizationId,
       name: data.name,
@@ -55,7 +55,7 @@ export class CompanyService {
    * Get company by ID
    */
   async getById(organizationId: string, companyId: string): Promise<Company | null> {
-    const company = await drizzleDb
+    const company = await getDb()
       .select()
       .from(companies)
       .where(and(eq(companies.id, companyId), eq(companies.organizationId, organizationId)))
@@ -102,7 +102,7 @@ export class CompanyService {
       );
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(companies)
       .where(and(...conditions))
@@ -130,7 +130,7 @@ export class CompanyService {
       updatedAt: new Date(),
     };
 
-    await drizzleDb
+    await getDb()
       .update(companies)
       .set(updateData)
       .where(and(eq(companies.id, companyId), eq(companies.organizationId, organizationId)));
@@ -153,7 +153,7 @@ export class CompanyService {
       throw new Error('Company not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(companies)
       .where(and(eq(companies.id, companyId), eq(companies.organizationId, organizationId)));
   }

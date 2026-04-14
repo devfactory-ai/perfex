@@ -6,7 +6,7 @@
  */
 
 import { eq, and, gte, lte, count, sum, desc, asc, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import {
   dialysePatients,
   dialysisSessions,
@@ -112,14 +112,14 @@ export const protocolService = {
     const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
-      drizzleDb
+      getDb()
         .select()
         .from(dialyseProtocols)
         .where(whereClause)
         .orderBy(desc(dialyseProtocols.createdAt))
         .limit(limit)
         .offset(offset),
-      drizzleDb
+      getDb()
         .select({ count: count() })
         .from(dialyseProtocols)
         .where(whereClause),
@@ -132,7 +132,7 @@ export const protocolService = {
   },
 
   async getById(organizationId: string, id: string) {
-    const result = await drizzleDb
+    const result = await getDb()
       .select()
       .from(dialyseProtocols)
       .where(and(
@@ -178,7 +178,7 @@ export const protocolService = {
       updatedAt: now,
     };
 
-    const result = await drizzleDb
+    const result = await getDb()
       .insert(dialyseProtocols)
       .values(insertData)
       .returning();
@@ -204,7 +204,7 @@ export const protocolService = {
       updateData.type = validateEnum(data.type, ALLOWED_PROTOCOL_TYPES, 'hemodialysis');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialyseProtocols)
       .set(updateData)
       .where(and(
@@ -216,7 +216,7 @@ export const protocolService = {
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb
+    await getDb()
       .delete(dialyseProtocols)
       .where(and(
         eq(dialyseProtocols.id, id),
@@ -236,7 +236,7 @@ export const protocolService = {
   },
 
   async getStats(organizationId: string) {
-    const result = await drizzleDb
+    const result = await getDb()
       .select({
         total: count(),
         active: sum(sql<number>`CASE WHEN ${dialyseProtocols.status} = 'active' THEN 1 ELSE 0 END`),
@@ -276,14 +276,14 @@ export const staffService = {
     const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
-      drizzleDb
+      getDb()
         .select()
         .from(dialyseStaff)
         .where(whereClause)
         .orderBy(asc(dialyseStaff.lastName), asc(dialyseStaff.firstName))
         .limit(limit)
         .offset(offset),
-      drizzleDb
+      getDb()
         .select({ count: count() })
         .from(dialyseStaff)
         .where(whereClause),
@@ -296,7 +296,7 @@ export const staffService = {
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb
+    return getDb()
       .select()
       .from(dialyseStaff)
       .where(and(
@@ -330,7 +330,7 @@ export const staffService = {
       updatedAt: now,
     };
 
-    const result = await drizzleDb
+    const result = await getDb()
       .insert(dialyseStaff)
       .values(insertData)
       .returning();
@@ -357,7 +357,7 @@ export const staffService = {
       updateData.status = validateEnum(data.status, ALLOWED_CONSUMABLE_STATUS, 'active');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialyseStaff)
       .set(updateData)
       .where(and(
@@ -369,7 +369,7 @@ export const staffService = {
   },
 
   async updateSchedule(organizationId: string, id: string, schedule: Record<string, unknown>) {
-    await drizzleDb
+    await getDb()
       .update(dialyseStaff)
       .set({
         schedule: JSON.stringify(schedule),
@@ -383,7 +383,7 @@ export const staffService = {
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb
+    await getDb()
       .delete(dialyseStaff)
       .where(and(
         eq(dialyseStaff.id, id),
@@ -393,7 +393,7 @@ export const staffService = {
 
   async getStats(organizationId: string) {
     const now = new Date();
-    const result = await drizzleDb
+    const result = await getDb()
       .select({
         total: count(),
         active: sum(sql<number>`CASE WHEN ${dialyseStaff.status} = 'active' THEN 1 ELSE 0 END`),
@@ -432,7 +432,7 @@ export const billingService = {
     const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
-      drizzleDb
+      getDb()
         .select({
           billing: dialyseBilling,
           patientMedicalId: dialysePatients.medicalId,
@@ -446,7 +446,7 @@ export const billingService = {
         .orderBy(desc(dialyseBilling.billingDate))
         .limit(limit)
         .offset(offset),
-      drizzleDb
+      getDb()
         .select({ count: count() })
         .from(dialyseBilling)
         .where(whereClause),
@@ -464,7 +464,7 @@ export const billingService = {
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb
+    return getDb()
       .select()
       .from(dialyseBilling)
       .where(and(
@@ -476,7 +476,7 @@ export const billingService = {
 
   async create(organizationId: string, userId: string, data: Partial<InsertDialyseBilling>) {
     // Generate invoice number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: count() })
       .from(dialyseBilling)
       .where(eq(dialyseBilling.organizationId, organizationId));
@@ -506,7 +506,7 @@ export const billingService = {
       updatedAt: now,
     };
 
-    const result = await drizzleDb
+    const result = await getDb()
       .insert(dialyseBilling)
       .values(insertData)
       .returning();
@@ -529,7 +529,7 @@ export const billingService = {
       updateData.status = validateEnum(data.status, ALLOWED_BILLING_STATUS, 'pending');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialyseBilling)
       .set(updateData)
       .where(and(
@@ -544,7 +544,7 @@ export const billingService = {
     const safePaidDate = new Date(paidDate);
     if (isNaN(safePaidDate.getTime())) throw new Error('Invalid paid date');
 
-    await drizzleDb
+    await getDb()
       .update(dialyseBilling)
       .set({
         status: 'paid',
@@ -561,7 +561,7 @@ export const billingService = {
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb
+    await getDb()
       .delete(dialyseBilling)
       .where(and(
         eq(dialyseBilling.id, id),
@@ -570,7 +570,7 @@ export const billingService = {
   },
 
   async getStats(organizationId: string) {
-    const result = await drizzleDb
+    const result = await getDb()
       .select({
         total: count(),
         pending: sum(sql<number>`CASE WHEN ${dialyseBilling.status} = 'pending' THEN 1 ELSE 0 END`),
@@ -615,7 +615,7 @@ export const transportService = {
     const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
-      drizzleDb
+      getDb()
         .select({
           transport: dialyseTransport,
           patientMedicalId: dialysePatients.medicalId,
@@ -629,7 +629,7 @@ export const transportService = {
         .orderBy(desc(dialyseTransport.transportDate))
         .limit(limit)
         .offset(offset),
-      drizzleDb
+      getDb()
         .select({ count: count() })
         .from(dialyseTransport)
         .where(whereClause),
@@ -647,7 +647,7 @@ export const transportService = {
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb
+    return getDb()
       .select()
       .from(dialyseTransport)
       .where(and(
@@ -693,7 +693,7 @@ export const transportService = {
       updatedAt: now,
     };
 
-    const result = await drizzleDb
+    const result = await getDb()
       .insert(dialyseTransport)
       .values(insertData)
       .returning();
@@ -715,7 +715,7 @@ export const transportService = {
     if (data.scheduledTime !== undefined) updateData.scheduledTime = data.scheduledTime;
     if (data.cost !== undefined) updateData.cost = data.cost;
 
-    await drizzleDb
+    await getDb()
       .update(dialyseTransport)
       .set(updateData)
       .where(and(
@@ -729,7 +729,7 @@ export const transportService = {
   async updateStatus(organizationId: string, id: string, status: string, actualTime?: string) {
     const safeStatus = validateEnum(status, ALLOWED_TRANSPORT_STATUS, 'scheduled');
 
-    await drizzleDb
+    await getDb()
       .update(dialyseTransport)
       .set({
         status: safeStatus,
@@ -745,7 +745,7 @@ export const transportService = {
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb
+    await getDb()
       .delete(dialyseTransport)
       .where(and(
         eq(dialyseTransport.id, id),
@@ -759,7 +759,7 @@ export const transportService = {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const result = await drizzleDb
+    const result = await getDb()
       .select({
         total: count(),
         scheduled: sum(sql<number>`CASE WHEN ${dialyseTransport.status} = 'scheduled' THEN 1 ELSE 0 END`),
@@ -803,14 +803,14 @@ export const consumablesService = {
     const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
-      drizzleDb
+      getDb()
         .select()
         .from(dialyseConsumables)
         .where(whereClause)
         .orderBy(asc(dialyseConsumables.name))
         .limit(Math.min(limit, 200))
         .offset(offset),
-      drizzleDb
+      getDb()
         .select({ count: count() })
         .from(dialyseConsumables)
         .where(whereClause),
@@ -823,7 +823,7 @@ export const consumablesService = {
   },
 
   async getById(organizationId: string, id: string) {
-    return drizzleDb
+    return getDb()
       .select()
       .from(dialyseConsumables)
       .where(and(
@@ -861,7 +861,7 @@ export const consumablesService = {
       updatedAt: now,
     };
 
-    const result = await drizzleDb
+    const result = await getDb()
       .insert(dialyseConsumables)
       .values(insertData)
       .returning();
@@ -888,7 +888,7 @@ export const consumablesService = {
       updateData.status = validateEnum(data.status, ALLOWED_CONSUMABLE_STATUS, 'active');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialyseConsumables)
       .set(updateData)
       .where(and(
@@ -925,11 +925,11 @@ export const consumablesService = {
       createdAt: new Date(),
     };
 
-    await drizzleDb.insert(dialyseConsumableMovements).values(movementData);
+    await getDb().insert(dialyseConsumableMovements).values(movementData);
 
     // Update stock
     const newStock = (consumable.currentStock || 0) + quantity;
-    await drizzleDb
+    await getDb()
       .update(dialyseConsumables)
       .set({
         currentStock: newStock,
@@ -941,7 +941,7 @@ export const consumablesService = {
   },
 
   async delete(organizationId: string, id: string) {
-    await drizzleDb
+    await getDb()
       .delete(dialyseConsumables)
       .where(and(
         eq(dialyseConsumables.id, id),
@@ -950,7 +950,7 @@ export const consumablesService = {
   },
 
   async getStats(organizationId: string) {
-    const result = await drizzleDb
+    const result = await getDb()
       .select({
         total: count(),
         active: sum(sql<number>`CASE WHEN ${dialyseConsumables.status} = 'active' THEN 1 ELSE 0 END`),
@@ -996,7 +996,7 @@ export const reportsService = {
     }
 
     const [sessionsData, patientsData, billingData, alertsData] = await Promise.all([
-      drizzleDb
+      getDb()
         .select({
           totalSessions: count(),
           completedSessions: sum(sql<number>`CASE WHEN ${dialysisSessions.status} = 'completed' THEN 1 ELSE 0 END`),
@@ -1008,14 +1008,14 @@ export const reportsService = {
           eq(dialysisSessions.organizationId, organizationId),
           gte(dialysisSessions.sessionDate, startDate)
         )),
-      drizzleDb
+      getDb()
         .select({
           totalPatients: count(),
           activePatients: sum(sql<number>`CASE WHEN ${dialysePatients.patientStatus} = 'active' THEN 1 ELSE 0 END`),
         })
         .from(dialysePatients)
         .where(eq(dialysePatients.organizationId, organizationId)),
-      drizzleDb
+      getDb()
         .select({
           totalInvoices: count(),
           totalBilled: sum(dialyseBilling.amount),
@@ -1027,7 +1027,7 @@ export const reportsService = {
           eq(dialyseBilling.organizationId, organizationId),
           gte(dialyseBilling.billingDate, startDate)
         )),
-      drizzleDb
+      getDb()
         .select({
           totalAlerts: count(),
           criticalAlerts: sum(sql<number>`CASE WHEN ${clinicalAlerts.severity} = 'critical' THEN 1 ELSE 0 END`),

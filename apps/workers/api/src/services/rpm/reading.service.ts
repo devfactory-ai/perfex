@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, asc, between, sql, gte, lte } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { iotReadings, iotDevices, rpmAlerts, rpmEnrollments, rpmAlertRules } from '@perfex/database';
 
 // Types
@@ -100,7 +100,7 @@ export class ReadingService {
     const readingId = crypto.randomUUID();
 
     // Generate reading number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(iotReadings)
       .where(eq(iotReadings.organizationId, organizationId))
@@ -110,7 +110,7 @@ export class ReadingService {
     // Check if reading is within normal range
     const rangeCheck = await this.checkReadingRange(organizationId, patientId, data.readingType, data.primaryValue);
 
-    await drizzleDb.insert(iotReadings).values({
+    await getDb().insert(iotReadings).values({
       id: readingId,
       organizationId,
       patientId,
@@ -160,7 +160,7 @@ export class ReadingService {
    * Get reading by ID
    */
   async getById(organizationId: string, readingId: string): Promise<IotReading | null> {
-    const reading = await drizzleDb
+    const reading = await getDb()
       .select()
       .from(iotReadings)
       .where(and(eq(iotReadings.id, readingId), eq(iotReadings.organizationId, organizationId)))
@@ -210,7 +210,7 @@ export class ReadingService {
     }
 
     // Count total
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(iotReadings)
       .where(and(...conditions))
@@ -223,7 +223,7 @@ export class ReadingService {
     const orderColumn = iotReadings[sortBy as keyof typeof iotReadings] || iotReadings.measuredAt;
     const orderFn = sortOrder === 'asc' ? asc : desc;
 
-    const readings = await drizzleDb
+    const readings = await getDb()
       .select()
       .from(iotReadings)
       .where(and(...conditions))
@@ -247,7 +247,7 @@ export class ReadingService {
     const latestReadings: IotReading[] = [];
 
     for (const type of types) {
-      const reading = await drizzleDb
+      const reading = await getDb()
         .select()
         .from(iotReadings)
         .where(and(
@@ -280,7 +280,7 @@ export class ReadingService {
     ];
 
     for (const type of types) {
-      const result = await drizzleDb
+      const result = await getDb()
         .select({
           count: sql<number>`count(*)`,
           avgValue: sql<number>`avg(${iotReadings.primaryValue})`,
@@ -324,7 +324,7 @@ export class ReadingService {
       return null;
     }
 
-    await drizzleDb
+    await getDb()
       .update(iotReadings)
       .set({
         isValid: false,
@@ -347,7 +347,7 @@ export class ReadingService {
       return null;
     }
 
-    await drizzleDb
+    await getDb()
       .update(iotReadings)
       .set({
         reviewedBy: userId,
@@ -370,7 +370,7 @@ export class ReadingService {
     value: number
   ): Promise<{ isWithinRange: boolean; deviationPercent: number | null }> {
     // Get patient-specific or program thresholds
-    const enrollment = await drizzleDb
+    const enrollment = await getDb()
       .select()
       .from(rpmEnrollments)
       .where(and(
@@ -427,7 +427,7 @@ export class ReadingService {
    */
   async checkAndTriggerAlerts(organizationId: string, patientId: string, reading: IotReading): Promise<void> {
     // Get applicable alert rules
-    const rules = await drizzleDb
+    const rules = await getDb()
       .select()
       .from(rpmAlertRules)
       .where(and(
@@ -489,7 +489,7 @@ export class ReadingService {
     const now = new Date();
 
     // Generate alert number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(rpmAlerts)
       .where(eq(rpmAlerts.organizationId, organizationId))
@@ -498,7 +498,7 @@ export class ReadingService {
 
     const alertId = crypto.randomUUID();
 
-    await drizzleDb.insert(rpmAlerts).values({
+    await getDb().insert(rpmAlerts).values({
       id: alertId,
       organizationId,
       patientId,
@@ -540,7 +540,7 @@ export class ReadingService {
     });
 
     // Update reading to mark that it triggered an alert
-    await drizzleDb
+    await getDb()
       .update(iotReadings)
       .set({
         triggeredAlert: true,
@@ -559,7 +559,7 @@ export class ReadingService {
     startDate: Date,
     endDate: Date
   ): Promise<{ date: string; count: number }[]> {
-    const results = await drizzleDb
+    const results = await getDb()
       .select({
         date: sql<string>`date(${iotReadings.measuredAt} / 1000, 'unixepoch')`,
         count: sql<number>`count(*)`,
@@ -585,7 +585,7 @@ export class ReadingService {
       return false;
     }
 
-    await drizzleDb
+    await getDb()
       .delete(iotReadings)
       .where(and(eq(iotReadings.id, readingId), eq(iotReadings.organizationId, organizationId)));
 

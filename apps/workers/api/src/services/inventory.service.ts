@@ -3,8 +3,8 @@
  * Manage inventory items and stock levels
  */
 
-import { eq, and, desc, like, or } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { eq, and, desc, like, or, sum, lt, sql } from 'drizzle-orm';
+import { getDb } from '../db';
 import { inventoryItems, warehouses, stockLevels } from '@perfex/database';
 import type { InventoryItem, Warehouse, CreateInventoryItemInput, UpdateInventoryItemInput, CreateWarehouseInput, UpdateWarehouseInput } from '@perfex/shared';
 
@@ -19,7 +19,7 @@ export class InventoryService {
     // Convert tags array to JSON string if provided
     const tagsJson = data.tags ? JSON.stringify(data.tags) : null;
 
-    await drizzleDb.insert(inventoryItems).values({
+    await getDb().insert(inventoryItems).values({
       id: itemId,
       organizationId,
       sku: data.sku,
@@ -55,7 +55,7 @@ export class InventoryService {
    * Get item by ID
    */
   async getItemById(organizationId: string, itemId: string): Promise<InventoryItem | null> {
-    const item = await drizzleDb
+    const item = await getDb()
       .select()
       .from(inventoryItems)
       .where(and(eq(inventoryItems.id, itemId), eq(inventoryItems.organizationId, organizationId)))
@@ -97,7 +97,7 @@ export class InventoryService {
       );
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(inventoryItems)
       .where(and(...conditions))
@@ -123,7 +123,7 @@ export class InventoryService {
       updatedAt: new Date(),
     };
 
-    await drizzleDb
+    await getDb()
       .update(inventoryItems)
       .set(updateData)
       .where(and(eq(inventoryItems.id, itemId), eq(inventoryItems.organizationId, organizationId)));
@@ -145,7 +145,7 @@ export class InventoryService {
       throw new Error('Inventory item not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(inventoryItems)
       .where(and(eq(inventoryItems.id, itemId), eq(inventoryItems.organizationId, organizationId)));
   }
@@ -159,13 +159,13 @@ export class InventoryService {
 
     // If this is set as default, unset other defaults
     if (data.isDefault) {
-      await drizzleDb
+      await getDb()
         .update(warehouses)
         .set({ isDefault: false })
         .where(eq(warehouses.organizationId, organizationId));
     }
 
-    await drizzleDb.insert(warehouses).values({
+    await getDb().insert(warehouses).values({
       id: warehouseId,
       organizationId,
       name: data.name,
@@ -198,7 +198,7 @@ export class InventoryService {
    * Get warehouse by ID
    */
   async getWarehouseById(organizationId: string, warehouseId: string): Promise<Warehouse | null> {
-    const warehouse = await drizzleDb
+    const warehouse = await getDb()
       .select()
       .from(warehouses)
       .where(and(eq(warehouses.id, warehouseId), eq(warehouses.organizationId, organizationId)))
@@ -218,7 +218,7 @@ export class InventoryService {
       conditions.push(eq(warehouses.active, isActive));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(warehouses)
       .where(and(...conditions))
@@ -238,7 +238,7 @@ export class InventoryService {
 
     // If setting as default, unset other defaults
     if (data.isDefault) {
-      await drizzleDb
+      await getDb()
         .update(warehouses)
         .set({ isDefault: false })
         .where(eq(warehouses.organizationId, organizationId));
@@ -249,7 +249,7 @@ export class InventoryService {
       updatedAt: new Date(),
     };
 
-    await drizzleDb
+    await getDb()
       .update(warehouses)
       .set(updateData)
       .where(and(eq(warehouses.id, warehouseId), eq(warehouses.organizationId, organizationId)));
@@ -271,7 +271,7 @@ export class InventoryService {
       throw new Error('Warehouse not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(warehouses)
       .where(and(eq(warehouses.id, warehouseId), eq(warehouses.organizationId, organizationId)));
   }
@@ -288,11 +288,37 @@ export class InventoryService {
     const allItems = await this.listItems(organizationId);
     const allWarehouses = await this.listWarehouses(organizationId);
 
+    // Calculate low stock items by comparing total stock to min_stock_level
+    const lowStockResult = await getDb()
+      .select({
+        itemId: stockLevels.itemId,
+        totalQuantity: sum(stockLevels.quantity).as('total_quantity'),
+      })
+      .from(stockLevels)
+      .innerJoin(inventoryItems, eq(stockLevels.itemId, inventoryItems.id))
+      .where(
+        and(
+          eq(stockLevels.organizationId, organizationId),
+          eq(inventoryItems.active, true),
+          eq(inventoryItems.trackInventory, true)
+        )
+      )
+      .groupBy(stockLevels.itemId);
+
+    // Count items where total quantity is below min stock level
+    let lowStockCount = 0;
+    for (const row of lowStockResult) {
+      const item = allItems.find(i => i.id === row.itemId);
+      if (item && item.minStockLevel && Number(row.totalQuantity) < item.minStockLevel) {
+        lowStockCount++;
+      }
+    }
+
     return {
       totalItems: allItems.length,
       activeItems: allItems.filter(i => i.active).length,
       totalWarehouses: allWarehouses.length,
-      lowStockItems: 0, // TODO: Calculate from stock levels
+      lowStockItems: lowStockCount,
     };
   }
 }

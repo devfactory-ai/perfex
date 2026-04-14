@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import { opportunities, companies, contacts, pipelineStages } from '@perfex/database';
 import type { Opportunity, OpportunityWithDetails, CreateOpportunityInput, UpdateOpportunityInput } from '@perfex/shared';
 
@@ -26,7 +26,7 @@ export class OpportunityService {
         : data.expectedCloseDate
       : null;
 
-    await drizzleDb.insert(opportunities).values({
+    await getDb().insert(opportunities).values({
       id: opportunityId,
       organizationId,
       companyId: data.companyId,
@@ -61,7 +61,7 @@ export class OpportunityService {
    * Get opportunity by ID
    */
   async getById(organizationId: string, opportunityId: string): Promise<Opportunity | null> {
-    const opportunity = await drizzleDb
+    const opportunity = await getDb()
       .select()
       .from(opportunities)
       .where(and(eq(opportunities.id, opportunityId), eq(opportunities.organizationId, organizationId)))
@@ -80,7 +80,7 @@ export class OpportunityService {
     }
 
     // Fetch related entities
-    const company = await drizzleDb
+    const company = await getDb()
       .select()
       .from(companies)
       .where(eq(companies.id, opportunity.companyId))
@@ -92,14 +92,14 @@ export class OpportunityService {
 
     let contact = null;
     if (opportunity.contactId) {
-      contact = await drizzleDb
+      contact = await getDb()
         .select()
         .from(contacts)
         .where(eq(contacts.id, opportunity.contactId))
         .get() as any;
     }
 
-    const stage = await drizzleDb
+    const stage = await getDb()
       .select()
       .from(pipelineStages)
       .where(eq(pipelineStages.id, opportunity.stageId))
@@ -158,7 +158,7 @@ export class OpportunityService {
       conditions.push(lte(opportunities.value, filters.maxValue));
     }
 
-    const results = await drizzleDb
+    const results = await getDb()
       .select()
       .from(opportunities)
       .where(and(...conditions))
@@ -199,7 +199,7 @@ export class OpportunityService {
       updateData.actualCloseDate = new Date();
     }
 
-    await drizzleDb
+    await getDb()
       .update(opportunities)
       .set(updateData)
       .where(and(eq(opportunities.id, opportunityId), eq(opportunities.organizationId, organizationId)));
@@ -222,7 +222,7 @@ export class OpportunityService {
       throw new Error('Opportunity not found');
     }
 
-    await drizzleDb
+    await getDb()
       .delete(opportunities)
       .where(and(eq(opportunities.id, opportunityId), eq(opportunities.organizationId, organizationId)));
   }

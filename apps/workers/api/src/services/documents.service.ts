@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   documentCategories,
   documents,
@@ -39,7 +39,7 @@ export class DocumentsService {
     const now = new Date();
     const categoryId = crypto.randomUUID();
 
-    await drizzleDb.insert(documentCategories).values({
+    await getDb().insert(documentCategories).values({
       id: categoryId,
       organizationId,
       name: data.name,
@@ -58,7 +58,7 @@ export class DocumentsService {
   }
 
   async getCategoryById(organizationId: string, categoryId: string): Promise<DocumentCategory | null> {
-    const category = await drizzleDb
+    const category = await getDb()
       .select()
       .from(documentCategories)
       .where(and(eq(documentCategories.id, categoryId), eq(documentCategories.organizationId, organizationId)))
@@ -67,7 +67,7 @@ export class DocumentsService {
   }
 
   async listCategories(organizationId: string): Promise<DocumentCategory[]> {
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(documentCategories)
       .where(eq(documentCategories.organizationId, organizationId))
@@ -83,7 +83,7 @@ export class DocumentsService {
     const now = new Date();
     const documentId = crypto.randomUUID();
 
-    await drizzleDb.insert(documents).values({
+    await getDb().insert(documents).values({
       id: documentId,
       organizationId,
       categoryId: data.categoryId || null,
@@ -115,7 +115,7 @@ export class DocumentsService {
   }
 
   async getDocumentById(organizationId: string, documentId: string): Promise<Document | null> {
-    const document = await drizzleDb
+    const document = await getDb()
       .select()
       .from(documents)
       .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)))
@@ -143,7 +143,7 @@ export class DocumentsService {
       conditions.push(like(documents.name, searchTerm));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(documents)
       .where(and(...conditions))
@@ -164,7 +164,7 @@ export class DocumentsService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(documents)
       .set(updateData)
       .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
@@ -178,13 +178,13 @@ export class DocumentsService {
     const existing = await this.getDocumentById(organizationId, documentId);
     if (!existing) throw new Error('Document not found');
 
-    await drizzleDb
+    await getDb()
       .delete(documents)
       .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
   }
 
   async logDocumentAccess(organizationId: string, documentId: string, userId: string | null, action: 'view' | 'download' | 'edit' | 'delete', ipAddress: string | null, userAgent: string | null): Promise<void> {
-    await drizzleDb.insert(documentAccessLog).values({
+    await getDb().insert(documentAccessLog).values({
       id: crypto.randomUUID(),
       organizationId,
       documentId,
@@ -199,7 +199,7 @@ export class DocumentsService {
     if (action === 'download') {
       const doc = await this.getDocumentById(organizationId, documentId);
       if (doc) {
-        await drizzleDb
+        await getDb()
           .update(documents)
           .set({
             downloadCount: (doc.downloadCount || 0) + 1,
@@ -218,7 +218,7 @@ export class DocumentsService {
     const now = new Date();
     const templateId = crypto.randomUUID();
 
-    await drizzleDb.insert(emailTemplates).values({
+    await getDb().insert(emailTemplates).values({
       id: templateId,
       organizationId,
       name: data.name,
@@ -240,7 +240,7 @@ export class DocumentsService {
   }
 
   async getEmailTemplateById(organizationId: string, templateId: string): Promise<EmailTemplate | null> {
-    const template = await drizzleDb
+    const template = await getDb()
       .select()
       .from(emailTemplates)
       .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.organizationId, organizationId)))
@@ -255,7 +255,7 @@ export class DocumentsService {
       conditions.push(eq(emailTemplates.category, category));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(emailTemplates)
       .where(and(...conditions))
@@ -266,7 +266,7 @@ export class DocumentsService {
   async queueEmail(organizationId: string, data: QueueEmailInput): Promise<void> {
     const now = new Date();
 
-    await drizzleDb.insert(emailQueue).values({
+    await getDb().insert(emailQueue).values({
       id: crypto.randomUUID(),
       organizationId,
       templateId: data.templateId || null,
@@ -296,7 +296,7 @@ export class DocumentsService {
     const now = new Date();
     const reportId = crypto.randomUUID();
 
-    await drizzleDb.insert(reports).values({
+    await getDb().insert(reports).values({
       id: reportId,
       organizationId,
       name: data.name,
@@ -324,7 +324,7 @@ export class DocumentsService {
   }
 
   async getReportById(organizationId: string, reportId: string): Promise<Report | null> {
-    const report = await drizzleDb
+    const report = await getDb()
       .select()
       .from(reports)
       .where(and(eq(reports.id, reportId), eq(reports.organizationId, organizationId)))
@@ -339,7 +339,7 @@ export class DocumentsService {
       conditions.push(eq(reports.category, category));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(reports)
       .where(and(...conditions))

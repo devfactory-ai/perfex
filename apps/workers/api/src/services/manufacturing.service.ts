@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, like } from 'drizzle-orm';
-import { drizzleDb } from '../db';
+import { getDb } from '../db';
 import {
   billOfMaterials,
   bomLines,
@@ -39,7 +39,7 @@ export class ManufacturingService {
     const effectiveDate = data.effectiveDate ? new Date(data.effectiveDate) : null;
     const expiryDate = data.expiryDate ? new Date(data.expiryDate) : null;
 
-    await drizzleDb.insert(billOfMaterials).values({
+    await getDb().insert(billOfMaterials).values({
       id: bomId,
       organizationId,
       bomNumber,
@@ -59,7 +59,7 @@ export class ManufacturingService {
 
     // Insert BOM lines
     for (const line of data.lines) {
-      await drizzleDb.insert(bomLines).values({
+      await getDb().insert(bomLines).values({
         id: crypto.randomUUID(),
         organizationId,
         bomId,
@@ -79,7 +79,7 @@ export class ManufacturingService {
   }
 
   async getBOMById(organizationId: string, bomId: string): Promise<BillOfMaterials | null> {
-    const bom = await drizzleDb
+    const bom = await getDb()
       .select()
       .from(billOfMaterials)
       .where(and(eq(billOfMaterials.id, bomId), eq(billOfMaterials.organizationId, organizationId)))
@@ -98,7 +98,7 @@ export class ManufacturingService {
       conditions.push(eq(billOfMaterials.status, filters.status as any));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(billOfMaterials)
       .where(and(...conditions))
@@ -119,7 +119,7 @@ export class ManufacturingService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(billOfMaterials)
       .set(updateData)
       .where(and(eq(billOfMaterials.id, bomId), eq(billOfMaterials.organizationId, organizationId)));
@@ -133,7 +133,7 @@ export class ManufacturingService {
     const existing = await this.getBOMById(organizationId, bomId);
     if (!existing) throw new Error('BOM not found');
 
-    await drizzleDb
+    await getDb()
       .delete(billOfMaterials)
       .where(and(eq(billOfMaterials.id, bomId), eq(billOfMaterials.organizationId, organizationId)));
   }
@@ -147,7 +147,7 @@ export class ManufacturingService {
     const routingId = crypto.randomUUID();
     const routingNumber = `RTG-${Date.now()}`;
 
-    await drizzleDb.insert(routings).values({
+    await getDb().insert(routings).values({
       id: routingId,
       organizationId,
       routingNumber,
@@ -161,7 +161,7 @@ export class ManufacturingService {
 
     // Insert routing operations
     for (const operation of data.operations) {
-      await drizzleDb.insert(routingOperations).values({
+      await getDb().insert(routingOperations).values({
         id: crypto.randomUUID(),
         organizationId,
         routingId,
@@ -184,7 +184,7 @@ export class ManufacturingService {
   }
 
   async getRoutingById(organizationId: string, routingId: string): Promise<Routing | null> {
-    const routing = await drizzleDb
+    const routing = await getDb()
       .select()
       .from(routings)
       .where(and(eq(routings.id, routingId), eq(routings.organizationId, organizationId)))
@@ -203,7 +203,7 @@ export class ManufacturingService {
       conditions.push(eq(routings.status, filters.status as any));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(routings)
       .where(and(...conditions))
@@ -215,7 +215,7 @@ export class ManufacturingService {
     const existing = await this.getRoutingById(organizationId, routingId);
     if (!existing) throw new Error('Routing not found');
 
-    await drizzleDb
+    await getDb()
       .update(routings)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(routings.id, routingId), eq(routings.organizationId, organizationId)));
@@ -229,7 +229,7 @@ export class ManufacturingService {
     const existing = await this.getRoutingById(organizationId, routingId);
     if (!existing) throw new Error('Routing not found');
 
-    await drizzleDb
+    await getDb()
       .delete(routings)
       .where(and(eq(routings.id, routingId), eq(routings.organizationId, organizationId)));
   }
@@ -246,7 +246,7 @@ export class ManufacturingService {
     const scheduledStartDate = data.scheduledStartDate ? new Date(data.scheduledStartDate) : null;
     const scheduledEndDate = data.scheduledEndDate ? new Date(data.scheduledEndDate) : null;
 
-    await drizzleDb.insert(workOrders).values({
+    await getDb().insert(workOrders).values({
       id: workOrderId,
       organizationId,
       workOrderNumber,
@@ -275,7 +275,7 @@ export class ManufacturingService {
   }
 
   async getWorkOrderById(organizationId: string, workOrderId: string): Promise<WorkOrder | null> {
-    const workOrder = await drizzleDb
+    const workOrder = await getDb()
       .select()
       .from(workOrders)
       .where(and(eq(workOrders.id, workOrderId), eq(workOrders.organizationId, organizationId)))
@@ -299,7 +299,7 @@ export class ManufacturingService {
       conditions.push(like(workOrders.workOrderNumber, searchTerm));
     }
 
-    return await drizzleDb
+    return await getDb()
       .select()
       .from(workOrders)
       .where(and(...conditions))
@@ -326,7 +326,7 @@ export class ManufacturingService {
     }
     updateData.updatedAt = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(workOrders)
       .set(updateData)
       .where(and(eq(workOrders.id, workOrderId), eq(workOrders.organizationId, organizationId)));
@@ -340,7 +340,7 @@ export class ManufacturingService {
     const existing = await this.getWorkOrderById(organizationId, workOrderId);
     if (!existing) throw new Error('Work order not found');
 
-    await drizzleDb
+    await getDb()
       .delete(workOrders)
       .where(and(eq(workOrders.id, workOrderId), eq(workOrders.organizationId, organizationId)));
   }

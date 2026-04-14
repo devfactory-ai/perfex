@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { dialysePrescriptions, dialysePatients, contacts } from '@perfex/database';
 import type {
   DialysePrescription,
@@ -22,7 +22,7 @@ export class PrescriptionService {
     const prescriptionId = crypto.randomUUID();
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(and(eq(dialysePatients.id, data.patientId), eq(dialysePatients.organizationId, organizationId)))
@@ -33,7 +33,7 @@ export class PrescriptionService {
     }
 
     // Deactivate any existing active prescriptions for this patient
-    await drizzleDb
+    await getDb()
       .update(dialysePrescriptions)
       .set({ status: 'superseded', updatedAt: now })
       .where(
@@ -45,7 +45,7 @@ export class PrescriptionService {
       );
 
     // Generate prescription number
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysePrescriptions)
       .where(eq(dialysePrescriptions.organizationId, organizationId))
@@ -53,7 +53,7 @@ export class PrescriptionService {
     const count = (countResult?.count || 0) + 1;
     const prescriptionNumber = `RX-${now.getFullYear()}-${String(count).padStart(5, '0')}`;
 
-    await drizzleDb.insert(dialysePrescriptions).values({
+    await getDb().insert(dialysePrescriptions).values({
       id: prescriptionId,
       organizationId,
       patientId: data.patientId,
@@ -97,7 +97,7 @@ export class PrescriptionService {
    * Get prescription by ID
    */
   async getById(organizationId: string, prescriptionId: string): Promise<DialysePrescription | null> {
-    const prescription = await drizzleDb
+    const prescription = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(and(eq(dialysePrescriptions.id, prescriptionId), eq(dialysePrescriptions.organizationId, organizationId)))
@@ -115,7 +115,7 @@ export class PrescriptionService {
       return null;
     }
 
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(dialysePatients)
       .where(eq(dialysePatients.id, prescription.patientId))
@@ -125,7 +125,7 @@ export class PrescriptionService {
       return null;
     }
 
-    const contact = await drizzleDb
+    const contact = await getDb()
       .select()
       .from(contacts)
       .where(eq(contacts.id, patient.contactId))
@@ -148,7 +148,7 @@ export class PrescriptionService {
    * Get active prescription for a patient
    */
   async getActiveByPatient(organizationId: string, patientId: string): Promise<DialysePrescription | null> {
-    const prescription = await drizzleDb
+    const prescription = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(
@@ -167,7 +167,7 @@ export class PrescriptionService {
    * List prescriptions for a patient
    */
   async listByPatient(organizationId: string, patientId: string): Promise<DialysePrescription[]> {
-    const prescriptions = await drizzleDb
+    const prescriptions = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(
@@ -199,7 +199,7 @@ export class PrescriptionService {
       conditions.push(eq(dialysePrescriptions.patientId, patientId));
     }
 
-    const prescriptions = await drizzleDb
+    const prescriptions = await getDb()
       .select()
       .from(dialysePrescriptions)
       .where(and(...conditions))
@@ -208,7 +208,7 @@ export class PrescriptionService {
       .offset(offset)
       .all() as any[];
 
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(dialysePrescriptions)
       .where(and(...conditions))
@@ -254,7 +254,7 @@ export class PrescriptionService {
     if (data.endDate !== undefined) updateData.endDate = data.endDate ? new Date(data.endDate) : null;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    await drizzleDb
+    await getDb()
       .update(dialysePrescriptions)
       .set(updateData)
       .where(and(eq(dialysePrescriptions.id, prescriptionId), eq(dialysePrescriptions.organizationId, organizationId)));
@@ -302,7 +302,7 @@ export class PrescriptionService {
     });
 
     // Update old prescription with reference to new one
-    await drizzleDb
+    await getDb()
       .update(dialysePrescriptions)
       .set({ supersededById: newPrescription.id, updatedAt: new Date() })
       .where(eq(dialysePrescriptions.id, prescriptionId));
@@ -319,7 +319,7 @@ export class PrescriptionService {
       throw new Error('Prescription not found');
     }
 
-    await drizzleDb
+    await getDb()
       .update(dialysePrescriptions)
       .set({ status: 'cancelled', updatedAt: new Date() })
       .where(and(eq(dialysePrescriptions.id, prescriptionId), eq(dialysePrescriptions.organizationId, organizationId)));

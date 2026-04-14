@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, asc, like, or, sql, isNull } from 'drizzle-orm';
-import { drizzleDb } from '../../db';
+import { getDb } from '../../db';
 import { iotDevices, iotDeviceEvents, healthcarePatients } from '@perfex/database';
 
 // Types
@@ -105,7 +105,7 @@ export class DeviceService {
       nextCalibrationDate.setDate(nextCalibrationDate.getDate() + data.calibrationIntervalDays);
     }
 
-    await drizzleDb.insert(iotDevices).values({
+    await getDb().insert(iotDevices).values({
       id: deviceId,
       organizationId,
       deviceNumber: data.deviceNumber,
@@ -155,7 +155,7 @@ export class DeviceService {
    * Get device by ID
    */
   async getById(organizationId: string, deviceId: string): Promise<IotDevice | null> {
-    const device = await drizzleDb
+    const device = await getDb()
       .select()
       .from(iotDevices)
       .where(and(eq(iotDevices.id, deviceId), eq(iotDevices.organizationId, organizationId)))
@@ -168,7 +168,7 @@ export class DeviceService {
    * Get device by serial number
    */
   async getBySerialNumber(organizationId: string, serialNumber: string): Promise<IotDevice | null> {
-    const device = await drizzleDb
+    const device = await getDb()
       .select()
       .from(iotDevices)
       .where(and(eq(iotDevices.serialNumber, serialNumber), eq(iotDevices.organizationId, organizationId)))
@@ -214,7 +214,7 @@ export class DeviceService {
     }
 
     // Count total
-    const countResult = await drizzleDb
+    const countResult = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(iotDevices)
       .where(and(...conditions))
@@ -227,7 +227,7 @@ export class DeviceService {
     const orderColumn = iotDevices[sortBy as keyof typeof iotDevices] || iotDevices.createdAt;
     const orderFn = sortOrder === 'asc' ? asc : desc;
 
-    const devices = await drizzleDb
+    const devices = await getDb()
       .select()
       .from(iotDevices)
       .where(and(...conditions))
@@ -307,7 +307,7 @@ export class DeviceService {
       );
     }
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set(updateData)
       .where(and(eq(iotDevices.id, deviceId), eq(iotDevices.organizationId, organizationId)));
@@ -325,7 +325,7 @@ export class DeviceService {
     }
 
     // Verify patient exists
-    const patient = await drizzleDb
+    const patient = await getDb()
       .select()
       .from(healthcarePatients)
       .where(and(eq(healthcarePatients.id, patientId), eq(healthcarePatients.companyId, organizationId)))
@@ -338,7 +338,7 @@ export class DeviceService {
     const now = new Date();
     const previousPatientId = device.assignedPatientId;
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set({
         assignedPatientId: patientId,
@@ -370,7 +370,7 @@ export class DeviceService {
     const now = new Date();
     const previousPatientId = device.assignedPatientId;
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set({
         assignedPatientId: null,
@@ -400,7 +400,7 @@ export class DeviceService {
 
     const now = new Date();
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set({
         status: 'maintenance',
@@ -432,7 +432,7 @@ export class DeviceService {
       nextCalibrationDate.setDate(nextCalibrationDate.getDate() + device.calibrationIntervalDays);
     }
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set({
         lastCalibrationDate: now,
@@ -454,7 +454,7 @@ export class DeviceService {
     eventData: any,
     severity: 'info' | 'warning' | 'error' | 'critical' = 'info'
   ): Promise<void> {
-    await drizzleDb.insert(iotDeviceEvents).values({
+    await getDb().insert(iotDeviceEvents).values({
       id: crypto.randomUUID(),
       organizationId,
       deviceId,
@@ -479,7 +479,7 @@ export class DeviceService {
     deviceId: string,
     limit: number = 50
   ): Promise<any[]> {
-    const events = await drizzleDb
+    const events = await getDb()
       .select()
       .from(iotDeviceEvents)
       .where(and(
@@ -502,7 +502,7 @@ export class DeviceService {
       return false;
     }
 
-    await drizzleDb
+    await getDb()
       .update(iotDevices)
       .set({
         status: 'retired',
@@ -523,7 +523,7 @@ export class DeviceService {
   async getDevicesNeedingCalibration(organizationId: string): Promise<IotDevice[]> {
     const now = new Date();
 
-    const devices = await drizzleDb
+    const devices = await getDb()
       .select()
       .from(iotDevices)
       .where(and(
@@ -543,7 +543,7 @@ export class DeviceService {
     const threshold = new Date();
     threshold.setHours(threshold.getHours() - hoursOffline);
 
-    const devices = await drizzleDb
+    const devices = await getDb()
       .select()
       .from(iotDevices)
       .where(and(
@@ -560,7 +560,7 @@ export class DeviceService {
    * Get low battery devices
    */
   async getLowBatteryDevices(organizationId: string, threshold: number = 20): Promise<IotDevice[]> {
-    const devices = await drizzleDb
+    const devices = await getDb()
       .select()
       .from(iotDevices)
       .where(and(
