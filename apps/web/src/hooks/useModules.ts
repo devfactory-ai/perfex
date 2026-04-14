@@ -1,6 +1,6 @@
 /**
  * Hook to fetch and manage enabled modules
- * Includes role-based module filtering and app variant support
+ * Uses app variant config and user role for module filtering
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -12,140 +12,9 @@ interface EnabledModulesResponse {
 }
 
 /**
- * Check if we're on staging or dev environment
+ * Modules that require admin or higher platform role
  */
-const isDevOrStaging = () => {
-  const hostname = window.location.hostname;
-  return hostname === 'localhost' ||
-         hostname === '127.0.0.1' ||
-         hostname.includes('staging') ||
-         import.meta.env.DEV;
-};
-
-/**
- * Default modules for standard ERP (perfex-full variant)
- */
-const CORE_MODULES = [
-  'dashboard', 'finance', 'crm', 'inventory', 'hr',
-  'procurement', 'sales', 'projects', 'assets', 'workflows', 'help'
-];
-
-/**
- * Bakery-specific modules
- */
-const BAKERY_MODULES = [
-  'bakery',        // Module Boulangerie principal (Dashboard, Stock, Production, etc.)
-  'recipes',       // Recettes & Formulations
-  'traceability',  // Traçabilité & HACCP
-  'pos',           // Point de Vente
-];
-
-/**
- * Healthcare-specific modules
- */
-const HEALTH_MODULES = [
-  'healthcare',
-  'dialyse',
-  'cardiology',
-  'ophthalmology',
-  'patient-portal',
-  'rpm',
-  'clinical-ai',
-  'imaging-ai',
-  'population-health',
-];
-
-/**
- * Role-based module access for bakery demo
- * Each role has access to specific modules
- */
-const BAKERY_ROLE_MODULES: Record<string, string[]> = {
-  // Gérant (Manager) - Full access to all bakery modules
-  'demo@perfex.io': [
-    'dashboard',
-    'bakery',          // Module Boulangerie complet
-    'recipes',         // Recettes
-    'traceability',    // Traçabilité HACCP
-    'pos',             // Point de Vente
-    'inventory',       // Inventaire général
-    'hr',              // RH (employés)
-    'finance',         // Finance (factures, paiements)
-    'help',
-    'settings'
-  ],
-
-  // Boulanger (Baker) - Production focused
-  'boulanger@perfex.io': [
-    'dashboard',
-    'bakery',          // Production, Fours, Chambres, Qualité, Maintenance
-    'recipes',         // Recettes
-    'traceability',    // Traçabilité HACCP
-    'inventory',       // Stock matières premières
-    'help'
-  ],
-
-  // Vendeur (Sales) - Customer & sales focused
-  'vente@perfex.io': [
-    'dashboard',
-    'bakery',          // Ventes B2B, Rapports
-    'pos',             // Point de Vente (main module)
-    'inventory',       // Voir le stock produits
-    'help'
-  ],
-
-  // Livreur (Delivery) - Logistics focused
-  'livraison@perfex.io': [
-    'dashboard',
-    'bakery',          // Commandes livraison
-    'help'
-  ],
-};
-
-/**
- * Role-based module access for health demo
- */
-const HEALTH_ROLE_MODULES: Record<string, string[]> = {
-  // Admin Healthcare
-  'admin@perfex-health.io': [
-    'dashboard',
-    'healthcare',
-    'dialyse',
-    'cardiology',
-    'ophthalmology',
-    'patient-portal',
-    'rpm',
-    'clinical-ai',
-    'imaging-ai',
-    'population-health',
-    'inventory',
-    'hr',
-    'finance',
-    'help',
-    'settings'
-  ],
-
-  // Médecin (Doctor)
-  'medecin@perfex-health.io': [
-    'dashboard',
-    'healthcare',
-    'dialyse',
-    'cardiology',
-    'ophthalmology',
-    'clinical-ai',
-    'patient-portal',
-    'help'
-  ],
-
-  // Infirmier (Nurse)
-  'infirmier@perfex-health.io': [
-    'dashboard',
-    'healthcare',
-    'dialyse',
-    'rpm',
-    'patient-portal',
-    'help'
-  ],
-};
+const ADMIN_ONLY_MODULES = ['settings'];
 
 /**
  * Get enabled modules for the current organization
@@ -189,39 +58,20 @@ export function useEnabledModules() {
 }
 
 /**
- * Get default modules based on app variant, environment and user role
+ * Get default modules based on app variant and user role.
+ * The variant config defines which modules are available.
+ * The user's platformRole restricts admin-only modules for regular users.
  */
-function getDefaultModules(userEmail?: string): string[] {
-  const variant = getCurrentVariant();
+function getDefaultModules(platformRole?: string): string[] {
   const config = getAppConfig();
+  const modules = [...config.enabledModules];
 
-  // If a specific variant is set, use variant-based module filtering
-  if (variant !== 'perfex-full') {
-    // Check role-based access for specific variant
-    if (variant === 'perfex-bakery' && userEmail && BAKERY_ROLE_MODULES[userEmail]) {
-      return BAKERY_ROLE_MODULES[userEmail];
-    }
-    if (variant === 'perfex-health' && userEmail && HEALTH_ROLE_MODULES[userEmail]) {
-      return HEALTH_ROLE_MODULES[userEmail];
-    }
-
-    // Return all enabled modules for the variant
-    return config.enabledModules;
+  // Regular users (non-admin) don't get admin-only modules
+  if (platformRole === 'user') {
+    return modules.filter(m => !ADMIN_ONLY_MODULES.includes(m));
   }
 
-  // Full variant: Use environment-based logic
-  // On staging with bakery demo, use role-based modules (legacy behavior)
-  if (isDevOrStaging() && userEmail && BAKERY_ROLE_MODULES[userEmail]) {
-    return BAKERY_ROLE_MODULES[userEmail];
-  }
-
-  // On staging without specific role, show all modules
-  if (isDevOrStaging()) {
-    return [...CORE_MODULES, ...BAKERY_MODULES, ...HEALTH_MODULES];
-  }
-
-  // Production: standard modules only
-  return CORE_MODULES;
+  return modules;
 }
 
 /**
@@ -238,7 +88,7 @@ export function useModuleEnabled(moduleId: string): boolean {
 
   // If still loading or no data, check default modules
   if (isLoading || !data || data.modules.length === 0) {
-    const defaultModules = getDefaultModules(user?.email);
+    const defaultModules = getDefaultModules(user?.platformRole);
     return defaultModules.includes(moduleId);
   }
 
@@ -255,46 +105,35 @@ export function useModuleIds(): string[] {
 
   // If still loading or no data, return default modules
   if (isLoading || !data || data.modules.length === 0) {
-    const defaultModules = getDefaultModules(user?.email);
-    // Filter by variant enabled modules
-    return defaultModules.filter(m => config.enabledModules.includes(m) || m === 'settings');
+    return getDefaultModules(user?.platformRole);
   }
 
-  // Filter by variant enabled modules
-  return data.modules.filter(m => config.enabledModules.includes(m));
+  // Filter API results by variant enabled modules and role
+  let modules = data.modules.filter(m => config.enabledModules.includes(m));
+
+  // Regular users don't get admin-only modules
+  if (user?.platformRole === 'user') {
+    modules = modules.filter(m => !ADMIN_ONLY_MODULES.includes(m));
+  }
+
+  return modules;
 }
 
 /**
- * Get user's role label based on email (for display)
+ * Get user's role label for display
  */
 export function useUserRole(): string {
   const { user } = useAuth();
-  const variant = getCurrentVariant();
 
-  const bakeryRoleLabels: Record<string, string> = {
-    'demo@perfex.io': 'Gérant',
-    'boulanger@perfex.io': 'Boulanger',
-    'vente@perfex.io': 'Vendeur',
-    'livraison@perfex.io': 'Livreur',
+  if (!user?.platformRole) return 'Utilisateur';
+
+  const roleLabels: Record<string, string> = {
+    'super_admin': 'Super Admin',
+    'admin': 'Administrateur',
+    'user': 'Utilisateur',
   };
 
-  const healthRoleLabels: Record<string, string> = {
-    'admin@perfex-health.io': 'Administrateur',
-    'medecin@perfex-health.io': 'Médecin',
-    'infirmier@perfex-health.io': 'Infirmier',
-  };
-
-  if (!user?.email) return 'Utilisateur';
-
-  if (variant === 'perfex-bakery' || bakeryRoleLabels[user.email]) {
-    return bakeryRoleLabels[user.email] || 'Utilisateur';
-  }
-
-  if (variant === 'perfex-health' || healthRoleLabels[user.email]) {
-    return healthRoleLabels[user.email] || 'Utilisateur';
-  }
-
-  return 'Utilisateur';
+  return roleLabels[user.platformRole] || 'Utilisateur';
 }
 
 /**
