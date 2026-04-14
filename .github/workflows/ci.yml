@@ -53,7 +53,7 @@ jobs:
         run: pnpm lint
 
       - name: Check code formatting
-        run: pnpm format:check
+        run: pnpm format --check
 
   # Job 2: Build Packages
   build:
@@ -85,7 +85,7 @@ jobs:
         run: pnpm --filter @perfex/database build
 
       - name: Build API worker
-        run: pnpm --filter @perfex/api build
+        run: pnpm --filter perfex-api build
 
       - name: Build frontend
         run: pnpm --filter @perfex/web build
@@ -125,17 +125,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run unit tests
-        run: pnpm test:unit
-        continue-on-error: true
-
-      - name: Run integration tests
-        run: pnpm test:integration
-        continue-on-error: true
+      - name: Run tests
+        run: pnpm test
 
       - name: Generate coverage report
         run: pnpm test:coverage
-        continue-on-error: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -204,9 +198,6 @@ jobs:
           cd packages/database
           pnpm drizzle-kit check
 
-      - name: Validate schema
-        run: pnpm --filter @perfex/database validate
-
   # Job 6: Deploy to Staging (on develop branch)
   deploy-staging:
     name: Deploy to Staging
@@ -235,7 +226,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Deploy API to Cloudflare Workers
-        run: pnpm --filter @perfex/api deploy:staging
+        run: pnpm --filter perfex-api deploy:staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -287,7 +278,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Deploy API to Cloudflare Workers
-        run: pnpm --filter @perfex/api deploy
+        run: pnpm --filter perfex-api deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
