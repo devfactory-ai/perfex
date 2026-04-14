@@ -20,12 +20,8 @@ export function useAuth() {
 
   // Load user on mount if not already loaded
   useEffect(() => {
-    console.log('[useAuth] Effect triggered', { hasUser: !!user, isLoading, isAuthenticated });
     if (!user && !isLoading) {
-      console.log('[useAuth] No user in state, calling loadUser()');
       loadUser();
-    } else {
-      console.log('[useAuth] User already loaded or loading, skipping loadUser()');
     }
   }, [user, isLoading, loadUser]);
 

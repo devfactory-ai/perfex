@@ -16,19 +16,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  console.log('[ProtectedRoute] Render', {
-    isAuthenticated,
-    isLoading,
-    path: location.pathname
-  });
-
   useEffect(() => {
-    console.log('[ProtectedRoute] Effect triggered', { isAuthenticated, isLoading });
     if (!isLoading && !isAuthenticated) {
-      console.log('[ProtectedRoute] NOT authenticated - redirecting to /login');
       navigate('/login', { state: { from: location }, replace: true });
-    } else {
-      console.log('[ProtectedRoute] Authenticated or still loading - staying on page');
     }
   }, [isAuthenticated, isLoading, navigate, location]);
 
