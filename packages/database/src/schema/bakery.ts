@@ -587,6 +587,8 @@ export const bakeryDeliveryOrders = sqliteTable('bakery_delivery_orders', {
   totalAmountTTC: real('total_amount_ttc').default(0),
   deliveryPersonId: text('delivery_person_id').references(() => users.id),
   comment: text('comment'),
+  invoiceId: text('invoice_id'),
+  invoicedAt: integer('invoiced_at', { mode: 'timestamp' }),
   createdById: text('created_by_id').references(() => users.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

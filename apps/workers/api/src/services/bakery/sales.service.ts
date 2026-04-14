@@ -16,6 +16,8 @@ import {
   bakeryPOSStock,
   bakeryTeamHandovers,
   bakeryProducts,
+  invoices,
+  invoiceLines,
   type BakeryB2BClient,
   type BakeryDeliveryOrder,
   type BakeryDeliveryNote,
@@ -826,6 +828,324 @@ export class BakerySalesService {
       .get() as BakeryTeamHandover;
 
     return handover;
+  }
+
+  /**
+   * Generate an invoice from a delivered delivery order.
+   * Only works when order status is 'livree'.
+   */
+  async generateInvoiceFromDeliveryOrder(
+    orderId: string,
+    organizationId: string,
+    userId: string
+  ): Promise<{ invoiceId: string }> {
+    const now = new Date();
+
+    // 1. Get the delivery order and verify status
+    const order = await getDb()
+      .select()
+      .from(bakeryDeliveryOrders)
+      .where(
+        and(
+          eq(bakeryDeliveryOrders.id, orderId),
+          eq(bakeryDeliveryOrders.organizationId, organizationId)
+        )
+      )
+      .get() as BakeryDeliveryOrder | undefined;
+
+    if (!order) {
+      throw new Error('Delivery order not found');
+    }
+
+    if (order.status !== 'livree') {
+      throw new Error('Only delivered orders (status "livree") can be invoiced');
+    }
+
+    // 2. Get the B2B client info
+    const client = await getDb()
+      .select()
+      .from(bakeryB2BClients)
+      .where(eq(bakeryB2BClients.id, order.clientId))
+      .get() as BakeryB2BClient | undefined;
+
+    if (!client) {
+      throw new Error('B2B client not found');
+    }
+
+    // 3. Get delivery order lines
+    const orderLines = await getDb()
+      .select()
+      .from(bakeryDeliveryOrderLines)
+      .where(eq(bakeryDeliveryOrderLines.orderId, orderId))
+      .all();
+
+    // 4. Parse payment terms to calculate due date
+    let dueDays = 30; // default
+    if (client.paymentTerms) {
+      const match = client.paymentTerms.match(/(\d+)/);
+      if (match) {
+        dueDays = parseInt(match[1], 10);
+      }
+    }
+    const dueDate = new Date(now.getTime() + dueDays * 24 * 60 * 60 * 1000);
+
+    // 5. Generate invoice number
+    const invoiceNumber = `FAC-${Date.now().toString(36).toUpperCase()}`;
+    const invoiceId = crypto.randomUUID();
+
+    // 6. Create the invoice
+    const subtotal = order.totalAmountHT || 0;
+    const taxAmount = order.vatAmount || 0;
+    const total = order.totalAmountTTC || 0;
+
+    await getDb().insert(invoices).values({
+      id: invoiceId,
+      organizationId,
+      number: invoiceNumber,
+      customerId: client.id,
+      customerName: client.commercialName,
+      customerEmail: client.email || null,
+      customerAddress: client.deliveryAddress,
+      date: now,
+      dueDate,
+      status: 'draft',
+      subtotal,
+      taxAmount,
+      total,
+      amountPaid: 0,
+      amountDue: total,
+      currency: 'EUR',
+      notes: `Auto-generated from delivery order ${order.orderNumber}`,
+      terms: client.paymentTerms || null,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // 7. Create invoice lines from delivery order lines
+    for (const line of orderLines as any[]) {
+      // Get product name for description
+      const product = await getDb()
+        .select()
+        .from(bakeryProducts)
+        .where(eq(bakeryProducts.id, line.productId))
+        .get();
+
+      const productName = (product as any)?.name || line.productId;
+      const quantity = line.deliveredQuantity ?? line.orderedQuantity;
+      const unitPrice = line.unitPriceHT;
+      const lineTotal = quantity * unitPrice;
+
+      await getDb().insert(invoiceLines).values({
+        id: crypto.randomUUID(),
+        invoiceId,
+        description: productName,
+        quantity,
+        unitPrice,
+        taxRate: 0,
+        taxAmount: 0,
+        total: lineTotal,
+        createdAt: now,
+      });
+    }
+
+    // 8. Update delivery order: set invoiceId, invoicedAt, status = 'facturee'
+    await getDb()
+      .update(bakeryDeliveryOrders)
+      .set({
+        invoiceId,
+        invoicedAt: now,
+        status: 'facturee',
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(bakeryDeliveryOrders.id, orderId),
+          eq(bakeryDeliveryOrders.organizationId, organizationId)
+        )
+      );
+
+    return { invoiceId };
+  }
+
+  /**
+   * Post daily POS revenue to the general ledger.
+   * Creates a journal entry summarizing the day's on-site sales with
+   * proper double-entry accounting (Cash debit, Revenue + VAT credits).
+   */
+  async postDailyPOSToGL(
+    organizationId: string,
+    date: string,
+    userId: string
+  ): Promise<{ journalEntryId: string }> {
+    const now = new Date();
+    const VAT_RATE = 0.19;
+    const reference = `POS-${date}`;
+
+    // 1. Check for duplicate posting
+    const existingEntry = await getDb()
+      .select()
+      .from(journalEntries)
+      .where(
+        and(
+          eq(journalEntries.organizationId, organizationId),
+          eq(journalEntries.reference, reference)
+        )
+      )
+      .get();
+
+    if (existingEntry) {
+      throw new Error(`GL entry already exists for this date (ref: ${reference})`);
+    }
+
+    // 2. Get daily sales summary
+    const summary = await getDb()
+      .select()
+      .from(bakeryDailySalesSummary)
+      .where(
+        and(
+          eq(bakeryDailySalesSummary.organizationId, organizationId),
+          sql`date(${bakeryDailySalesSummary.summaryDate} / 1000, 'unixepoch') = ${date}`
+        )
+      )
+      .get();
+
+    if (!summary || !summary.totalDayRevenue || summary.totalDayRevenue === 0) {
+      throw new Error('No sales for this date');
+    }
+
+    const totalTTC = summary.totalDayRevenue;
+    const totalHT = Math.round((totalTTC / (1 + VAT_RATE)) * 100) / 100;
+    const vatAmount = Math.round((totalTTC - totalHT) * 100) / 100;
+
+    // 3. Find or create the Sales journal
+    let salesJournal = await getDb()
+      .select()
+      .from(journals)
+      .where(
+        and(
+          eq(journals.organizationId, organizationId),
+          eq(journals.type, 'sales')
+        )
+      )
+      .get();
+
+    if (!salesJournal) {
+      const journalId = crypto.randomUUID();
+      await getDb().insert(journals).values({
+        id: journalId,
+        organizationId,
+        code: 'VEN',
+        name: 'Journal des Ventes',
+        type: 'sales',
+        active: true,
+        createdAt: now,
+      });
+      salesJournal = await getDb()
+        .select()
+        .from(journals)
+        .where(eq(journals.id, journalId))
+        .get();
+    }
+
+    // 4. Find or create required accounts (French PCG codes)
+    const ensureAccount = async (
+      code: string,
+      name: string,
+      type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+    ): Promise<string> => {
+      const account = await getDb()
+        .select()
+        .from(accounts)
+        .where(
+          and(
+            eq(accounts.organizationId, organizationId),
+            eq(accounts.code, code)
+          )
+        )
+        .get();
+
+      if (!account) {
+        const accountId = crypto.randomUUID();
+        await getDb().insert(accounts).values({
+          id: accountId,
+          organizationId,
+          code,
+          name,
+          type,
+          currency: 'TND',
+          active: true,
+          system: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+        return accountId;
+      }
+
+      return account.id;
+    };
+
+    const cashAccountId = await ensureAccount('5300', 'Caisse', 'asset');
+    const salesRevenueAccountId = await ensureAccount('7010', 'Ventes de produits finis', 'revenue');
+    const vatCollectedAccountId = await ensureAccount('4457', 'TVA collectee', 'liability');
+
+    // 5. Create journal entry
+    const journalEntryId = crypto.randomUUID();
+    await getDb().insert(journalEntries).values({
+      id: journalEntryId,
+      organizationId,
+      journalId: salesJournal!.id,
+      reference,
+      date: new Date(date),
+      description: `Ventes sur place du ${date}`,
+      status: 'posted',
+      totalDebit: totalTTC,
+      totalCredit: totalTTC,
+      createdBy: userId,
+      postedAt: now,
+      postedBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // 6. Create journal entry lines
+    // Line 1: Debit Cash (TTC)
+    await getDb().insert(journalEntryLines).values({
+      id: crypto.randomUUID(),
+      entryId: journalEntryId,
+      accountId: cashAccountId,
+      label: `Encaissement ventes POS ${date}`,
+      debit: totalTTC,
+      credit: 0,
+      reconciled: false,
+      createdAt: now,
+    });
+
+    // Line 2: Credit Sales Revenue (HT)
+    await getDb().insert(journalEntryLines).values({
+      id: crypto.randomUUID(),
+      entryId: journalEntryId,
+      accountId: salesRevenueAccountId,
+      label: `Chiffre d'affaires ventes sur place ${date}`,
+      debit: 0,
+      credit: totalHT,
+      reconciled: false,
+      createdAt: now,
+    });
+
+    // Line 3: Credit VAT Collected
+    await getDb().insert(journalEntryLines).values({
+      id: crypto.randomUUID(),
+      entryId: journalEntryId,
+      accountId: vatCollectedAccountId,
+      label: `TVA collectee ventes POS ${date}`,
+      debit: 0,
+      credit: vatAmount,
+      reconciled: false,
+      createdAt: now,
+    });
+
+    return { journalEntryId };
   }
 }
 
