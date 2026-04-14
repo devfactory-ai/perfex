@@ -4,7 +4,7 @@
  */
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
 import {
   invoices,
   invoiceLines,
@@ -30,7 +30,7 @@ export class InvoiceService {
       .where(eq(invoices.organizationId, organizationId))
       .orderBy(desc(invoices.createdAt))
       .limit(1)
-      .get() as any;
+      .get();
 
     // Extract number from last invoice (e.g., "INV-2024-001" -> 1)
     let nextNumber = 1;
@@ -80,7 +80,7 @@ export class InvoiceService {
               eq(taxRates.organizationId, organizationId)
             )
           )
-          .get() as any;
+          .get();
 
         if (taxRateRecord) {
           taxRate = taxRateRecord.rate;
@@ -179,7 +179,7 @@ export class InvoiceService {
           eq(invoices.organizationId, organizationId)
         )
       )
-      .get() as any;
+      .get();
 
     if (!invoice) {
       throw new Error('Invoice not found');
@@ -190,7 +190,7 @@ export class InvoiceService {
       .select()
       .from(invoiceLines)
       .where(eq(invoiceLines.invoiceId, invoiceId))
-      .all() as any[];
+      .all();
 
     return {
       ...(invoice as Invoice),
@@ -219,7 +219,7 @@ export class InvoiceService {
       .from(invoices)
       .where(eq(invoices.organizationId, organizationId))
       .orderBy(desc(invoices.date))
-      .all() as any[];
+      .all();
 
     // Filter in memory
     let filtered = invoicesList;
@@ -257,6 +257,98 @@ export class InvoiceService {
     }
 
     return invoicesWithLines;
+  }
+
+  /**
+   * Build invoice filter conditions for DB-level filtering
+   */
+  private buildInvoiceConditions(
+    organizationId: string,
+    options?: {
+      customerId?: string;
+      status?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ) {
+    const conditions: any[] = [eq(invoices.organizationId, organizationId)];
+
+    if (options?.customerId) {
+      conditions.push(eq(invoices.customerId, options.customerId));
+    }
+    if (options?.status) {
+      conditions.push(eq(invoices.status, options.status as any));
+    }
+    if (options?.startDate) {
+      conditions.push(gte(invoices.date, options.startDate));
+    }
+    if (options?.endDate) {
+      conditions.push(lte(invoices.date, options.endDate));
+    }
+
+    return conditions;
+  }
+
+  /**
+   * List invoices with server-side pagination
+   */
+  async listPaginated(
+    organizationId: string,
+    options?: {
+      customerId?: string;
+      status?: string;
+      startDate?: Date;
+      endDate?: Date;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<InvoiceWithLines[]> {
+    const drizzleDb = drizzle(this.db);
+    const conditions = this.buildInvoiceConditions(organizationId, options);
+
+    let query = drizzleDb
+      .select()
+      .from(invoices)
+      .where(and(...conditions))
+      .orderBy(desc(invoices.date));
+
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as any;
+    }
+
+    const invoicesList = await (query as any).all();
+
+    // Get lines for each invoice
+    const invoicesWithLines: InvoiceWithLines[] = [];
+    for (const invoice of invoicesList) {
+      const invoiceWithLines = await this.getById(invoice.id, organizationId);
+      invoicesWithLines.push(invoiceWithLines);
+    }
+
+    return invoicesWithLines;
+  }
+
+  /**
+   * Count invoices matching filters
+   */
+  async countInvoices(
+    organizationId: string,
+    options?: {
+      customerId?: string;
+      status?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ): Promise<number> {
+    const drizzleDb = drizzle(this.db);
+    const conditions = this.buildInvoiceConditions(organizationId, options);
+
+    const result = await drizzleDb
+      .select({ count: count() })
+      .from(invoices)
+      .where(and(...conditions))
+      .get();
+
+    return result?.count ?? 0;
   }
 
   /**

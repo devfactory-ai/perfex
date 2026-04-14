@@ -12,6 +12,7 @@ import { authMiddleware } from '../middleware/auth';
 import { checkPermission } from '../middleware/rbac';
 import { InvoiceService } from '../services/invoice.service';
 import { logger } from '../utils/logger';
+import { parsePagination, getOffset, buildPaginationMeta } from '../utils/pagination';
 
 const invoicesRouter = new Hono<{ Bindings: Env }>();
 
@@ -39,21 +40,32 @@ invoicesRouter.get(
       const status = c.req.query('status');
       const startDateStr = c.req.query('startDate');
       const endDateStr = c.req.query('endDate');
-      const limitStr = c.req.query('limit');
-      const offsetStr = c.req.query('offset');
 
-      const options: any = {};
-      if (customerId) options.customerId = customerId;
-      if (status) options.status = status;
-      if (startDateStr) options.startDate = new Date(startDateStr);
-      if (endDateStr) options.endDate = new Date(endDateStr);
-      if (limitStr) options.limit = parseInt(limitStr, 10);
-      if (offsetStr) options.offset = parseInt(offsetStr, 10);
+      const filters: any = {};
+      if (customerId) filters.customerId = customerId;
+      if (status) filters.status = status;
+      if (startDateStr) filters.startDate = new Date(startDateStr);
+      if (endDateStr) filters.endDate = new Date(endDateStr);
+
+      const paginationParams = parsePagination({
+        page: c.req.query('page'),
+        limit: c.req.query('limit'),
+      });
+      const offset = getOffset(paginationParams);
 
       const invoiceService = new InvoiceService(c.env.DB);
-      const invoicesList = await invoiceService.list(organizationId, options);
+      const [invoicesList, total] = await Promise.all([
+        invoiceService.listPaginated(organizationId, filters, {
+          limit: paginationParams.limit,
+          offset,
+        }),
+        invoiceService.countInvoices(organizationId, filters),
+      ]);
 
-      return c.json({ data: invoicesList });
+      return c.json({
+        data: invoicesList,
+        pagination: buildPaginationMeta(total, paginationParams),
+      });
     } catch (error) {
       logger.error('Route error', error, { route: 'invoices' });
       return c.json({

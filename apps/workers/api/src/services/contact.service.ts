@@ -3,7 +3,7 @@
  * Manage individual contacts
  */
 
-import { eq, and, desc, like, or } from 'drizzle-orm';
+import { eq, and, desc, like, or, count } from 'drizzle-orm';
 import { getDb } from '../db';
 import { contacts, companies } from '@perfex/database';
 import type { Contact, ContactWithCompany, CreateContactInput, UpdateContactInput } from '@perfex/shared';
@@ -69,7 +69,7 @@ export class ContactService {
       .select()
       .from(contacts)
       .where(and(eq(contacts.id, contactId), eq(contacts.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return contact || null;
   }
@@ -89,7 +89,7 @@ export class ContactService {
         .select()
         .from(companies)
         .where(eq(companies.id, contact.companyId))
-        .get() as any;
+        .get();
     }
 
     return {
@@ -143,8 +143,98 @@ export class ContactService {
       .from(contacts)
       .where(and(...conditions))
       .orderBy(desc(contacts.createdAt))
-      .all() as any[];
+      .all();
     return results;
+  }
+
+  /**
+   * Build filter conditions for reuse between list and count queries
+   */
+  private buildFilterConditions(
+    organizationId: string,
+    filters?: {
+      companyId?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    }
+  ) {
+    const conditions: any[] = [eq(contacts.organizationId, organizationId)];
+
+    if (filters?.companyId) {
+      conditions.push(eq(contacts.companyId, filters.companyId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(contacts.status, filters.status as any));
+    }
+    if (filters?.assignedTo) {
+      conditions.push(eq(contacts.assignedTo, filters.assignedTo));
+    }
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(contacts.firstName, searchTerm),
+          like(contacts.lastName, searchTerm),
+          like(contacts.email, searchTerm),
+          like(contacts.phone, searchTerm),
+          like(contacts.mobile, searchTerm)
+        )
+      );
+    }
+
+    return conditions;
+  }
+
+  /**
+   * List contacts with pagination
+   */
+  async listPaginated(
+    organizationId: string,
+    filters?: {
+      companyId?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<Contact[]> {
+    const conditions = this.buildFilterConditions(organizationId, filters);
+
+    let query = getDb()
+      .select()
+      .from(contacts)
+      .where(and(...conditions))
+      .orderBy(desc(contacts.createdAt));
+
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as any;
+    }
+
+    return await (query as any).all();
+  }
+
+  /**
+   * Count contacts matching filters
+   */
+  async countContacts(
+    organizationId: string,
+    filters?: {
+      companyId?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    }
+  ): Promise<number> {
+    const conditions = this.buildFilterConditions(organizationId, filters);
+
+    const result = await getDb()
+      .select({ count: count() })
+      .from(contacts)
+      .where(and(...conditions))
+      .get();
+
+    return result?.count ?? 0;
   }
 
   /**

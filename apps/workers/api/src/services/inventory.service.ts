@@ -3,7 +3,7 @@
  * Manage inventory items and stock levels
  */
 
-import { eq, and, desc, like, or, sum, lt, sql } from 'drizzle-orm';
+import { eq, and, desc, like, or, sum, lt, sql, count } from 'drizzle-orm';
 import { getDb } from '../db';
 import { inventoryItems, warehouses, stockLevels } from '@perfex/database';
 import type { InventoryItem, Warehouse, CreateInventoryItemInput, UpdateInventoryItemInput, CreateWarehouseInput, UpdateWarehouseInput } from '@perfex/shared';
@@ -59,7 +59,7 @@ export class InventoryService {
       .select()
       .from(inventoryItems)
       .where(and(eq(inventoryItems.id, itemId), eq(inventoryItems.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return item || null;
   }
@@ -102,8 +102,91 @@ export class InventoryService {
       .from(inventoryItems)
       .where(and(...conditions))
       .orderBy(desc(inventoryItems.createdAt))
-      .all() as any[];
+      .all();
     return results;
+  }
+
+  /**
+   * Build filter conditions for reuse between list and count queries
+   */
+  private buildItemFilterConditions(
+    organizationId: string,
+    filters?: {
+      category?: string;
+      active?: string;
+      search?: string;
+    }
+  ) {
+    const conditions: any[] = [eq(inventoryItems.organizationId, organizationId)];
+
+    if (filters?.category) {
+      conditions.push(eq(inventoryItems.category, filters.category));
+    }
+    if (filters?.active) {
+      const isActive = filters.active === 'true';
+      conditions.push(eq(inventoryItems.active, isActive));
+    }
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(inventoryItems.name, searchTerm),
+          like(inventoryItems.sku, searchTerm),
+          like(inventoryItems.description, searchTerm)
+        )
+      );
+    }
+
+    return conditions;
+  }
+
+  /**
+   * List inventory items with pagination
+   */
+  async listItemsPaginated(
+    organizationId: string,
+    filters?: {
+      category?: string;
+      active?: string;
+      search?: string;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<InventoryItem[]> {
+    const conditions = this.buildItemFilterConditions(organizationId, filters);
+
+    let query = getDb()
+      .select()
+      .from(inventoryItems)
+      .where(and(...conditions))
+      .orderBy(desc(inventoryItems.createdAt));
+
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as any;
+    }
+
+    return await (query as any).all();
+  }
+
+  /**
+   * Count inventory items matching filters
+   */
+  async countItems(
+    organizationId: string,
+    filters?: {
+      category?: string;
+      active?: string;
+      search?: string;
+    }
+  ): Promise<number> {
+    const conditions = this.buildItemFilterConditions(organizationId, filters);
+
+    const result = await getDb()
+      .select({ count: count() })
+      .from(inventoryItems)
+      .where(and(...conditions))
+      .get();
+
+    return result?.count ?? 0;
   }
 
   /**
@@ -202,7 +285,7 @@ export class InventoryService {
       .select()
       .from(warehouses)
       .where(and(eq(warehouses.id, warehouseId), eq(warehouses.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return warehouse || null;
   }
@@ -223,7 +306,7 @@ export class InventoryService {
       .from(warehouses)
       .where(and(...conditions))
       .orderBy(desc(warehouses.createdAt))
-      .all() as any[];
+      .all();
     return results;
   }
 

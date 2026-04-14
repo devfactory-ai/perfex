@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import { authMiddleware, requirePermissions } from '../middleware/auth';
 import { inventoryService } from '../services/inventory.service';
 import { logger } from '../utils/logger';
+import { parsePagination, getOffset, buildPaginationMeta } from '../utils/pagination';
 import {
   createInventoryItemSchema,
   updateInventoryItemSchema,
@@ -35,15 +36,26 @@ app.get('/items', requirePermissions('inventory:read'), async (c) => {
     const active = c.req.query('active');
     const search = c.req.query('search');
 
-    const items = await inventoryService.listItems(organizationId, {
-      category,
-      active,
-      search,
+    const filters = { category, active, search };
+
+    const paginationParams = parsePagination({
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
     });
+    const offset = getOffset(paginationParams);
+
+    const [items, total] = await Promise.all([
+      inventoryService.listItemsPaginated(organizationId, filters, {
+        limit: paginationParams.limit,
+        offset,
+      }),
+      inventoryService.countItems(organizationId, filters),
+    ]);
 
     return c.json({
       success: true,
       data: items,
+      pagination: buildPaginationMeta(total, paginationParams),
     });
   } catch (error) {
     logger.error('Route error', error, { route: 'inventory' });

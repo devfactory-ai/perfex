@@ -3,7 +3,7 @@
  * Manage companies (customers, prospects, partners, vendors)
  */
 
-import { eq, and, desc, like, or } from 'drizzle-orm';
+import { eq, and, desc, like, or, sql, count } from 'drizzle-orm';
 import { getDb } from '../db';
 import { companies } from '@perfex/database';
 import type { Company, CreateCompanyInput, UpdateCompanyInput } from '@perfex/shared';
@@ -59,7 +59,7 @@ export class CompanyService {
       .select()
       .from(companies)
       .where(and(eq(companies.id, companyId), eq(companies.organizationId, organizationId)))
-      .get() as any;
+      .get();
 
     return company || null;
   }
@@ -107,8 +107,96 @@ export class CompanyService {
       .from(companies)
       .where(and(...conditions))
       .orderBy(desc(companies.createdAt))
-      .all() as any[];
+      .all();
     return results;
+  }
+
+  /**
+   * Build filter conditions for reuse between list and count queries
+   */
+  private buildFilterConditions(
+    organizationId: string,
+    filters?: {
+      type?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    }
+  ) {
+    const conditions: any[] = [eq(companies.organizationId, organizationId)];
+
+    if (filters?.type) {
+      conditions.push(eq(companies.type, filters.type as any));
+    }
+    if (filters?.status) {
+      conditions.push(eq(companies.status, filters.status));
+    }
+    if (filters?.assignedTo) {
+      conditions.push(eq(companies.assignedTo, filters.assignedTo));
+    }
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(companies.name, searchTerm),
+          like(companies.email, searchTerm),
+          like(companies.phone, searchTerm)
+        )
+      );
+    }
+
+    return conditions;
+  }
+
+  /**
+   * List companies with pagination
+   */
+  async listPaginated(
+    organizationId: string,
+    filters?: {
+      type?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<Company[]> {
+    const conditions = this.buildFilterConditions(organizationId, filters);
+
+    let query = getDb()
+      .select()
+      .from(companies)
+      .where(and(...conditions))
+      .orderBy(desc(companies.createdAt));
+
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as any;
+    }
+
+    return await (query as any).all();
+  }
+
+  /**
+   * Count companies matching filters
+   */
+  async count(
+    organizationId: string,
+    filters?: {
+      type?: string;
+      status?: string;
+      assignedTo?: string;
+      search?: string;
+    }
+  ): Promise<number> {
+    const conditions = this.buildFilterConditions(organizationId, filters);
+
+    const result = await getDb()
+      .select({ count: count() })
+      .from(companies)
+      .where(and(...conditions))
+      .get();
+
+    return result?.count ?? 0;
   }
 
   /**

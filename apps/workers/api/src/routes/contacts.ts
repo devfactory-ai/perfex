@@ -9,6 +9,7 @@ import { createContactSchema, updateContactSchema } from '@perfex/shared';
 import { contactService } from '../services/contact.service';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { parsePagination, getOffset, buildPaginationMeta } from '../utils/pagination';
 import type { Env } from '../types';
 
 const contacts = new Hono<{ Bindings: Env }>();
@@ -39,13 +40,31 @@ contacts.get(
         search,
       };
 
-      const result = includeCompany
-        ? await contactService.listWithCompany(organizationId, filters)
-        : await contactService.list(organizationId, filters);
+      const paginationParams = parsePagination({
+        page: c.req.query('page'),
+        limit: c.req.query('limit'),
+      });
+      const offset = getOffset(paginationParams);
+
+      const [result, total] = await Promise.all([
+        includeCompany
+          ? contactService.listWithCompany(organizationId, filters)
+          : contactService.listPaginated(organizationId, filters, {
+              limit: paginationParams.limit,
+              offset,
+            }),
+        contactService.countContacts(organizationId, filters),
+      ]);
+
+      // When includeCompany is used, apply pagination to the in-memory result
+      const data = includeCompany
+        ? result.slice(offset, offset + paginationParams.limit)
+        : result;
 
       return c.json({
         success: true,
-        data: result,
+        data,
+        pagination: buildPaginationMeta(total, paginationParams),
       });
     } catch (error) {
       logger.error('Route error', error, { route: 'contacts' });

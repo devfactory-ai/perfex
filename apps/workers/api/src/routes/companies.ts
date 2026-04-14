@@ -9,6 +9,7 @@ import { createCompanySchema, updateCompanySchema } from '@perfex/shared';
 import { companyService } from '../services/company.service';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { parsePagination, getOffset, buildPaginationMeta } from '../utils/pagination';
 import type { Env } from '../types';
 
 const companies = new Hono<{ Bindings: Env }>();
@@ -38,11 +39,24 @@ companies.get(
         search,
       };
 
-      const result = await companyService.list(organizationId, filters);
+      const paginationParams = parsePagination({
+        page: c.req.query('page'),
+        limit: c.req.query('limit'),
+      });
+      const offset = getOffset(paginationParams);
+
+      const [result, total] = await Promise.all([
+        companyService.listPaginated(organizationId, filters, {
+          limit: paginationParams.limit,
+          offset,
+        }),
+        companyService.count(organizationId, filters),
+      ]);
 
       return c.json({
         success: true,
         data: result,
+        pagination: buildPaginationMeta(total, paginationParams),
       });
     } catch (error) {
       logger.error('Route error', error, { route: 'companies' });
