@@ -13,7 +13,7 @@ import { PasswordlessVerifyPage } from './pages/auth/PasswordlessVerifyPage';
 import { DashboardPage } from './pages/DashboardPage';
 
 // Import route registry
-import { allRoutes, portalRoutes, routeInfo } from './routes';
+import { allRoutes, routeInfo } from './routes';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
 // Log route info in development
 if (import.meta.env.DEV) {
   console.log(`[Perfex] App Variant: ${routeInfo.variant}`);
-  console.log(`[Perfex] Routes loaded: ${routeInfo.totalRoutes} main + ${routeInfo.portalRoutes} portal`);
+  console.log(`[Perfex] Routes loaded: ${routeInfo.totalRoutes}`);
 }
 
 function App() {
@@ -76,19 +76,6 @@ function App() {
                       />
                     ))}
                   </Route>
-
-                  {/* Portal routes (outside main layout) */}
-                  {portalRoutes.map((route) => (
-                    <Route
-                      key={route.path}
-                      path={route.path}
-                      element={
-                        <Suspense fallback={<PageLoader />}>
-                          <route.component />
-                        </Suspense>
-                      }
-                    />
-                  ))}
 
                   {/* Catch-all redirect */}
                   <Route path="*" element={<Navigate to="/" replace />} />
