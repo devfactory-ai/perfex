@@ -1,6 +1,6 @@
 # Guide de Deploiement Cloudflare
 
-> Documentation complete pour deployer Perfex ERP sur Cloudflare Workers, D1, KV et Pages.
+> Documentation complete pour deployer Perfex Bakery ERP sur Cloudflare Workers, D1, KV et Pages.
 
 ## Table des Matieres
 
