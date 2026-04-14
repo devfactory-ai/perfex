@@ -686,6 +686,45 @@ bakery.delete(
 );
 
 /**
+ * GET /api/v1/bakery/products/:id/cost-breakdown
+ * Returns cost breakdown for a single product based on active recipe and article PUMP prices
+ */
+bakery.get(
+  '/products/:id/cost-breakdown',
+  requirePermission('bakery:products:read'),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId')!;
+      const id = c.req.param('id');
+      const result = await bakeryService.production.calculateProductCost(id, organizationId);
+      return c.json({ success: true, data: result });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/bakery/products/recalculate-costs
+ * Recalculates all product costs from recipe compositions and PUMP prices
+ */
+bakery.post(
+  '/products/recalculate-costs',
+  requirePermission('bakery:products:update'),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId')!;
+      const result = await bakeryService.production.recalculateAllProductCosts(organizationId);
+      return c.json({ success: true, data: result });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
+    }
+  }
+);
+
+/**
  * POST /api/v1/bakery/recipes
  * Create product recipe
  */
@@ -1543,6 +1582,33 @@ bakery.put(
 );
 
 /**
+ * POST /api/v1/bakery/delivery-orders/:id/generate-invoice
+ * Generate an invoice from a delivered delivery order
+ */
+bakery.post(
+  '/delivery-orders/:id/generate-invoice',
+  requirePermission('bakery:sales:create'),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId')!;
+      const userId = c.get('userId');
+      const id = c.req.param('id');
+      const result = await bakeryService.sales.generateInvoiceFromDeliveryOrder(id, organizationId, userId);
+      return c.json({ success: true, data: result }, 201);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (message.includes('not found')) {
+        return c.json({ success: false, error: { code: 'NOT_FOUND', message } }, 404);
+      }
+      if (message.includes('Only delivered')) {
+        return c.json({ success: false, error: { code: 'INVALID_STATUS', message } }, 400);
+      }
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
+    }
+  }
+);
+
+/**
  * POST /api/v1/bakery/delivery-notes
  * Create delivery note with signature
  */
@@ -1707,6 +1773,36 @@ bakery.post(
       return c.json({ success: true, data: result }, 201);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/bakery/pos/post-to-gl
+ * Post daily POS revenue to the general ledger
+ */
+bakery.post(
+  '/pos/post-to-gl',
+  requirePermission('bakery:sales:create'),
+  zValidator('json', z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
+  })),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId')!;
+      const userId = c.get('userId');
+      const { date } = c.req.valid('json');
+      const result = await bakeryService.sales.postDailyPOSToGL(organizationId, date, userId);
+      return c.json({ success: true, data: result }, 201);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (message.includes('already exists')) {
+        return c.json({ success: false, error: { code: 'DUPLICATE_ENTRY', message } }, 409);
+      }
+      if (message.includes('No sales')) {
+        return c.json({ success: false, error: { code: 'NO_DATA', message } }, 404);
+      }
       return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
     }
   }
@@ -1946,6 +2042,43 @@ bakery.get(
       const organizationId = c.get('realOrganizationId')!;
       const query = c.req.valid('query');
       const result = await bakeryService.reporting.listAccountingExports(organizationId, query);
+      return c.json({ success: true, data: result });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message } }, 500);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/bakery/financial-dashboard
+ * Financial P&L dashboard with margins, costs, and top products
+ */
+bakery.get(
+  '/financial-dashboard',
+  requirePermission('bakery:dashboard:read'),
+  zValidator('query', z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const organizationId = c.get('realOrganizationId')!;
+      const query = c.req.valid('query');
+
+      // Default to last 30 days if no dates provided
+      const endDate = query.endDate || new Date().toISOString().split('T')[0];
+      const startDate = query.startDate || (() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return d.toISOString().split('T')[0];
+      })();
+
+      const result = await bakeryService.reporting.getFinancialDashboard(
+        organizationId,
+        startDate,
+        endDate
+      );
       return c.json({ success: true, data: result });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

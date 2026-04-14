@@ -8,6 +8,8 @@ import { getDb } from '../../db';
 import {
   bakeryArticles,
   bakeryStockAlerts,
+  bakeryStockMovements,
+  bakeryProducts,
   bakeryProofingCarts,
   bakeryQualityControls,
   bakeryProductionComparisons,
@@ -16,6 +18,8 @@ import {
   bakeryMaintenanceAlerts,
   bakeryB2BClients,
   bakeryDeliveryOrders,
+  bakeryDeliveryOrderLines,
+  bakeryDailyConsumptions,
   bakerySalesSessions,
   bakeryReportConfigs,
   bakeryGeneratedReports,
@@ -56,6 +60,41 @@ interface QueryFilters {
   limit?: number;
   startDate?: string;
   endDate?: string;
+}
+
+interface BakeryFinancialDashboard {
+  period: { start: string; end: string };
+  revenue: {
+    deliveryHT: number;
+    deliveryTTC: number;
+    onSite: number;
+    totalHT: number;
+    totalTTC: number;
+  };
+  costs: {
+    rawMaterials: number;
+    energy: number;
+    maintenance: number;
+    totalCosts: number;
+  };
+  margin: {
+    grossMarginHT: number;
+    grossMarginPercent: number;
+    netMarginHT: number;
+    netMarginPercent: number;
+  };
+  topProducts: Array<{
+    productName: string;
+    quantitySold: number;
+    revenue: number;
+    costPrice: number;
+    margin: number;
+    marginPercent: number;
+  }>;
+  stockValue: number;
+  trends: {
+    dailyRevenue: Array<{ date: string; delivery: number; onSite: number; total: number }>;
+  };
 }
 
 export class BakeryReportingService {
@@ -366,6 +405,203 @@ export class BakeryReportingService {
       warrantyExpiringSoonCount: warrantyExpiringSoon.length,
       correctiveInterventions,
       pendingInterventions,
+    };
+  }
+
+  /**
+   * Get bakery P&L dashboard data for a date range
+   */
+  async getFinancialDashboard(
+    organizationId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<BakeryFinancialDashboard> {
+    // 1. Revenue from daily sales summaries
+    const summaries = await getDb()
+      .select()
+      .from(bakeryDailySalesSummary)
+      .where(and(
+        eq(bakeryDailySalesSummary.organizationId, organizationId),
+        sql`date(${bakeryDailySalesSummary.summaryDate}) >= date(${startDate})`,
+        sql`date(${bakeryDailySalesSummary.summaryDate}) <= date(${endDate})`
+      ))
+      .all();
+
+    const deliveryHT = summaries.reduce((sum, s) => sum + (s.deliveryRevenueHT || 0), 0);
+    const deliveryTTC = summaries.reduce((sum, s) => sum + (s.deliveryRevenueTTC || 0), 0);
+    const onSite = summaries.reduce((sum, s) => sum + (s.onSiteTotalRevenue || 0), 0);
+    const totalHT = deliveryHT + onSite; // on-site is already HT equivalent for this calculation
+    const totalTTC = deliveryTTC + onSite;
+
+    // 2. Raw material costs: stock exit movements in period
+    const stockExits = await getDb()
+      .select()
+      .from(bakeryStockMovements)
+      .where(and(
+        eq(bakeryStockMovements.organizationId, organizationId),
+        eq(bakeryStockMovements.type, 'sortie'),
+        sql`date(${bakeryStockMovements.movementDate}) >= date(${startDate})`,
+        sql`date(${bakeryStockMovements.movementDate}) <= date(${endDate})`
+      ))
+      .all();
+
+    const rawMaterials = stockExits.reduce(
+      (sum, m) => sum + (Math.abs(m.quantity) * (m.purchasePrice || 0)),
+      0
+    );
+
+    // 3. Energy costs from daily consumptions
+    const consumptions = await getDb()
+      .select()
+      .from(bakeryDailyConsumptions)
+      .where(and(
+        eq(bakeryDailyConsumptions.organizationId, organizationId),
+        sql`date(${bakeryDailyConsumptions.consumptionDate}) >= date(${startDate})`,
+        sql`date(${bakeryDailyConsumptions.consumptionDate}) <= date(${endDate})`
+      ))
+      .all();
+
+    const energy = consumptions.reduce((sum, c) => sum + (c.totalCost || 0), 0);
+
+    // 4. Maintenance costs from interventions
+    const interventions = await getDb()
+      .select()
+      .from(bakeryInterventions)
+      .where(and(
+        eq(bakeryInterventions.organizationId, organizationId),
+        sql`date(${bakeryInterventions.interventionDate}) >= date(${startDate})`,
+        sql`date(${bakeryInterventions.interventionDate}) <= date(${endDate})`
+      ))
+      .all();
+
+    const maintenance = interventions.reduce((sum, i) => sum + (i.totalCost || 0), 0);
+
+    const totalCosts = rawMaterials + energy + maintenance;
+
+    // 5. Margins
+    const grossMarginHT = totalHT - rawMaterials;
+    const grossMarginPercent = totalHT > 0 ? (grossMarginHT / totalHT) * 100 : 0;
+    const netMarginHT = totalHT - totalCosts;
+    const netMarginPercent = totalHT > 0 ? (netMarginHT / totalHT) * 100 : 0;
+
+    // 6. Top products by revenue from delivery order lines joined with products
+    const orderLines = await getDb()
+      .select({
+        productName: bakeryProducts.name,
+        unitPriceHT: bakeryDeliveryOrderLines.unitPriceHT,
+        deliveredQuantity: bakeryDeliveryOrderLines.deliveredQuantity,
+        orderedQuantity: bakeryDeliveryOrderLines.orderedQuantity,
+        lineAmountHT: bakeryDeliveryOrderLines.lineAmountHT,
+        costPrice: bakeryProducts.costPrice,
+      })
+      .from(bakeryDeliveryOrderLines)
+      .innerJoin(bakeryDeliveryOrders, eq(bakeryDeliveryOrderLines.orderId, bakeryDeliveryOrders.id))
+      .innerJoin(bakeryProducts, eq(bakeryDeliveryOrderLines.productId, bakeryProducts.id))
+      .where(and(
+        eq(bakeryDeliveryOrders.organizationId, organizationId),
+        sql`${bakeryDeliveryOrders.status} IN ('livree', 'facturee')`,
+        sql`date(${bakeryDeliveryOrders.createdAt}) >= date(${startDate})`,
+        sql`date(${bakeryDeliveryOrders.createdAt}) <= date(${endDate})`
+      ))
+      .all();
+
+    // Aggregate by product
+    const productMap = new Map<string, {
+      productName: string;
+      quantitySold: number;
+      revenue: number;
+      costPrice: number;
+    }>();
+
+    for (const line of orderLines) {
+      const qty = line.deliveredQuantity ?? line.orderedQuantity ?? 0;
+      const existing = productMap.get(line.productName);
+      if (existing) {
+        existing.quantitySold += qty;
+        existing.revenue += line.lineAmountHT || 0;
+      } else {
+        productMap.set(line.productName, {
+          productName: line.productName,
+          quantitySold: qty,
+          revenue: line.lineAmountHT || 0,
+          costPrice: line.costPrice || 0,
+        });
+      }
+    }
+
+    const topProducts = Array.from(productMap.values())
+      .map(p => {
+        const totalCostForProduct = p.costPrice * p.quantitySold;
+        const margin = p.revenue - totalCostForProduct;
+        const marginPercent = p.revenue > 0 ? (margin / p.revenue) * 100 : 0;
+        return {
+          productName: p.productName,
+          quantitySold: p.quantitySold,
+          revenue: p.revenue,
+          costPrice: totalCostForProduct,
+          margin,
+          marginPercent,
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    // 7. Current stock value (PUMP)
+    const articles = await getDb()
+      .select()
+      .from(bakeryArticles)
+      .where(and(
+        eq(bakeryArticles.organizationId, organizationId),
+        eq(bakeryArticles.isActive, true)
+      ))
+      .all();
+
+    const stockValue = articles.reduce(
+      (sum, a) => sum + ((a.currentStock || 0) * (a.averagePurchasePrice || 0)),
+      0
+    );
+
+    // 8. Daily revenue trends
+    const dailyRevenue = summaries
+      .map(s => {
+        const d = s.summaryDate instanceof Date
+          ? s.summaryDate.toISOString().split('T')[0]
+          : new Date(s.summaryDate).toISOString().split('T')[0];
+        return {
+          date: d,
+          delivery: (s.deliveryRevenueTTC || 0),
+          onSite: (s.onSiteTotalRevenue || 0),
+          total: (s.totalDayRevenue || 0),
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      period: { start: startDate, end: endDate },
+      revenue: {
+        deliveryHT,
+        deliveryTTC,
+        onSite,
+        totalHT,
+        totalTTC,
+      },
+      costs: {
+        rawMaterials,
+        energy,
+        maintenance,
+        totalCosts,
+      },
+      margin: {
+        grossMarginHT,
+        grossMarginPercent: Math.round(grossMarginPercent * 100) / 100,
+        netMarginHT,
+        netMarginPercent: Math.round(netMarginPercent * 100) / 100,
+      },
+      topProducts,
+      stockValue,
+      trends: {
+        dailyRevenue,
+      },
     };
   }
 
