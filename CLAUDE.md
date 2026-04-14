@@ -78,19 +78,19 @@ cd apps/workers/api && pnpm deploy:staging  # Deploy API (staging)
 
 ## Architecture Overview
 
-**Monorepo pnpm + Turborepo** deploye sur Cloudflare.
+**Perfex Bakery** — ERP dedie boulangeries-patisseries. Monorepo pnpm + Turborepo deploye sur Cloudflare.
 
 - `apps/web` : SPA React 18 + Vite + TailwindCSS -> Cloudflare Pages
-- `apps/workers/api` : API REST Hono.js -> Cloudflare Workers
-- `packages/database` : Schemas Drizzle ORM + migrations -> Cloudflare D1
+- `apps/workers/api` : API REST Hono.js -> Cloudflare Workers (19 routes)
+- `packages/database` : Schemas Drizzle ORM + 35 migrations -> Cloudflare D1 (12 schemas, 44 tables bakery)
 - `packages/shared` : Types TypeScript + validateurs Zod (partages front/back)
-- `packages/ai-core` : Client Cloudflare Workers AI + prompts
-- `packages/integrations` : Connecteurs tiers (paiement, SMS, shipping)
+- `packages/integrations` : Connecteurs marche tunisien (paiement, SMS, shipping)
+- `perfex-vitrine/` : Site vitrine boulangerie (sous-repo git)
 
+**Modules** : Bakery (stock/production/maintenance/ventes/reporting), Recettes, Tracabilite, POS, Inventaire, RH, Finance.
 **Auth** : JWT (access 24h + refresh 7j), bcrypt, CSRF, rate-limiting KV.
 **State** : Zustand (auth), React Query (data fetching).
-**DB** : D1 (SQLite), Drizzle ORM, 35 migrations.
-**Multi-tenant** : Organisations -> membres -> entreprises.
+**Multi-tenant** : Organisations -> membres.
 
 ## Conventions & Patterns
 
@@ -102,14 +102,8 @@ cd apps/workers/api && pnpm deploy:staging  # Deploy API (staging)
 - **Dates** : objets `Date` natifs
 - **Erreurs API** : `{ error: { code, message } }` avec status HTTP standard
 - **DB** : Drizzle ORM, schemas dans `packages/database/src/schema/`
-- **Variantes** : `VITE_APP_VARIANT` pour builds bakery/health
-- **Tests** : Vitest + Testing Library (React) -- couverture tres faible (~2.5%)
-
-## Problemes connus
-
-- Migrations 0022 : 4 fichiers avec le meme prefixe (conflit potentiel)
-- `requireAnyPermission` : verifie `user.permissions` qui est toujours `[]`
-- CI/CD : Node 18 / pnpm 8 dans workflows vs Node >=22 / pnpm >=10 dans package.json
-- Console.log de debug dans `useAuth.ts` (production)
-- Seed route retourne les mots de passe en clair dans la reponse
-- Bindings `VECTORIZE`, `JOBS` declares dans types.ts mais absents de wrangler.toml
+- **Build** : `VITE_APP_VARIANT=perfex-bakery` (defaut)
+- **Tests** : Vitest + Testing Library — ~20 fichiers de test, modules critiques couverts
+- **Erreurs** : Classes structurees AppError (NotFoundError, ValidationError, etc.)
+- **Pagination** : Server-side via `utils/pagination.ts` (parsePagination, buildPaginationMeta)
+- **Notifications** : sonner (toast) — pas d'alert() natif

@@ -1,8 +1,9 @@
-# BRIEF.md - Perfex ERP AI-Native
+# BRIEF.md - Perfex Bakery ERP
 
 ## Identite du projet
 
-- **Nom** : Perfex ERP AI-Native
+- **Nom** : Perfex Bakery
+- **Description** : Solution complete de gestion pour boulangeries-patisseries
 - **Auteur** : Yassine Techini <yassine.techini@devfactory.ai>
 - **Version** : 0.1.0
 - **Licence** : UNLICENSED (proprietaire)
@@ -16,96 +17,76 @@
 | Backend     | Hono.js 4.7 sur Cloudflare Workers                  |
 | Database    | Cloudflare D1 (SQLite), Drizzle ORM 0.37            |
 | Cache/KV    | Cloudflare KV (sessions, cache, rate-limit)          |
-| AI          | Cloudflare Workers AI                                |
 | Auth        | JWT (jsonwebtoken), bcryptjs, CSRF tokens            |
 | Monorepo    | pnpm 10 workspaces, Turborepo                        |
 | CI/CD       | GitHub Actions -> Cloudflare Workers/Pages            |
-| i18n        | i18next, react-i18next                               |
+| i18n        | i18next, react-i18next (FR, EN, AR)                  |
 
 ## Architecture monorepo
 
 ```
 perfex/
   apps/
-    web/              # Frontend React (Vite + TailwindCSS)
+    web/              # Frontend React SPA (Vite + TailwindCSS)
     workers/
       api/            # API Hono.js (Cloudflare Workers)
-      ai/             # [A CONFIRMER] Worker AI dedie
-      jobs/            # [A CONFIRMER] Worker jobs/queues
   packages/
     shared/           # Types partages + validateurs Zod
     database/         # Schemas Drizzle + migrations D1
-    ai-core/          # Client AI + prompts
-    dialyse-sdk/      # SDK client dialyse
     integrations/     # Connecteurs: paiement, SMS, shipping (Tunisie)
-  perfex-vitrine/     # Site vitrine (sous-repo git separe)
+  perfex-vitrine/     # Site vitrine boulangerie (sous-repo git)
 ```
 
 ## Modules fonctionnels
 
-### ERP Core
-- Finance (comptabilite, factures, paiements, journaux)
-- CRM (contacts, entreprises, pipeline, opportunites)
-- Projets (taches, jalons, feuilles de temps)
-- Inventaire (articles, entrepots, mouvements de stock)
-- RH (employes, conges, pointage)
-- Approvisionnement (fournisseurs, bons de commande)
-- Ventes (devis, commandes, bons de livraison)
-- Production/Manufacturing (nomenclatures, ordres de fabrication)
-- Actifs immobilises (categories, depreciations, maintenance)
-- Paie (bulletins, cotisations sociales - systeme francais)
+### Bakery (module principal)
+- **Stock** : Articles (matieres premieres), mouvements, inventaires, alertes, commandes fournisseurs, PUMP
+- **Production** : Chambres de pousse, fours, controle qualite, defauts, comparaisons theorique/reel, energie
+- **Maintenance (CMMS)** : Equipements, interventions, plans preventifs, pieces detachees, KPIs (MTBF, MTTR)
+- **Ventes** : Clients B2B, commandes livraison, bons de livraison, points de vente, sessions POS
+- **Reporting** : Rapports quotidiens/mensuels, exports comptables (Sage, Ciel, CSV, Excel)
+- **Finance** : Dashboard P&L, calcul cout de revient par recette, facturation auto depuis BL, ecritures POS
 
-### Healthcare (Sante)
-- Dialyse (patients, prescriptions, sessions, machines, alertes)
-- Cardiologie (ECG, echocardiographies, pacemakers, scores de risque)
-- Ophtalmologie (OCT, biometrie, IOL, chirurgies)
-- IA Clinique (documentation, suggestions diagnostiques)
-- Portail Patient (rendez-vous, messagerie, suivi symptomes)
-- RPM - Monitoring Patient a Distance (IoT, compliance, alertes)
-- IA Imagerie (analyse ECG, OCT, fond d'oeil, echo)
-- Sante Populationnelle (cohortes, indicateurs qualite, IQSS)
-- FHIR R4 (interoperabilite HL7)
-- CDSS (aide a la decision clinique)
+### Recettes
+- CRUD, scaling, allergenes (14 types EU), versioning, HACCP integration
+- Compositions avec cout automatique (PUMP des articles)
 
-### Bakery (Boulangerie)
-- Gestion de stock (articles, mouvements, inventaires, alertes)
-- Production (chambres de pousse, fours, controle qualite)
-- Maintenance (equipements, plans preventifs, pieces detachees)
-- Ventes B2B (clients, commandes livraison, points de vente)
-- Reporting (rapports quotidiens/mensuels, exports comptables)
+### Tracabilite
+- Lots (matieres premieres, semi-finis, finis), mouvements
+- HACCP (points de controle critiques, registres, temperature)
+- Rappels produits, registres de nettoyage
 
-### Transversal
-- Audit intelligent (taches, constats, evaluations de risque, copilote)
-- Workflows (moteur d'approbation, webhooks, cles API)
-- Notifications
-- Documents (GED, versionning, partage)
-- AI Chat (recherche intelligente, extraction factures, insights)
-- Tracabilite (lots, HACCP, rappels produits)
-- Recettes (formulation, mise a l'echelle, allergenes)
-- Multi-organisation, multi-tenant
+### POS (Caisse)
+- Sessions de vente (matin/apres-midi), stock par produit
+- Revenu calcule vs declare, variance, passation d'equipe
 
-## Statistiques du code
+### Core ERP
+- **Finance** : Comptabilite (plan comptable), factures, paiements, journaux, rapports
+- **Inventaire** : Articles, entrepots, mouvements de stock
+- **RH** : Employes, conges, pointage
+- **Auth** : JWT (access 24h + refresh 7j), CSRF, rate-limiting, 2FA (pret mais non branche)
+
+### Integrations (marche tunisien)
+- Paiement : D17, Flouci, Konnect, Paymee
+- SMS : Ooredoo, Tunisie Telecom
+- Shipping : Aramex (SOAP), Livrili (REST)
+- Fiscal : CNSS
+
+## Statistiques du code (post-nettoyage)
 
 | Metrique               | Valeur |
 |------------------------|--------|
-| Fichiers sources TS/TSX | 567   |
-| Routes API              | 49    |
-| Services API            | 133   |
-| Pages frontend          | 173   |
-| Composants frontend     | 39    |
-| Schemas DB              | 31    |
-| Migrations SQL          | 35    |
-| Fichiers de tests       | 14    |
-| **Couverture de test**  | **~2.5%** |
+| Routes API              | 19    |
+| Services API            | ~25   |
+| Pages frontend          | ~44   |
+| Schemas DB              | 12    |
+| Tables DB bakery        | 44    |
+| Fichiers de tests       | ~20   |
 
 ## Deploiement
 
 - **API** : Cloudflare Workers (wrangler deploy)
 - **Frontend** : Cloudflare Pages
 - **DB** : Cloudflare D1 (3 instances: dev, staging, prod)
-- **Variantes de build** : `perfex-bakery`, `perfex-health` (via VITE_APP_VARIANT)
-- **Environnements** : dev, staging (health), production
-
-## Etat actuel
-
-Le projet est en phase de **developpement actif** avec une base de code tres large couvrant de nombreux domaines metier (ERP, sante, boulangerie). La couverture de tests est tres faible (~2.5%). Plusieurs problemes de coherence existent entre les migrations, les types declares, et les bindings Cloudflare configures. Le CI/CD existe mais les versions Node/pnpm declarees dans le pipeline ne correspondent pas au package.json.
+- **Build** : `VITE_APP_VARIANT=perfex-bakery pnpm build`
+- **Environnements** : dev, staging, production
