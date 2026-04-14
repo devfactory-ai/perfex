@@ -87,7 +87,7 @@ export function BakerySalesPage() {
     queryKey: ['bakery-b2b-clients'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<B2BClient[]>>('/bakery/b2b-clients');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -100,7 +100,7 @@ export function BakerySalesPage() {
         url += `?status=${statusFilter}`;
       }
       const response = await api.get<ApiResponse<DeliveryOrder[]>>(url);
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 

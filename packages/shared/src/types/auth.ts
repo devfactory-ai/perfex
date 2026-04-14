@@ -22,6 +22,11 @@ export interface User {
 /**
  * Safe user (without password hash - for API responses)
  */
+/**
+ * Platform-level role
+ */
+export type PlatformRole = 'super_admin' | 'admin' | 'user';
+
 export interface SafeUser {
   id: string;
   email: string;
@@ -31,6 +36,7 @@ export interface SafeUser {
   emailVerified: boolean;
   active: boolean;
   organizationId: string | null;
+  platformRole: PlatformRole;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date | null;
@@ -114,6 +120,7 @@ export interface AccessTokenPayload {
   type: 'access';
   iat: number;
   exp: number;
+  jti?: string; // JWT ID for revocation tracking
 }
 
 /**
@@ -130,7 +137,11 @@ export interface RefreshTokenPayload {
 /**
  * Helper to convert User to SafeUser
  */
-export function toSafeUser(user: User & { organizationId?: string | null }): SafeUser {
+export function toSafeUser(user: User & { organizationId?: string | null; platformRole?: PlatformRole }): SafeUser {
   const { passwordHash, ...safeUser } = user;
-  return { ...safeUser, organizationId: safeUser.organizationId || null };
+  return {
+    ...safeUser,
+    organizationId: safeUser.organizationId || null,
+    platformRole: safeUser.platformRole || 'user',
+  };
 }

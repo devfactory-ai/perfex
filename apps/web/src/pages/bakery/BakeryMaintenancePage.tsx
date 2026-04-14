@@ -85,7 +85,7 @@ export function BakeryMaintenancePage() {
     queryKey: ['bakery-equipment'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Equipment[]>>('/bakery/equipment');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -94,7 +94,7 @@ export function BakeryMaintenancePage() {
     queryKey: ['bakery-interventions'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Intervention[]>>('/bakery/interventions');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 
@@ -103,7 +103,7 @@ export function BakeryMaintenancePage() {
     queryKey: ['bakery-maintenance-alerts'],
     queryFn: async () => {
       const response = await api.get<ApiResponse<MaintenanceAlert[]>>('/bakery/maintenance-alerts');
-      return response.data.data || [];
+      const data = response.data.data as any; return (data && typeof data === "object" && "items" in data) ? (data.items as any[]) : (Array.isArray(data) ? data : []);
     },
   });
 

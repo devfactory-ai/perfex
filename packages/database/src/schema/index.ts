@@ -5,31 +5,12 @@
 
 export * from './users';
 export * from './finance';
-export * from './crm';
-export * from './projects';
 export * from './inventory';
 export * from './hr';
-export * from './procurement';
-export * from './sales';
-export * from './manufacturing';
-export * from './assets';
 export * from './notifications';
-export * from './documents';
-export * from './workflows';
-export * from './ai';
 export * from './modules';
 export * from './recipes';
 export * from './traceability';
-export * from './payroll';
-export * from './dialyse';
-export * from './healthcare';
-export * from './cardiology';
-export * from './ophthalmology';
-export * from './clinical-ai';
-export * from './patient-portal';
-export * from './rpm';
-export * from './imaging-ai';
-export * from './population-health';
 export * from './bakery';
 
 // Export all tables for drizzle-kit
@@ -57,24 +38,6 @@ export {
 } from './finance';
 
 export {
-  companies,
-  contacts,
-  pipelineStages,
-  opportunities,
-  activities,
-  products,
-  opportunityProducts,
-} from './crm';
-
-export {
-  projects,
-  projectTasks,
-  projectMilestones,
-  timeEntries,
-  projectMembers,
-} from './projects';
-
-export {
   inventoryItems,
   warehouses,
   stockLevels,
@@ -92,80 +55,10 @@ export {
 } from './hr';
 
 export {
-  suppliers,
-  purchaseRequisitions,
-  purchaseRequisitionLines,
-  purchaseOrders,
-  purchaseOrderLines,
-  goodsReceivedNotes,
-  goodsReceivedLines,
-} from './procurement';
-
-export {
-  quotes,
-  salesOrders,
-  salesOrderLines,
-  deliveryNotes,
-} from './sales';
-
-export {
-  billOfMaterials,
-  bomLines,
-  routings,
-  routingOperations,
-  workOrders,
-  workOrderOperations,
-  materialConsumption,
-} from './manufacturing';
-
-export {
-  assetCategories,
-  fixedAssets,
-  assetDepreciations,
-  assetMaintenance,
-  assetTransfers,
-} from './assets';
-
-export {
   notifications,
   auditLogs,
   systemSettings,
 } from './notifications';
-
-export {
-  documentCategories,
-  documents,
-  documentVersions,
-  documentAccessLog,
-  documentShares,
-  emailTemplates,
-  emailQueue,
-  reports,
-  scheduledReports,
-} from './documents';
-
-export {
-  workflows,
-  workflowSteps,
-  workflowInstances,
-  workflowStepExecutions,
-  approvals,
-  activityFeed,
-  comments,
-  webhooks,
-  webhookLogs,
-  apiKeys,
-  apiKeyUsage,
-  tags,
-  entityTags,
-} from './workflows';
-
-export {
-  aiEmbeddings,
-  aiConversations,
-  aiInsights,
-  aiUsage,
-} from './ai';
 
 export * from './audit';
 
@@ -210,20 +103,6 @@ export {
   cleaningRecords,
 } from './traceability';
 
-export {
-  payrollPeriods,
-  salaryComponents,
-  employeeSalaries,
-  employeeSalaryComponents,
-  payslips,
-  payslipLines,
-  taxTables,
-  socialContributions,
-  overtimeRules,
-  bonuses,
-  payrollDeclarations,
-} from './payroll';
-
 export * from './integrations';
 
 export {
@@ -235,121 +114,6 @@ export {
   fiscalDeclarations,
   integrationWebhookEvents,
 } from './integrations';
-
-export {
-  dialysePatients,
-  vascularAccesses,
-  dialysePrescriptions,
-  dialysisMachines,
-  machineMaintenanceRecords,
-  dialysisSessionSlots,
-  dialysisSessions,
-  sessionRecords,
-  sessionIncidents,
-  sessionMedications,
-  sessionConsumables,
-  sessionSignatures,
-  labResults,
-  clinicalAlerts,
-} from './dialyse';
-
-export {
-  healthcarePatients,
-  healthcareConsultations,
-  healthcareExaminations,
-  healthcareImplantedDevices,
-  healthcareChronicConditions,
-  healthcareAlerts,
-  healthcareDocuments,
-  healthcareAppointments,
-} from './healthcare';
-
-export {
-  cardiologyEcgRecords,
-  cardiologyEchocardiograms,
-  cardiologyHolterRecords,
-  cardiologyPacemakers,
-  cardiologyPacemakerInterrogations,
-  cardiologyStents,
-  cardiologyRiskScores,
-  cardiologyCardiacEvents,
-  cardiologyMedications,
-} from './cardiology';
-
-export {
-  ophthalmologyOctScans,
-  ophthalmologyVisualFields,
-  ophthalmologyBiometry,
-  ophthalmologyIolImplants,
-  ophthalmologyIvtInjections,
-  ophthalmologySurgeries,
-  ophthalmologyRefraction,
-  ophthalmologyTonometry,
-  ophthalmologyFundusPhotos,
-  ophthalmologyOsdiScores,
-} from './ophthalmology';
-
-export {
-  clinicalDocumentation,
-  patientSummaries,
-  diagnosticSuggestions,
-  aiClinicalPrompts,
-  clinicalAiUsage,
-} from './clinical-ai';
-
-export {
-  portalUsers,
-  portalSessions,
-  appointmentRequests,
-  portalMessageThreads,
-  portalMessages,
-  symptomTracking,
-  medicationRefillRequests,
-  educationalContent,
-  patientEducationProgress,
-  portalNotifications,
-  patientDocumentAccess,
-} from './patient-portal';
-
-export {
-  iotDevices,
-  iotDeviceEvents,
-  iotReadings,
-  rpmPrograms,
-  rpmEnrollments,
-  rpmAlerts,
-  rpmAlertRules,
-  rpmCompliance,
-  rpmTimeLogs,
-  rpmBillingPeriods,
-} from './rpm';
-
-export {
-  imagingAnalysis,
-  ecgAnalysis,
-  octAnalysis,
-  fundusAnalysis,
-  echoAnalysis,
-  imagingReports,
-} from './imaging-ai';
-
-export {
-  riskModels,
-  patientRiskScores,
-  populationCohorts,
-  cohortMembership,
-  cohortSnapshots,
-  qualityIndicators,
-  qualityMeasurements,
-  outcomeDefinitions,
-  outcomeAnalytics,
-  patientOutcomes,
-  iqssReports,
-  careGapDefinitions,
-  patientCareGaps,
-  analyticsDashboards,
-  scheduledReports as phScheduledReports,
-} from './population-health';
 
 // Bakery module tables
 export {

@@ -5,6 +5,15 @@ import { sql } from 'drizzle-orm';
  * Users table
  * Core user authentication data
  */
+/**
+ * Platform roles for system-wide access control
+ * - super_admin: Full platform access, can manage admins and all organizations
+ * - admin: Can create/manage organizations and users
+ * - user: Regular user, access controlled by organization membership
+ */
+export const platformRoles = ['super_admin', 'admin', 'user'] as const;
+export type PlatformRole = typeof platformRoles[number];
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').notNull().unique(),
@@ -14,6 +23,7 @@ export const users = sqliteTable('users', {
   avatarUrl: text('avatar_url'),
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  platformRole: text('platform_role', { enum: platformRoles }).notNull().default('user'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   lastLoginAt: integer('last_login_at', { mode: 'timestamp' }),

@@ -1,4 +1,3 @@
-repos:
-  primary: "."
-  additional:
-    - "/Users/yastec/.beads-planning"
+issue_prefix: pe
+issue-prefix: pe
+dolt.auto-start: false

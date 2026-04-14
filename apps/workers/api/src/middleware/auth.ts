@@ -10,6 +10,7 @@ import { verifyToken } from '../utils/crypto';
 import type { Env } from '../types';
 import type { AccessTokenPayload } from '@perfex/shared';
 import { organizationMembers, companies } from '@perfex/database';
+import { createTokenRevocationService } from '../services/token-revocation.service';
 
 /**
  * Extend Hono context with user data
@@ -69,6 +70,28 @@ export async function authMiddleware(
         },
         401
       );
+    }
+
+    // Check if token has been revoked (logout, password change, etc.)
+    if (c.env.CACHE) {
+      const revocationService = createTokenRevocationService(c.env.CACHE);
+      const isRevoked = await revocationService.isRevoked(
+        payload.jti, // JWT ID if present
+        payload.sub, // User ID
+        payload.iat  // Issued at timestamp
+      );
+
+      if (isRevoked) {
+        return c.json(
+          {
+            error: {
+              code: 'TOKEN_REVOKED',
+              message: 'Token has been revoked. Please log in again.',
+            },
+          },
+          401
+        );
+      }
     }
 
     // Fetch organization ID - validate user membership for security

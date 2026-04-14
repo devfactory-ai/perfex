@@ -13,18 +13,19 @@ import { Eye, EyeOff, Mail, Lock, Croissant, Package, Truck, ChefHat, User } fro
 
 // Demo accounts for bakery (only visible on staging/dev)
 const DEMO_ACCOUNTS = [
-  { role: 'Gérant', email: 'demo@perfex.io', password: 'Demo@2024!', icon: ChefHat, color: 'amber' },
-  { role: 'Boulanger', email: 'boulanger@perfex.io', password: 'Baker@2024!', icon: Croissant, color: 'orange' },
-  { role: 'Vendeur', email: 'vente@perfex.io', password: 'Sales@2024!', icon: User, color: 'blue' },
-  { role: 'Livreur', email: 'livraison@perfex.io', password: 'Delivery@2024!', icon: Truck, color: 'green' },
+  { role: 'Gérant', email: 'bakery-admin@perfex.io', password: 'Demo@2024!', icon: ChefHat, color: 'amber' },
+  { role: 'Boulanger', email: 'bakery-baker@perfex.io', password: 'Baker@2024!', icon: Croissant, color: 'orange' },
+  { role: 'Vendeur', email: 'bakery-sales@perfex.io', password: 'Sales@2024!', icon: User, color: 'blue' },
+  { role: 'Livreur', email: 'bakery-delivery@perfex.io', password: 'Delivery@2024!', icon: Truck, color: 'green' },
 ];
 
-// Show demo accounts only on staging or localhost
+// Show demo accounts only on staging, localhost, or Cloudflare Pages preview
 const isDevOrStaging = () => {
   const hostname = window.location.hostname;
   return hostname === 'localhost' ||
          hostname === '127.0.0.1' ||
          hostname.includes('staging') ||
+         hostname.includes('pages.dev') ||
          import.meta.env.DEV;
 };
 

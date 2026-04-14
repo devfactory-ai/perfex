@@ -248,6 +248,7 @@ const fr: Translations = {
     payroll: 'Paie',
     ai: 'Intelligence Artificielle',
     dialyse: 'Dialyse',
+    admin: 'Administration',
     cardiology: 'Cardiologie',
     ophthalmology: 'Ophtalmologie',
     bakery: 'Boulangerie',
@@ -345,6 +346,11 @@ const fr: Translations = {
     gettingStarted: 'Guide démarrage',
     faq: 'FAQ',
     moduleGuides: 'Guides modules',
+    workflowGuide: 'Guide workflow',
+    // Admin (Platform Management)
+    adminDashboard: 'Administration',
+    adminOrganizations: 'Organisations',
+    adminUsers: 'Utilisateurs',
   },
   dashboard: {
     title: 'Tableau de bord',
@@ -2837,6 +2843,7 @@ const en: Translations = {
     payroll: 'Payroll',
     ai: 'Artificial Intelligence',
     dialyse: 'Dialysis',
+    admin: 'Administration',
     cardiology: 'Cardiology',
     ophthalmology: 'Ophthalmology',
     bakery: 'Bakery',
@@ -2914,6 +2921,11 @@ const en: Translations = {
     bakeryMaintenance: 'Maintenance',
     bakeryReports: 'Reports',
     posDashboard: 'POS Dashboard',
+    workflowGuide: 'Workflow Guide',
+    // Admin (Platform Management)
+    adminDashboard: 'Administration',
+    adminOrganizations: 'Organizations',
+    adminUsers: 'Users',
   },
   dashboard: {
     title: 'Dashboard',
@@ -5238,6 +5250,7 @@ const ar: Translations = {
     payroll: 'الرواتب',
     ai: 'الذكاء الاصطناعي',
     dialyse: 'غسيل الكلى',
+    admin: 'الإدارة',
     cardiology: 'أمراض القلب',
     ophthalmology: 'طب العيون',
     bakery: 'المخبز',
@@ -5315,6 +5328,11 @@ const ar: Translations = {
     bakeryMaintenance: 'الصيانة',
     bakeryReports: 'التقارير',
     posDashboard: 'لوحة نقطة البيع',
+    workflowGuide: 'دليل سير العمل',
+    // Admin (Platform Management)
+    adminDashboard: 'الإدارة',
+    adminOrganizations: 'المؤسسات',
+    adminUsers: 'المستخدمين',
   },
   dashboard: {
     title: 'لوحة التحكم',

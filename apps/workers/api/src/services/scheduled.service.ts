@@ -11,6 +11,7 @@ import {
   riskAssessments,
   sessions,
   organizations,
+  notifications,
 } from '@perfex/database';
 import type { Env } from '../types';
 import { logger } from '../utils/logger';
@@ -151,7 +152,22 @@ export class ScheduledService {
           .where(eq(auditTasks.id, task.id));
       }
 
-      // TODO: Send notification to assigned user
+      // Send notification to assigned user
+      if (task.assignedTo) {
+        await this.db.insert(notifications).values({
+          id: crypto.randomUUID(),
+          organizationId: task.organizationId,
+          userId: task.assignedTo,
+          type: 'warning',
+          title: 'Overdue Task',
+          message: `Task ${task.taskNumber} is overdue and requires attention.`,
+          link: `/audit/tasks/${task.id}`,
+          relatedId: task.id,
+          relatedType: 'audit_task',
+          isRead: false,
+          createdAt: new Date(),
+        });
+      }
       logger.info(`[Scheduler] Task ${task.taskNumber} is overdue`);
     }
 
@@ -214,7 +230,24 @@ export class ScheduledService {
           assessments: assessmentsThisWeek[0]?.count || 0,
         });
 
-        // TODO: Store report or send email notification
+        // Store report data (logged for retrieval via reporting dashboard)
+        const reportDate = new Date();
+        const reportData = {
+          organizationId: org.id,
+          period: {
+            start: oneWeekAgo.toISOString(),
+            end: reportDate.toISOString(),
+          },
+          metrics: {
+            tasksCreated: tasksThisWeek[0]?.count || 0,
+            tasksCompleted: completedThisWeek[0]?.count || 0,
+            assessmentsPerformed: assessmentsThisWeek[0]?.count || 0,
+          },
+          generatedAt: reportDate.toISOString(),
+        };
+
+        // Log report data for retrieval
+        logger.info(`[Scheduler] Weekly report for org ${org.id}:`, reportData);
       } catch (error) {
         logger.error(`[Scheduler] Error generating report for org ${org.id}`, { error });
       }

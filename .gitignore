@@ -58,3 +58,6 @@ perfex-vitrine/
 .dolt/
 *.db
 .beads-credential-key
+
+# Gas City
+.beads/
